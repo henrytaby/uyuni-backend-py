@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FastAPI Product System | API Portal</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0ea5e9', // Sky 500
+              600: '#0284c7', // Sky 600
+              900: '#0c4a6e', // Sky 900
+            },
+            dark: {
+              bg: '#0f172a', // Slate 900
+              card: '#1e293b', // Slate 800
+              text: '#f8fafc', // Slate 50
+              muted: '#94a3b8', // Slate 400
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .glass-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(14, 165, 233, 0.5);
+    }
+
+    .hero-gradient {
+      background: linear-gradient(to right, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .status-dot {
+      height: 10px;
+      width: 10px;
+      background-color: #22c55e;
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+      animation: pulse-green 2s infinite;
+    }
+
+    @keyframes pulse-green {
+      0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+      }
+
+      70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+      }
+
+      100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+
+  <!-- Background Decoration -->
+  <div class="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
+    <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-600/20 rounded-full blur-[120px]"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px]"></div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="w-full max-w-4xl">
+
+    <!-- Header -->
+    <header class="text-center mb-16">
+      <div
+        class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700/50 mb-6">
+        <span class="status-dot"></span>
+        <span class="text-xs font-medium text-brand-50 tracking-wide uppercase">System Operational</span>
+      </div>
+      <h1 class="text-5xl md:text-6xl font-bold tracking-tight mb-4">
+        FastAPI <span class="hero-gradient">Product System</span>
+      </h1>
+      <p class="text-lg text-dark-muted max-w-2xl mx-auto">
+        Enterprise-grade RESTful API for managing products, customers, and tasks.
+        Built with performance, scalability, and security in mind.
+      </p>
+    </header>
+
+    <!-- Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full px-4 md:px-0">
+
+      <!-- Documentation Card -->
+      <a href="/docs" class="glass-card rounded-2xl p-8 group cursor-pointer block">
+        <div
+          class="h-12 w-12 rounded-lg bg-green-500/10 flex items-center justify-center mb-6 group-hover:bg-green-500/20 transition-colors">
+          <i class="fa-solid fa-rocket text-green-400 text-xl"></i>
+        </div>
+        <h2 class="text-2xl font-semibold mb-2 group-hover:text-green-400 transition-colors">Swagger UI</h2>
+        <p class="text-dark-muted mb-6">Interactive API documentation. Test endpoints directly from your browser.</p>
+        <div class="flex items-center text-sm font-medium text-green-400">
+          Explore API <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+        </div>
+      </a>
+
+      <!-- Redoc Card -->
+      <a href="/redoc" class="glass-card rounded-2xl p-8 group cursor-pointer block">
+        <div
+          class="h-12 w-12 rounded-lg bg-brand-500/10 flex items-center justify-center mb-6 group-hover:bg-brand-500/20 transition-colors">
+          <i class="fa-solid fa-book-open text-brand-400 text-xl"></i>
+        </div>
+        <h2 class="text-2xl font-semibold mb-2 group-hover:text-brand-400 transition-colors">ReDoc</h2>
+        <p class="text-dark-muted mb-6">Clean, organized technical documentation ideal for reading and reference.</p>
+        <div class="flex items-center text-sm font-medium text-brand-400">
+          Read Docs <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- Info Footer -->
+    <div
+      class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-4 text-center text-sm text-dark-muted border-t border-slate-800 pt-8">
+      <div class="flex flex-col items-center">
+        <span class="block text-brand-500 font-semibold mb-1">Version</span>
+        <span>v0.3.0 (Beta)</span>
+      </div>
+      <div class="flex flex-col items-center">
+        <span class="block text-brand-500 font-semibold mb-1">Authentication</span>
+        <span>OAuth2 / JWT Bearer</span>
+      </div>
+      <div class="flex flex-col items-center">
+        <span class="block text-brand-500 font-semibold mb-1">Support</span>
+        <a href="mailto:henry.taby@gmail.com" class="hover:text-white transition-colors">henry.taby@gmail.com</a>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="absolute bottom-4 text-xs text-slate-700">
+    &copy; 2026 FastAPI Product System. All rights reserved.
+  </footer>
+
+</body>
+
+</html>
