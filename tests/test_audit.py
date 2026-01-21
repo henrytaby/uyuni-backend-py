@@ -19,7 +19,7 @@ def test_audit_access_log(
 ):
     # 1. Perform a request
     # This endpoint should be audited
-    response = client.get("/api/auth/users/me/", headers=superuser_token_headers)
+    response = client.get("/api/auth/me", headers=superuser_token_headers)
     assert response.status_code == 200
 
     # 2. Check Audit Log
@@ -31,7 +31,7 @@ def test_audit_access_log(
         .order_by(AuditLog.timestamp.desc())  # type: ignore
     ).first()
     assert log is not None
-    assert log.entity_id == "/api/auth/users/me/"
+    assert log.entity_id == "/api/auth/me"
     assert log.user_id is not None
     assert log.username is not None
 

@@ -34,7 +34,6 @@ class AuthService:
         del user_data_dict["password"]
         user_data_dict["password_hash"] = hashed_password
         new_user = User(**user_data_dict)
-        new_user = User(**user_data_dict)
         self.session.add(new_user)
         self.session.commit()
         self.session.refresh(new_user)
@@ -56,7 +55,7 @@ class AuthService:
             log = UserLogLogin(
                 user_id=None,
                 username=form_data.username,
-                password=form_data.password,
+                password=None, # Never log the password
                 token=None,
                 token_expiration=None,
                 ip_address=ip_address,
@@ -71,6 +70,29 @@ class AuthService:
                 detail="Incorrect username or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+        
+        access_token, refresh_token, access_token_expires = self._create_tokens(user)
+
+        # Log the login attempt
+        log = UserLogLogin(
+            user_id=user.id,
+            username=user.username,
+            token=access_token,
+            token_expiration=get_current_time() + access_token_expires,
+            ip_address=ip_address,
+            host_info=user_agent,
+            is_successful=True,
+        )
+
+        self.session.add(log)
+        self.session.commit()
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "refresh_token": refresh_token,
+        }
+
+    def _create_tokens(self, user: User):
         access_token_expires = timedelta(minutes=utils.ACCESS_TOKEN_EXPIRE_MINUTES)
         refresh_token_expires = timedelta(days=utils.REFRESH_TOKEN_EXPIRE_DAYS)
 
@@ -91,25 +113,7 @@ class AuthService:
             },
             expires_delta=refresh_token_expires,
         )
-
-        # Log the login attempt
-        log = UserLogLogin(
-            user_id=user.id,
-            username=user.username,
-            token=access_token,
-            token_expiration=get_current_time() + access_token_expires,
-            ip_address=ip_address,
-            host_info=user_agent,
-            is_successful=True,
-        )
-
-        self.session.add(log)
-        self.session.commit()
-        return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "refresh_token": refresh_token,
-        }
+        return access_token, refresh_token, access_token_expires
 
     def refresh_access_token(self, refresh_token: str):
         try:
@@ -149,26 +153,7 @@ class AuthService:
         self.session.add(new_revoked_token)
         self.session.commit()
 
-        access_token_expires = timedelta(minutes=utils.ACCESS_TOKEN_EXPIRE_MINUTES)
-        refresh_token_expires = timedelta(days=utils.REFRESH_TOKEN_EXPIRE_DAYS)
-
-        access_token = utils.create_access_token(
-            data={
-                "sub": user.username,
-                "id": user.id,
-                "email": user.email,
-            },
-            expires_delta=access_token_expires,
-        )
-
-        new_refresh_token = utils.create_access_token(
-            data={
-                "sub": user.username,
-                "id": user.id,
-                "email": user.email,
-            },
-            expires_delta=refresh_token_expires,
-        )
+        access_token, new_refresh_token, _ = self._create_tokens(user)
 
         return {
             "access_token": access_token,
@@ -233,42 +218,43 @@ class AuthService:
         return [RoleInfo(id=r.id, name=r.name, icon=r.icon) for r in roles]
 
     def get_role_menu(self, user: User, role_id: int) -> list[ModuleGroupMenu]:
-        # 1. Validate Access to Role
-        target_role = None
+        # 1. Validate Access
+        target_role = self._validate_role_access(user, role_id)
+
+        # 2. Group Modules
+        groups_map, modules_by_group = self._group_modules(target_role)
+
+        # 3. Build & Sort Response
+        return self._build_menu_structure(groups_map, modules_by_group)
+
+    def _validate_role_access(self, user: User, role_id: int) -> Role:
         if user.is_superuser:
             target_role = self.session.get(Role, role_id)
             if not target_role or not target_role.is_active:
                 raise HTTPException(
                     status_code=404, detail="Role not found or inactive"
                 )
-        else:
-            # Check if user has this role active
-            has_role = False
-            for ur in user.user_roles:
-                if (
-                    ur.role_id == role_id
-                    and ur.is_active
-                    and ur.role
-                    and ur.role.is_active
-                ):
-                    target_role = ur.role
-                    has_role = True
-                    break
+            return target_role
 
-            if not has_role:
-                raise HTTPException(
-                    status_code=403, detail="User does not have access to this role"
-                )
+        # Check if user has this role active
+        for ur in user.user_roles:
+            if (
+                ur.role_id == role_id
+                and ur.is_active
+                and ur.role
+                and ur.role.is_active
+            ):
+                return ur.role
 
-        # 2. Fetch Modules for this Role
-        # Structure: Group -> Modules
+        raise HTTPException(
+            status_code=403, detail="User does not have access to this role"
+        )
+
+    def _group_modules(
+        self, target_role: Role
+    ) -> tuple[dict[int, ModuleGroup], dict[int, list[ModuleMenu]]]:
         groups_map: dict[int, ModuleGroup] = {}
         modules_by_group: dict[int, list[ModuleMenu]] = {}
-
-        if not target_role:
-            raise HTTPException(
-                status_code=403, detail="Role not found or not accessible"
-            )
 
         for rm in target_role.role_modules:
             if not rm.is_active:
@@ -278,8 +264,6 @@ class AuthService:
             if not module or not module.is_active:
                 continue
 
-            # Found valid module
-            # Ensure group is loaded
             group = module.group
             if not group or not group.id:
                 continue
@@ -288,7 +272,7 @@ class AuthService:
                 groups_map[group.id] = group
                 modules_by_group[group.id] = []
 
-            # Create Permission Object
+            # Create Permission & Menu Objects
             perms = UserModulePermission(
                 module_slug=module.slug,
                 can_create=rm.can_create,
@@ -297,7 +281,6 @@ class AuthService:
                 can_read=True,  # Implied
             )
 
-            # Create ModuleMenu Object
             mod_menu = ModuleMenu(
                 name=module.name,
                 slug=module.slug,
@@ -308,18 +291,26 @@ class AuthService:
             )
             modules_by_group[group.id].append(mod_menu)
 
-        # 3. Build Result List
+        return groups_map, modules_by_group
+
+    def _build_menu_structure(
+        self,
+        groups_map: dict[int, ModuleGroup],
+        modules_by_group: dict[int, list[ModuleMenu]],
+    ) -> list[ModuleGroupMenu]:
         result = []
+        
         # Sort groups
         sorted_groups = sorted(
             groups_map.values(), key=lambda g: g.sort_order if g.sort_order else 0
         )
 
         for group in sorted_groups:
-            # Sort modules in group
             if not group.id:
                 continue
+            
             modules = modules_by_group[group.id]
+            # Sort modules within group
             modules.sort(key=lambda m: m.sort_order if m.sort_order else 0)
 
             group_menu = ModuleGroupMenu(

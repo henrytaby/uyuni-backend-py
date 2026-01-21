@@ -74,7 +74,7 @@ def get_authorization_headers(client: TestClient, username: str, password: str) 
         "username": username,
         "password": password,
     }
-    r = client.post("/api/auth/token", data=login_data)
+    r = client.post("/api/auth/login", data=login_data)
     tokens = r.json()
     a_token = tokens["access_token"]
     headers = {"Authorization": f"Bearer {a_token}"}

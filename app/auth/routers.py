@@ -14,19 +14,17 @@ def get_auth_service(session: Session = Depends(get_session)):
     return AuthService(session)
 
 
-@router.post("/users/", response_model=schemas.User)
+@router.post("/register", response_model=schemas.User)
 def create_user(
     user: schemas.UserCreate, service: AuthService = Depends(get_auth_service)
 ):
     """
-    create new user
-
-    This function will create a new user with the encrypted password
+    Register a new user
     """
     return service.create_user(user)
 
 
-@router.post("/token", response_model=schemas.Token)
+@router.post("/login", response_model=schemas.Token)
 async def login_for_access_token(
     request: Request,
     service: AuthService = Depends(get_auth_service),
@@ -35,12 +33,12 @@ async def login_for_access_token(
     return service.login_for_access_token(form_data, request)
 
 
-@router.get("/users/me/", response_model=schemas.UserResponse)
+@router.get("/me", response_model=schemas.UserResponse)
 async def read_users_me(current_user: schemas.User = Depends(utils.get_current_user)):
     return current_user
 
 
-@router.post("/token/refresh", response_model=schemas.Token)
+@router.post("/refresh", response_model=schemas.Token)
 async def refresh_access_token(
     refresh_token: str, service: AuthService = Depends(get_auth_service)
 ):
@@ -58,6 +56,8 @@ async def logout(
     return {"msg": "Successfully logged out"}
 
 
+
+
 @router.get("/me/roles", response_model=list[schemas.RoleInfo])
 async def read_users_roles(
     current_user: UserModel = Depends(utils.get_current_user),
@@ -69,13 +69,15 @@ async def read_users_roles(
     return service.get_user_roles(current_user)
 
 
-@router.get("/me/menu/{role_id}", response_model=list[schemas.ModuleGroupMenu])
+@router.get(
+    "/me/menu/{role_id}",
+    response_model=list[schemas.ModuleGroupMenu],
+    summary="Get user menu for role",
+    description="Retrieves the hierarchical menu structure (Module Groups -> Modules) for the current user in the context of a specific Role. Validates that the user holds the role.",
+)
 async def read_user_menu(
     role_id: int,
     current_user: UserModel = Depends(utils.get_current_user),
     service: AuthService = Depends(get_auth_service),
 ):
-    """
-    Get the menu structure for a specific role.
-    """
     return service.get_role_menu(current_user, role_id)

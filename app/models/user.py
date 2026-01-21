@@ -20,6 +20,15 @@ class User(BaseModel, table=True):
     is_superuser: bool = Field(default=False)
     password_hash: str = Field(exclude=True)
 
+    # Security & Analytics
+    failed_login_attempts: int = Field(default=0)
+    locked_until: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=False), nullable=True)
+    )
+    last_login_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=False), nullable=True)
+    )
+
     created_at: Optional[datetime] = Field(
         default_factory=get_current_time,
         sa_column=Column(DateTime(timezone=False), nullable=True),
@@ -32,7 +41,7 @@ class User(BaseModel, table=True):
         ),
         description="The timestamp when the data was last updated",
     )
-    # Relatoinship
+    # Relationship
     user_roles: List["UserRole"] = Relationship(back_populates="user")
 
 
@@ -52,7 +61,7 @@ class UserRole(BaseModel, table=True):
         description="The timestamp when the data was last updated",
     )
 
-    # Relatoinship
+    # Relationship
     user_id: Optional[int] = Field(default=None, foreign_key="user.id")
     user: Optional["User"] = Relationship(back_populates="user_roles")
 
@@ -89,9 +98,8 @@ class UserLogLogin(BaseModel, table=True):
     username: Optional[str] = Field(
         description="The username used in the login attempt", default=None
     )
-    password: Optional[str] = Field(
-        description="The password used in the login attempt", default=None
-    )
+    # Security: Password field removed to prevent logging sensitive data
+
     token: Optional[str] = Field(description="The generated token", default=None)
     token_expiration: Optional[datetime] = Field(
         description="The expiration date and time of the token", default=None
