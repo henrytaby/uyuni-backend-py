@@ -15,6 +15,12 @@ from app.models.module import Module, ModuleGroup
 from app.modules.tasks.models import Task
 from app.models.audit import AuditLog
 
+# Missing modules
+from app.modules.customers.models import Customer
+from app.modules.products.models import Product
+from app.modules.catalog.products_category.models import ProductCategory
+from app.modules.catalog.products_brand.models import ProductBrand
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

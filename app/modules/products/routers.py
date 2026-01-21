@@ -45,7 +45,7 @@ async def update_product(
     return service.update_product(product_id, product_data)
 
 
-# GET ALL TASK - Obtener todas las tareas
+# GET ALL PRODUCTS - Obtener todos los productos
 # ----------------------
 @router.get("/", response_model=list[ProductRead])
 async def get_products(service: ProductService = Depends(get_service)):

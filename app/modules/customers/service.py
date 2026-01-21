@@ -6,7 +6,7 @@ from .schemas import CustomerCreate, CustomerUpdate
 
 
 class CustomerService:
-    no_task: str = "Customer doesn't exits"
+    no_task: str = "Customer doesn't exist"
 
     def __init__(self, repository: CustomerRepository):
         self.repository = repository
