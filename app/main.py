@@ -1,3 +1,4 @@
+import time
 import uuid
 from contextlib import asynccontextmanager
 
@@ -89,7 +90,24 @@ async def logging_middleware(request: Request, call_next):
     structlog.contextvars.clear_contextvars()
     structlog.contextvars.bind_contextvars(request_id=request_id)
 
+    start_time = time.time()
     response = await call_next(request)
+    duration = time.time() - start_time
+
+    # Log Filtering Logic
+    should_log = settings.ENABLE_ACCESS_LOGS
+    if should_log and settings.ACCESS_LOGS_ONLY_ERRORS:
+        should_log = response.status_code >= 400
+
+    if should_log:
+        structlog.get_logger("api.access").info(
+            "request_completed",
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration=duration,
+        )
+
     return response
 
 

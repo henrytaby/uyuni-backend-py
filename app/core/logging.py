@@ -4,6 +4,9 @@ import sys
 import structlog
 
 
+from app.core.config import settings
+
+
 def configure_logging():
     """
     Configures structlog and standard logging.
@@ -37,9 +40,9 @@ def configure_logging():
         # These run on ALL entries after structlog is done
         processors=[
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-            structlog.dev.ConsoleRenderer(),
-            # For JSON in prod, swap above line with:
-            # structlog.processors.JSONRenderer(),
+            structlog.dev.ConsoleRenderer()
+            if settings.ENVIRONMENT == "local"
+            else structlog.processors.JSONRenderer(),
         ],
     )
 
@@ -50,7 +53,11 @@ def configure_logging():
     root_logger.addHandler(handler)
     root_logger.setLevel(logging.INFO)
 
-    # Silence uvicorn duplicate logging
+    # Silence uvicorn.access (we use our own middleware)
+    logging.getLogger("uvicorn.access").handlers = []
+    logging.getLogger("uvicorn.access").propagate = False
+
+    # Capture other uvicorn logs (startup, error) into structlog
     for _log in ["uvicorn", "uvicorn.error"]:
         logging.getLogger(_log).handlers = []
         logging.getLogger(_log).propagate = True
