@@ -33,18 +33,23 @@ Se renombraron los endpoints para seguir el estándar de la industria (Auth0/OID
 | Refresh | `/api/auth/token/refresh` | **`/api/auth/refresh`** |
 
 ### ✅ C. Protección de Bases de Datos
-*   Se agregaron campos a la tabla `User` para futura lógica de bloqueo:
-    *   `failed_login_attempts`
-    *   `locked_until`
-    *   `last_login_at`
+*   Se agregaron campos a la tabla `User` (`failed_login_attempts`, `locked_until`, `last_login_at`).
+
+### ✅ D. Lógica de Negocio (Lockout Implementation)
+*   **Anti-Bruteforce Activado**:
+    *   Bloqueo automático tras n intentos fallidos (Configurable).
+    *   Reset automático tras login exitoso.
+    *   **Tests**: Cobertura completa (`tests/test_lockout.py`).
+
+### ✅ E. Clean Code & Quality
+*   Refactor de `AuthService` para cumplir SRP (Single Responsibility Principle).
+*   Pasado **Mypy Strict** (100% type safety).
 
 ## 3. Deuda Técnica y Futuros Pasos
 
-1.  **Implementar Lógica de Lockout**:
-    *   Los campos existen en DB, falta la lógica en `AuthService` para bloquear tras 5 intentos.
-2.  **Recuperación de Contraseña**:
+1.  **Recuperación de Contraseña**:
     *   Endpoints definidos como "Deferred" (diferidos). Requiere integración SMTP.
-3.  **Cookies**:
+2.  **Cookies**:
     *   Migrar `refresh_token` a HttpOnly Cookie para Fase 2 (Banking Grade).
 
 ## 4. Conclusión

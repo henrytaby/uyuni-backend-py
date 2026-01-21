@@ -10,7 +10,7 @@ Este proyecto es una API modular diseñada con buenas prácticas de ingeniería 
 *   **Productos**: Gestión de inventario con relaciones a categorías y marcas.
 *   **Clientes**: Administración de usuarios/clientes.
 *   **Catálogo**: Gestión centralizada de Categorías y Marcas.
-*   **Seguridad**: Autenticación JWT robusta con **Rotación de Tokens**, Logout seguro (Blacklist) y Hashing de contraseñas.
+*   **Seguridad**: Autenticación JWT robusta con **Rotación de Tokens**, Logout seguro (Blacklist), **Protección Anti-Bruteforce (Lockout)** y Hashing de contraseñas.
 *   **Auditoría**: Sistema completo de registro de accesos y cambios de datos (CDC) con almacenamiento histórico.
 
 ## Arquitectura
@@ -100,6 +100,8 @@ Editar `.env` con tus credenciales:
 ```env
 DATABASE_URL="postgresql://user:password@localhost/fastapi_product"
 SECRET_KEY=tu_clave_secreta_generada
+SECURITY_LOGIN_MAX_ATTEMPTS=5
+SECURITY_LOCKOUT_MINUTES=15
 ...
 ```
 

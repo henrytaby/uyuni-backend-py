@@ -49,6 +49,7 @@ async def refresh_access_token(
 async def logout(
     service: AuthService = Depends(get_auth_service),
     token: str = Depends(utils.oauth2_scheme),
+    current_user: UserModel = Depends(utils.get_current_user),
     logout_data: schemas.LogoutRequest | None = None,
 ):
     refresh_token = logout_data.refresh_token if logout_data else None

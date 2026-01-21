@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     REFRESH_TOKEN_EXPIRE_DAYS: int
 
+    # Security Lockout
+    SECURITY_LOGIN_MAX_ATTEMPTS: int = 5
+    SECURITY_LOCKOUT_MINUTES: int = 15
+
     # Utils
     TIME_ZONE: int
     PROJECT_ROOT: str = os.path.dirname(
