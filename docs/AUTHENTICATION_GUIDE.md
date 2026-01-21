@@ -30,11 +30,11 @@ El módulo sigue una estructura en capas (Layered Architecture) para desacoplar 
 
 ```mermaid
 graph TD
-    Client[Cliente (Frontend/Mobile)] -->|HTTP Request| Router[Routers (routers.py)]
-    Router -->|DTOs| Service[AuthService (service.py)]
+    Client["Cliente (Frontend/Mobile)"] -->|HTTP Request| Router["Routers (routers.py)"]
+    Router -->|DTOs| Service["AuthService (service.py)"]
     Service -->|Entities| Repo[Repository Layer]
     Service -->|Logs| Logger[Structlog]
-    Repo -->|SQL| DB[(PostgreSQL)]
+    Repo -->|SQL| DB[("PostgreSQL")]
 ```
 
 ### Componentes Clave
@@ -94,12 +94,12 @@ Usamos pares de **Access Token** (corto plazo) y **Refresh Token** (largo plazo)
 ```mermaid
 flowchart TD
     A[Inicio Login] --> B{Usuario Existe?}
-    B -- No --> C[Simular Espera (Timing Attack Protection)]
+    B -- No --> C["Simular Espera (Timing Attack Protection)"]
     C --> D[Error 401]
     
     B -- Sí --> E{Cuenta Bloqueada?}
     E -- Sí --> F{Tiempo Expiró?}
-    F -- No --> G[Error 403 (Account Locked)]
+    F -- No --> G["Error 403 (Account Locked)"]
     F -- Sí --> H[Reset Intentos]
     
     H --> I
@@ -112,8 +112,8 @@ flowchart TD
     K -- No --> D
     
     I -- Sí --> M[Reset Intentos]
-    M --> N[Generar Tokens (Access + Refresh)]
-    N --> O[Log Login (DB + Structlog)]
+    M --> N["Generar Tokens (Access + Refresh)"]
+    N --> O["Log Login (DB + Structlog)"]
     O --> P[Retornar Tokens]
 ```
 
