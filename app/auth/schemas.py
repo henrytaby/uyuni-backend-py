@@ -4,7 +4,9 @@ from sqlmodel import Field, SQLModel
 
 
 class UserCreate(SQLModel):
-    username: str = Field(index=True, unique=True, description="Unique username for login")
+    username: str = Field(
+        index=True, unique=True, description="Unique username for login"
+    )
     email: str = Field(index=True, unique=True, description="Valid email address")
     first_name: Optional[str] = Field(default=None, description="User's first name")
     last_name: Optional[str] = Field(default=None, description="User's last name")
@@ -29,7 +31,9 @@ class UserResponse(SQLModel):
     email: str = Field(description="User email")
     first_name: Optional[str] = Field(default=None, description="User's first name")
     last_name: Optional[str] = Field(default=None, description="User's last name")
-    is_verified: bool = Field(default=False, description="Whether the email is verified")
+    is_verified: bool = Field(
+        default=False, description="Whether the email is verified"
+    )
     model_config = {"extra": "forbid"}
 
 

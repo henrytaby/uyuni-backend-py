@@ -1,7 +1,6 @@
 from datetime import timedelta
 from typing import NoReturn
 
-
 from fastapi import HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError
@@ -48,15 +47,18 @@ class AuthService:
         request: Request,
     ):
         ip_address = request.client.host if request and request.client else "unknown"
-        user_agent = request.headers.get("user-agent", "unknown") if request else "unknown"
+        user_agent = (
+            request.headers.get("user-agent", "unknown") if request else "unknown"
+        )
 
         # 0. Find User (Independent of password check)
         query = select(User).where(User.username == form_data.username)
         user_obj = self.session.exec(query).first()
-        
+
         if not user_obj:
-            # Fake verifying password to mitigate timing attacks (optional but recommended)
-            utils.verify_password(form_data.password, "fake_hash") 
+            # Fake verifying password to mitigate timing attacks
+            # (optional but recommended)
+            utils.verify_password(form_data.password, "fake_hash")
             self._raise_invalid_credentials()
 
         # 1. Check Lockout
@@ -66,19 +68,21 @@ class AuthService:
         if not utils.verify_password(form_data.password, user_obj.password_hash):
             self._handle_failed_login(user_obj, ip_address, user_agent)
             self._raise_invalid_credentials()
-            
+
         # 3. Generate Tokens (Do this first to log them)
-        access_token, refresh_token, access_token_expires = self._create_tokens(user_obj)
+        access_token, refresh_token, access_token_expires = self._create_tokens(
+            user_obj
+        )
 
         # 4. Success (Log with token info)
         self._handle_successful_login(
-            user_obj, 
-            ip_address, 
-            user_agent, 
-            token=access_token, 
-            expiration=access_token_expires
+            user_obj,
+            ip_address,
+            user_agent,
+            token=access_token,
+            expiration=access_token_expires,
         )
-        
+
         return {
             "access_token": access_token,
             "token_type": "bearer",
@@ -97,7 +101,7 @@ class AuthService:
     def _check_account_lockout(self, user: User):
         """Verifies if the user is currently locked out."""
         if user.locked_until and user.locked_until > get_current_time():
-             raise HTTPException(
+            raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account is locked. Try again later.",
             )
@@ -105,12 +109,14 @@ class AuthService:
     def _handle_failed_login(self, user: User, ip: str, user_agent: str):
         """Increments failure counter, checks limit, logs failure."""
         user.failed_login_attempts += 1
-        
+
         if user.failed_login_attempts >= settings.SECURITY_LOGIN_MAX_ATTEMPTS:
-            user.locked_until = get_current_time() + timedelta(minutes=settings.SECURITY_LOCKOUT_MINUTES)
-        
+            user.locked_until = get_current_time() + timedelta(
+                minutes=settings.SECURITY_LOCKOUT_MINUTES
+            )
+
         self.session.add(user)
-        
+
         # Log failure
         log = UserLogLogin(
             user_id=user.id,
@@ -123,19 +129,14 @@ class AuthService:
         self.session.commit()
 
     def _handle_successful_login(
-        self, 
-        user: User, 
-        ip: str, 
-        user_agent: str, 
-        token: str, 
-        expiration: timedelta
+        self, user: User, ip: str, user_agent: str, token: str, expiration: timedelta
     ):
         """Resets counters, updates stats, logs success."""
         user.failed_login_attempts = 0
         user.locked_until = None
         user.last_login_at = get_current_time()
         self.session.add(user)
-        
+
         log = UserLogLogin(
             user_id=user.id,
             username=user.username,
@@ -143,7 +144,7 @@ class AuthService:
             host_info=user_agent,
             is_successful=True,
             token=token,
-            token_expiration=get_current_time() + expiration
+            token_expiration=get_current_time() + expiration,
         )
         self.session.add(log)
         self.session.commit()
@@ -243,14 +244,14 @@ class AuthService:
                 # Validate the refresh token before revoking
                 rf_payload = utils.decode_token(refresh_token)
                 rf_user_id: int = rf_payload.get("id")
-                
+
                 # Ensure the refresh token belongs to the user
                 if rf_user_id != user_id:
-                     raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED, 
-                        detail="Invalid refresh token ownership"
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid refresh token ownership",
                     )
-                
+
                 query_rf = select(UserRevokedToken).where(
                     UserRevokedToken.token == refresh_token
                 )
@@ -258,15 +259,16 @@ class AuthService:
                 if not revoked_rf:
                     revoked_rf = UserRevokedToken(token=refresh_token, user_id=user_id)
                     self.session.add(revoked_rf)
-                    
+
             except JWTError:
                 # If refresh token is garbage or invalid signature, we can choose to:
                 # 1. Ignore it (Log out successfully anyway)
                 # 2. Raise Error (Strict)
-                # Given strict security, raising error is safer to signal client client issues.
-                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, 
-                    detail="Invalid refresh token"
+                # Given strict security, raising error is safer
+                # to signal client client issues.
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid refresh token",
                 ) from None
 
         # Update the log with logout time
@@ -316,12 +318,7 @@ class AuthService:
 
         # Check if user has this role active
         for ur in user.user_roles:
-            if (
-                ur.role_id == role_id
-                and ur.is_active
-                and ur.role
-                and ur.role.is_active
-            ):
+            if ur.role_id == role_id and ur.is_active and ur.role and ur.role.is_active:
                 return ur.role
 
         raise HTTPException(
@@ -377,7 +374,7 @@ class AuthService:
         modules_by_group: dict[int, list[ModuleMenu]],
     ) -> list[ModuleGroupMenu]:
         result = []
-        
+
         # Sort groups
         sorted_groups = sorted(
             groups_map.values(), key=lambda g: g.sort_order if g.sort_order else 0
@@ -386,7 +383,7 @@ class AuthService:
         for group in sorted_groups:
             if not group.id:
                 continue
-            
+
             modules = modules_by_group[group.id]
             # Sort modules within group
             modules.sort(key=lambda m: m.sort_order if m.sort_order else 0)

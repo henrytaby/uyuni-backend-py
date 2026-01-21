@@ -57,8 +57,6 @@ async def logout(
     return {"msg": "Successfully logged out"}
 
 
-
-
 @router.get("/me/roles", response_model=list[schemas.RoleInfo])
 async def read_users_roles(
     current_user: UserModel = Depends(utils.get_current_user),
@@ -74,7 +72,11 @@ async def read_users_roles(
     "/me/menu/{role_id}",
     response_model=list[schemas.ModuleGroupMenu],
     summary="Get user menu for role",
-    description="Retrieves the hierarchical menu structure (Module Groups -> Modules) for the current user in the context of a specific Role. Validates that the user holds the role.",
+    description=(
+        "Retrieves the hierarchical menu structure (Module Groups -> Modules) "
+        "for the current user in the context of a specific Role. "
+        "Validates that the user holds the role."
+    ),
 )
 async def read_user_menu(
     role_id: int,

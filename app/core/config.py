@@ -1,6 +1,6 @@
 import os
 
-from pydantic import AnyHttpUrl, Field, field_validator
+from pydantic import AnyHttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     VERSION: str = "v1"
     PORT: int = 8000
     ENVIRONMENT: str = "local"
-    
+
     # CORS
     BACKEND_CORS_ORIGINS: list[AnyHttpUrl] = []
 
@@ -45,11 +45,11 @@ class Settings(BaseSettings):
     # Audit
     ENABLE_ACCESS_AUDIT: bool = True
     ENABLE_DATA_AUDIT: bool = True
-    
+
     # Log Controls
     ENABLE_ACCESS_LOGS: bool = True  # Master switch for access logging
     ACCESS_LOGS_ONLY_ERRORS: bool = False  # If True, only log 4xx/5xx responses
-    
+
     AUDIT_EXCLUDED_PATHS: list[str] = [
         "/docs",
         "/redoc",
