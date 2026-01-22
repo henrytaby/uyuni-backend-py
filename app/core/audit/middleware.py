@@ -62,6 +62,10 @@ class AuditMiddleware(BaseHTTPMiddleware):
         if response.status_code in settings.AUDIT_LOG_EXCLUDE_STATUS_CODES:
             return response
 
+        # 5. Check Method Inclusion (New)
+        if request.method.upper() not in settings.AUDIT_LOG_INCLUDED_METHODS:
+            return response
+
         # 4. Check Request State (set by dependencies)
         if hasattr(request.state, "skip_audit") and request.state.skip_audit:
             return response

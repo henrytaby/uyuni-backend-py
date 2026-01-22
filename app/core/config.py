@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     ]
 
     AUDIT_LOG_EXCLUDE_STATUS_CODES: list[int] = [404]
+    
+    # Methods to audit (Default includes GET for safety, but can be restricted in .env)
+    AUDIT_LOG_INCLUDED_METHODS: list[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
