@@ -58,7 +58,7 @@ class AuthService:
         if not user_obj:
             # Fake verifying password to mitigate timing attacks
             # (optional but recommended)
-            utils.verify_password(form_data.password, "fake_hash")
+            utils.verify_password(form_data.password, "$2b$12$2QldhwW8iLfBYmgRv30PT.LvIhDHP7E6cFqrHEyhjkDckn65FohGK")
             self._raise_invalid_credentials()
 
         # 1. Check Lockout
