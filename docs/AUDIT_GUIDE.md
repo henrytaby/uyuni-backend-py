@@ -153,3 +153,23 @@ python scripts/archive_audit.py --days 30 --dir /mnt/backups/audit
 ### Problema: La base de datos está muy lenta
 *   **Causa**: La tabla `audit_log` tiene millones de registros.
 *   **Solución**: Ejecuta el script de `archive_audit.py` inmediatamente para mover datos viejos. Considera añadir particionamiento a la tabla `audit_log` en PostgreSQL si el volumen es extremo.
+
+---
+
+## 8. Recomendaciones de Seguridad y Producción
+
+Para complementar el sistema de auditoría y evitar que la base de datos se llene de "basura" (ataques de fuerza bruta o escaneadores), se recomienda encarecidamente implementar las siguientes medidas **fuera** de la aplicación (en el nivel de infraestructura):
+
+### 8.1. Rate Limiting (Nivel Aplicación o Proxy)
+Limita el número de peticiones por IP para endpoints sensibles como `/api/auth/login`.
+
+### 8.2. Fail2Ban (Nivel Servidor)
+Configura **Fail2Ban** en tu servidor Linux.
+*   **Funcionamiento**: Analiza los logs (de Nginx/Traefik o de la propia aplicación si se vuelcan a un archivo) buscando patrones de error repetidos (ej. muchos 401 o 404 desde la misma IP).
+*   **Acción**: Bloquea la IP en el firewall (iptables/ufw) temporalmente.
+*   **Beneficio**: El tráfico malicioso ni siquiera llega a tu aplicación Python, ahorrando CPU y conexiones a la BD.
+
+### 8.3. WAF (Web Application Firewall)
+Usa servicios como **Cloudflare** (capa gratuita muy efectiva).
+*   Filtran tráfico de bots conocidos, ataques DDoS y escáneres de vulnerabilidades antes de que toquen tu servidor.
+*   Configura reglas para desafiar (Captcha) o bloquear peticiones sospechosas.

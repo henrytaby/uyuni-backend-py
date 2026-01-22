@@ -57,8 +57,22 @@ class AuthService:
 
         if not user_obj:
             # Fake verifying password to mitigate timing attacks
-            # (optional but recommended)
-            utils.verify_password(form_data.password, "$2b$12$2QldhwW8iLfBYmgRv30PT.LvIhDHP7E6cFqrHEyhjkDckn65FohGK")
+            utils.verify_password(
+                form_data.password,
+                "$2b$12$2QldhwW8iLfBYmgRv30PT.LvIhDHP7E6cFqrHEyhjkDckn65FohGK",
+            )
+
+            # Log the attack/failed attempt
+            log = UserLogLogin(
+                user_id=None,
+                username=form_data.username,
+                ip_address=ip_address,
+                host_info=user_agent,
+                is_successful=False,
+            )
+            self.session.add(log)
+            self.session.commit()
+
             self._raise_invalid_credentials()
 
         # 1. Check Lockout

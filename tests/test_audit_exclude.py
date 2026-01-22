@@ -44,7 +44,7 @@ def test_audit_exclude_method(
     # 4. Check Audit Log (Should NOT increase)
     session.expire_all()
     final_count = session.exec(select(AuditLog)).all()
-    
+
     # Restore settings
     settings.AUDIT_LOG_INCLUDED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 
