@@ -1,4 +1,4 @@
-# FastAPI Product & Task Management API
+# Uyuni BackEnd API
 
 API RESTful construida con FastAPI para la gestión de productos, tareas, categorías y marcas.
 

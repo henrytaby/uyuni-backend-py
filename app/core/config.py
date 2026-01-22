@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # App
-    PROJECT_NAME: str = "AppTransactionFastAPI"
+    PROJECT_NAME: str = "UyuniBackEnd"
     VERSION: str = "v1"
     PORT: int = 8000
     ENVIRONMENT: str = "local"
