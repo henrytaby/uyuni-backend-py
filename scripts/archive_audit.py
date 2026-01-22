@@ -3,7 +3,7 @@ import gzip
 import json
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlmodel import Session, select
 
@@ -15,9 +15,7 @@ from app.util.datetime import get_current_time
 
 
 def archive_audit_logs(
-    days_retention: int = 90,
-    archive_dir: str = "archive",
-    engine=None
+    days_retention: int = 90, archive_dir: str = "archive", engine=None
 ):
     """
     Moves old audit logs to a compressed JSON file and deletes them from DB.
@@ -25,6 +23,7 @@ def archive_audit_logs(
     if engine is None:
         # Lazy load imports to avoid circular deps if imported at top
         from app.core import db
+
         engine = db.engine
 
     # Ensure archive directory exists
@@ -50,7 +49,7 @@ def archive_audit_logs(
         data = [log.model_dump(mode="json") for log in logs_to_archive]
 
         # 3. Save to file (Compressed)
-        ts = int(datetime.utcnow().timestamp())
+        ts = int(datetime.now(timezone.utc).timestamp())
         filename = f"audit_archive_{cutoff_date.strftime('%Y%m%d')}_{ts}.json.gz"
         filepath = os.path.join(archive_dir, filename)
 
@@ -72,6 +71,7 @@ def archive_audit_logs(
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Archive old audit logs")
     parser.add_argument("--days", type=int, default=90, help="Days of retention")
     parser.add_argument(

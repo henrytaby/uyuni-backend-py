@@ -16,7 +16,6 @@ class AuditMiddleware(BaseHTTPMiddleware):
         if not settings.ENABLE_ACCESS_AUDIT:
             return await call_next(request)
 
-        # 2. Check Global Enpoint Exclusions (Fastest check)
         path = request.url.path
         method = request.method
         for excluded in settings.AUDIT_EXCLUDED_PATHS:

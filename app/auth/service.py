@@ -115,9 +115,18 @@ class AuthService:
     def _check_account_lockout(self, user: User):
         """Verifies if the user is currently locked out."""
         if user.locked_until and user.locked_until > get_current_time():
+            wait_seconds = int((user.locked_until - get_current_time()).total_seconds())
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account is locked. Try again later.",
+                detail={
+                    "message": "Account is locked due to too many failed attempts.",
+                    "code": "ACCOUNT_LOCKED",
+                    "unlock_at": user.locked_until.isoformat(),
+                    "wait_seconds": wait_seconds,
+                    "max_attempts": settings.SECURITY_LOGIN_MAX_ATTEMPTS,
+                    "lockout_minutes": settings.SECURITY_LOCKOUT_MINUTES,
+                },
+                headers={"Retry-After": str(wait_seconds)},
             )
 
     def _handle_failed_login(self, user: User, ip: str, user_agent: str):

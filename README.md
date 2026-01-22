@@ -88,7 +88,7 @@ pip install -r requirements.txt
 Crear la base de datos en PostgreSQL:
 ```bash
 sudo su postgres
-createdb fastapi_product
+createdb uyuni_admin
 exit
 ```
 
@@ -98,7 +98,7 @@ cp .env.example .env
 ```
 Editar `.env` con tus credenciales:
 ```env
-DATABASE_URL="postgresql://user:password@localhost/fastapi_product"
+DATABASE_URL="postgresql://user:password@localhost/uyuni_admin"
 SECRET_KEY=tu_clave_secreta_generada
 SECURITY_LOGIN_MAX_ATTEMPTS=5
 SECURITY_LOCKOUT_MINUTES=15

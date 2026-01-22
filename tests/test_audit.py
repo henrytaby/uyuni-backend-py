@@ -12,6 +12,9 @@ from scripts.archive_audit import archive_audit_logs
 # Force enable audit for tests
 settings.ENABLE_ACCESS_AUDIT = True
 settings.ENABLE_DATA_AUDIT = True
+# Ensure GET is included for this test
+if "GET" not in settings.AUDIT_LOG_INCLUDED_METHODS:
+    settings.AUDIT_LOG_INCLUDED_METHODS.append("GET")
 
 
 def test_audit_access_log(
@@ -28,7 +31,7 @@ def test_audit_access_log(
     log = session.exec(
         select(AuditLog)
         .where(AuditLog.action == "ACCESS")
-        .order_by(AuditLog.timestamp.desc())  # type: ignore
+        .order_by(AuditLog.timestamp.desc(), AuditLog.id.desc())  # type: ignore
     ).first()
     assert log is not None
     assert log.entity_id == "/api/auth/me"
