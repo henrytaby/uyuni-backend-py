@@ -27,7 +27,12 @@ class AuditMiddleware(BaseHTTPMiddleware):
                     return await call_next(request)
             # Case 2: "/path" (All methods)
             elif path.startswith(excluded):
-                return await call_next(request)
+                # Special handling for root "/" to avoid matching everything
+                if excluded == "/":
+                    if path == "/":
+                        return await call_next(request)
+                else:
+                    return await call_next(request)
 
         # 3. Process Request (We need to run this to get dependencies
         # resolved like skip_audit)
