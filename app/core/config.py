@@ -55,7 +55,10 @@ class Settings(BaseSettings):
         "/redoc",
         "/openapi.json",
         "GET:/health",
+        "/",  # Landing page
     ]
+
+    AUDIT_LOG_EXCLUDE_STATUS_CODES: list[int] = [404]
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

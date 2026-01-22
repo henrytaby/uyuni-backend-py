@@ -58,6 +58,10 @@ class AuditMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
 
+        # 4. Check Status Code Exclusion (New)
+        if response.status_code in settings.AUDIT_LOG_EXCLUDE_STATUS_CODES:
+            return response
+
         # 4. Check Request State (set by dependencies)
         if hasattr(request.state, "skip_audit") and request.state.skip_audit:
             return response

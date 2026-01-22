@@ -51,12 +51,22 @@ Ideal para rutas estáticas o prefijos completos.
 Edita `AUDIT_EXCLUDED_PATHS` en tu archivo `.env`:
 
 ```json
-AUDIT_EXCLUDED_PATHS='["/docs", "/openapi.json", "GET:/api/public-data"]'
+AUDIT_EXCLUDED_PATHS='["/docs", "/openapi.json", "GET:/api/public-data", "/"]'
 ```
 *   `/docs`: Excluye todo lo que empiece por `/docs`.
 *   `GET:/api/public-data`: Excluye solo el método GET en esa ruta.
+*   `/`: Excluye la Landing Page (home).
 
-#### B. Exclusión Puntual (Vía Código)
+#### B. Exclusión por Código de Estado (Vía `.env`)
+Útil para evitar "ruido" de escaneos automáticos o errores comunes (ej. 404).
+Edita `AUDIT_LOG_EXCLUDE_STATUS_CODES` en tu archivo `.env`:
+
+```json
+AUDIT_LOG_EXCLUDE_STATUS_CODES='[404]'
+```
+Esto evitará que cualquier respuesta con status 404 se guarde en la base de datos `audit_log`, aunque la petición haya llegado al servidor.
+
+#### C. Exclusión Puntual (Vía Código)
 Ideal para lógica específica dentro de un router. Usa la dependencia `skip_access_audit`.
 
 ```python
