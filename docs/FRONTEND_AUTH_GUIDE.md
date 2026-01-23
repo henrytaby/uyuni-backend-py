@@ -31,6 +31,25 @@ Obtiene el par de tokens (Access + Refresh).
 
 ### Respuestas de Error
 
+## Conceptos de Seguridad (Contexto para Frontend)
+
+El sistema implementa mecanismos robustos de defensa. Es importante conocerlos para entender el "por qué" de ciertos requisitos.
+
+### 1. Lista Negra (Blacklist) y Logout
+Cuando un usuario cierra sesión, simplemente "borrar" el token en el navegador no es suficiente (el token sigue siendo válido en el servidor).
+*   **Mecanismo**: El backend almacena el `refresh_token` en una tabla de `UserRevokedToken`.
+*   **Consecuencia**: Cualquier intento futuro de usar ese token devolverá `401 Unauthorized`.
+*   **Requisito Frontend**: Por eso es **obligatorio** enviar el `refresh_token` en el endpoint de Logout. Si no se envía, la sesión queda "zombie" en el servidor hasta que expira naturalmente (días).
+
+### 2. Rotación de Tokens
+Para minimizar el riesgo de robo de sesiones, los Refresh Tokens son de **un solo uso**.
+*   **Flujo**: Cuando llamas a `/refresh`, obtienes un **nuevo** Refresh Token. El anterior es invalidado inmediatamente (pasa a la Blacklist).
+*   **Requisito Frontend**: Debes reemplazar tu refresh token almacenado **cada vez** que consumas el endpoint de refresh. No reutilices el antiguo.
+
+---
+
+## 1. Login (Inicio de Sesión)
+
 #### 401 Unauthorized (Credenciales Inválidas)
 ```json
 {
