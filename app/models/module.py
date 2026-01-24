@@ -57,7 +57,7 @@ class Module(BaseModel, table=True):
         description="The timestamp when the data was last updated",
     )
     # Relatoinship
-    group_id: Optional[int] = Field(default=None, foreign_key="module_group.id")
+    group_slug: Optional[str] = Field(default=None, foreign_key="module_group.slug")
     group: Optional["ModuleGroup"] = Relationship(back_populates="modules")
 
     role_modules: List["RoleModule"] = Relationship(back_populates="module")

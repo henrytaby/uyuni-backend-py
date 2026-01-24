@@ -318,11 +318,20 @@ class AuthService:
             # Sort manually since we iterated
             roles.sort(key=lambda r: r.sort_order if r.sort_order else 0)
 
-        return [RoleInfo(id=r.id, name=r.name, icon=r.icon) for r in roles]
+        return [
+            RoleInfo(
+                id=r.id,
+                name=r.name,
+                slug=r.slug,
+                description=r.description,
+                icon=r.icon,
+            )
+            for r in roles
+        ]
 
-    def get_role_menu(self, user: User, role_id: int) -> list[ModuleGroupMenu]:
+    def get_role_menu(self, user: User, role_slug: str) -> list[ModuleGroupMenu]:
         # 1. Validate Access
-        target_role = self._validate_role_access(user, role_id)
+        target_role = self._validate_role_access(user, role_slug)
 
         # 2. Group Modules
         groups_map, modules_by_group = self._group_modules(target_role)
@@ -330,9 +339,10 @@ class AuthService:
         # 3. Build & Sort Response
         return self._build_menu_structure(groups_map, modules_by_group)
 
-    def _validate_role_access(self, user: User, role_id: int) -> Role:
+    def _validate_role_access(self, user: User, role_slug: str) -> Role:
         if user.is_superuser:
-            target_role = self.session.get(Role, role_id)
+            query = select(Role).where(Role.slug == role_slug)
+            target_role = self.session.exec(query).first()
             if not target_role or not target_role.is_active:
                 raise HTTPException(
                     status_code=404, detail="Role not found or inactive"
@@ -341,7 +351,12 @@ class AuthService:
 
         # Check if user has this role active
         for ur in user.user_roles:
-            if ur.role_id == role_id and ur.is_active and ur.role and ur.role.is_active:
+            if (
+                ur.role_slug == role_slug
+                and ur.is_active
+                and ur.role
+                and ur.role.is_active
+            ):
                 return ur.role
 
         raise HTTPException(
@@ -350,9 +365,9 @@ class AuthService:
 
     def _group_modules(
         self, target_role: Role
-    ) -> tuple[dict[int, ModuleGroup], dict[int, list[ModuleMenu]]]:
-        groups_map: dict[int, ModuleGroup] = {}
-        modules_by_group: dict[int, list[ModuleMenu]] = {}
+    ) -> tuple[dict[str, ModuleGroup], dict[str, list[ModuleMenu]]]:
+        groups_map: dict[str, ModuleGroup] = {}
+        modules_by_group: dict[str, list[ModuleMenu]] = {}
 
         for rm in target_role.role_modules:
             if not rm.is_active:
@@ -363,12 +378,12 @@ class AuthService:
                 continue
 
             group = module.group
-            if not group or not group.id:
+            if not group or not group.slug:
                 continue
 
-            if group.id not in groups_map:
-                groups_map[group.id] = group
-                modules_by_group[group.id] = []
+            if group.slug not in groups_map:
+                groups_map[group.slug] = group
+                modules_by_group[group.slug] = []
 
             # Create Permission & Menu Objects
             perms = UserModulePermission(
@@ -387,14 +402,14 @@ class AuthService:
                 sort_order=module.sort_order,
                 permissions=perms,
             )
-            modules_by_group[group.id].append(mod_menu)
+            modules_by_group[group.slug].append(mod_menu)
 
         return groups_map, modules_by_group
 
     def _build_menu_structure(
         self,
-        groups_map: dict[int, ModuleGroup],
-        modules_by_group: dict[int, list[ModuleMenu]],
+        groups_map: dict[str, ModuleGroup],
+        modules_by_group: dict[str, list[ModuleMenu]],
     ) -> list[ModuleGroupMenu]:
         result = []
 
@@ -404,10 +419,10 @@ class AuthService:
         )
 
         for group in sorted_groups:
-            if not group.id:
+            if not group.slug:
                 continue
 
-            modules = modules_by_group[group.id]
+            modules = modules_by_group[group.slug]
             # Sort modules within group
             modules.sort(key=lambda m: m.sort_order if m.sort_order else 0)
 

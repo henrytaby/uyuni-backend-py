@@ -65,7 +65,7 @@ class UserRole(BaseModel, table=True):
     user_id: Optional[int] = Field(default=None, foreign_key="user.id")
     user: Optional["User"] = Relationship(back_populates="user_roles")
 
-    role_id: Optional[int] = Field(default=None, foreign_key="role.id")
+    role_slug: Optional[str] = Field(default=None, foreign_key="role.slug")
     role: Optional["Role"] = Relationship(back_populates="user_roles")
 
 

@@ -57,6 +57,8 @@ class LogoutRequest(SQLModel):
 class RoleInfo(SQLModel):
     id: int
     name: str
+    slug: str
+    description: Optional[str] = None
     icon: Optional[str] = None
 
 
@@ -66,6 +68,9 @@ class UserModulePermission(SQLModel):
     can_update: bool = False
     can_delete: bool = False
     can_read: bool = False  # Derived/Implicit permission
+    scope_all: bool = Field(
+        default=False, description="If True, can access all records. Else, own records."
+    )
 
 
 class ModuleMenu(SQLModel):

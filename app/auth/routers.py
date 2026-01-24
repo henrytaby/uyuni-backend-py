@@ -69,7 +69,7 @@ async def read_users_roles(
 
 
 @router.get(
-    "/me/menu/{role_id}",
+    "/me/menu/{role_slug}",
     response_model=list[schemas.ModuleGroupMenu],
     summary="Get user menu for role",
     description=(
@@ -79,8 +79,8 @@ async def read_users_roles(
     ),
 )
 async def read_user_menu(
-    role_id: int,
+    role_slug: str,
     current_user: UserModel = Depends(utils.get_current_user),
     service: AuthService = Depends(get_auth_service),
 ):
-    return service.get_role_menu(current_user, role_id)
+    return service.get_role_menu(current_user, role_slug)

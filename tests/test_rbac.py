@@ -28,8 +28,12 @@ def create_test_data(session: Session):
     session.refresh(module)
 
     # Create Roles
-    role_admin = Role(name="Admin Role", sort_order=1, is_active=True)
-    role_guest = Role(name="Guest Role", sort_order=2, is_active=True)
+    role_admin = Role(
+        name="Admin Role", slug="admin-role", sort_order=1, is_active=True
+    )
+    role_guest = Role(
+        name="Guest Role", slug="guest-role", sort_order=2, is_active=True
+    )
     session.add(role_admin)
     session.add(role_guest)
     session.commit()
@@ -39,8 +43,8 @@ def create_test_data(session: Session):
     # Assign Module to Roles
     # Admin Role: CREATE, UPDATE
     rm_admin = RoleModule(
-        role_id=role_admin.id,
-        module_id=module.id,
+        role_slug=role_admin.slug,
+        module_slug=module.slug,
         is_active=True,
         can_create=True,
         can_update=True,
@@ -48,8 +52,8 @@ def create_test_data(session: Session):
     )
     # Guest Role: ACTIVE (Implicit Read), but no write
     rm_guest = RoleModule(
-        role_id=role_guest.id,
-        module_id=module.id,
+        role_slug=role_guest.slug,
+        module_slug=module.slug,
         is_active=True,
         can_create=False,
         can_update=False,
@@ -118,7 +122,7 @@ def test_read_access(session: Session):
     session.refresh(user)
 
     # Assign Guest Role
-    ur = UserRole(user_id=user.id, role_id=role_guest.id, is_active=True)
+    ur = UserRole(user_id=user.id, role_slug=role_guest.slug, is_active=True)
     session.add(ur)
     session.commit()
     session.refresh(user)  # Reload relationships
@@ -146,7 +150,7 @@ def test_create_access_allowed(session: Session):
     session.refresh(user)
 
     # Assign Admin Role
-    ur = UserRole(user_id=user.id, role_id=role_admin.id, is_active=True)
+    ur = UserRole(user_id=user.id, role_slug=role_admin.slug, is_active=True)
     session.add(ur)
     session.commit()
     session.refresh(user)
@@ -173,7 +177,7 @@ def test_create_access_denied(session: Session):
     session.refresh(user)
 
     # Assign Guest Role (Read only)
-    ur = UserRole(user_id=user.id, role_id=role_guest.id, is_active=True)
+    ur = UserRole(user_id=user.id, role_slug=role_guest.slug, is_active=True)
     session.add(ur)
     session.commit()
     session.refresh(user)
@@ -194,11 +198,11 @@ def test_aggregated_access(session: Session):
     module, _, _ = create_test_data(session)
 
     # Create Role A (Create)
-    role_a = Role(name="Role A", sort_order=10, is_active=True)
+    role_a = Role(name="Role A", slug="role-a", sort_order=10, is_active=True)
     session.add(role_a)
 
     # Create Role B (Delete)
-    role_b = Role(name="Role B", sort_order=11, is_active=True)
+    role_b = Role(name="Role B", slug="role-b", sort_order=11, is_active=True)
     session.add(role_b)
     session.commit()
     session.refresh(role_a)
@@ -206,16 +210,16 @@ def test_aggregated_access(session: Session):
 
     # Assign Module Permissions
     rm_a = RoleModule(
-        role_id=role_a.id,
-        module_id=module.id,
+        role_slug=role_a.slug,
+        module_slug=module.slug,
         is_active=True,
         can_create=True,
         can_update=False,
         can_delete=False,
     )
     rm_b = RoleModule(
-        role_id=role_b.id,
-        module_id=module.id,
+        role_slug=role_b.slug,
+        module_slug=module.slug,
         is_active=True,
         can_create=False,
         can_update=False,
@@ -236,8 +240,8 @@ def test_aggregated_access(session: Session):
     session.commit()
     session.refresh(user)
 
-    ur_a = UserRole(user_id=user.id, role_id=role_a.id, is_active=True)
-    ur_b = UserRole(user_id=user.id, role_id=role_b.id, is_active=True)
+    ur_a = UserRole(user_id=user.id, role_slug=role_a.slug, is_active=True)
+    ur_b = UserRole(user_id=user.id, role_slug=role_b.slug, is_active=True)
     session.add(ur_a)
     session.add(ur_b)
     session.commit()

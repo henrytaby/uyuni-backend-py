@@ -27,6 +27,7 @@ class PermissionChecker:
                 can_update=True,
                 can_delete=True,
                 can_read=True,
+                scope_all=True,
             )
 
         # Initialize permissions
@@ -34,6 +35,7 @@ class PermissionChecker:
         can_update = False
         can_delete = False
         has_module_access = False
+        scope_all = False
 
         # Iterate over user roles and aggregate permissions
         # user.user_roles -> role -> role_modules
@@ -50,13 +52,17 @@ class PermissionChecker:
             role = user_role.role
             for role_module in role.role_modules:
                 # Check if this role_module corresponds to the requested module slug
-                # Use greedy loading or check module relationship
-                if not role_module.module:
-                    continue
-
-                if role_module.module.slug == self.module_slug:
+                # Optimized: We compare slugs directly without loading the Module object
+                if role_module.module_slug == self.module_slug:
                     # Check active status
-                    if not role_module.is_active or not role_module.module.is_active:
+                    # We still need to check module.is_active, so we access .module here
+                    # But the lookup was faster.
+                    # Optimization: If we trust the slug, we could skip loading module
+                    # if we assume active.
+                    # But module.is_active is a business rule.
+                    if not role_module.is_active or (
+                        role_module.module and not role_module.module.is_active
+                    ):
                         continue
 
                     has_module_access = True
@@ -66,6 +72,8 @@ class PermissionChecker:
                         can_update = True
                     if role_module.can_delete:
                         can_delete = True
+                    if role_module.scope_all:
+                        scope_all = True
 
         # Determine READ permission (Implicit)
         can_read = has_module_access
@@ -77,6 +85,7 @@ class PermissionChecker:
             can_update=can_update,
             can_delete=can_delete,
             can_read=can_read,
+            scope_all=scope_all,
         )
 
         # Validate required permission
