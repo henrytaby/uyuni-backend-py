@@ -2,6 +2,7 @@ from enum import Enum
 
 from fastapi import Depends, HTTPException, status
 
+from app.auth.dependencies import get_active_role_slug
 from app.auth.schemas import UserModulePermission
 from app.auth.utils import get_current_user
 from app.models.user import User
@@ -19,7 +20,11 @@ class PermissionChecker:
         self.module_slug = module_slug
         self.required_permission = required_permission
 
-    def __call__(self, user: User = Depends(get_current_user)) -> UserModulePermission:
+    def __call__(
+        self,
+        user: User = Depends(get_current_user),
+        active_role_slug: str | None = Depends(get_active_role_slug),
+    ) -> UserModulePermission:
         if user.is_superuser:
             return UserModulePermission(
                 module_slug=self.module_slug,
@@ -37,26 +42,44 @@ class PermissionChecker:
         has_module_access = False
         scope_all = False
 
-        # Iterate over user roles and aggregate permissions
-        # user.user_roles -> role -> role_modules
+        # Filter roles if X-Active-Role is present
+        roles_to_check = []
+        if active_role_slug:
+            # Personification Mode: Only use the active role
+            # First, verify the user actually HAS this role assigned and active
+            found_role = False
+            for ur in user.user_roles:
+                if (
+                    ur.role_slug == active_role_slug
+                    and ur.is_active
+                    and ur.role
+                    and ur.role.is_active
+                ):
+                    roles_to_check.append(ur.role)
+                    found_role = True
+                    break
+            
+            # If the user requested a role they don't have, deny access
+            if not found_role:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"You do not have access to the active role '{active_role_slug}'",
+                )
+        else:
+            # Legacy Mode: Aggregate all active roles
+            for ur in user.user_roles:
+                if ur.is_active and ur.role and ur.role.is_active:
+                    roles_to_check.append(ur.role)
 
-        # Note: We assume user.user_roles is available (lazy loaded)
-        for user_role in user.user_roles:
-            if (
-                not user_role.is_active
-                or not user_role.role
-                or not user_role.role.is_active
-            ):
-                continue
-
-            role = user_role.role
+        # Iterate over selected roles and aggregate permissions
+        for role in roles_to_check:
             for role_module in role.role_modules:
                 # Check if this role_module corresponds to the requested module slug
                 # Optimized: We compare slugs directly without loading the Module object
                 if role_module.module_slug == self.module_slug:
-                    # Check active status
-                    # We still need to check module.is_active, so we access .module here
-                    # But the lookup was faster.
+                    # Check active status of the assignment
+                    # Note: We checked role.is_active above.
+                    
                     # Optimization: If we trust the slug, we could skip loading module
                     # if we assume active.
                     # But module.is_active is a business rule.

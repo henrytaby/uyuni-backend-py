@@ -85,6 +85,13 @@ Usamos pares de **Access Token** (corto plazo) y **Refresh Token** (largo plazo)
     *   Valida que el `refresh_token` enviado pertenezca al usuario del `access_token`.
     *   Si es válido, revoca AMBOS tokens añadiéndolos a `UserRevokedToken` (Blacklist).
 
+C. Personificación de Roles (Context Switching)
+Para soportar interfaces complejas donde el usuario puede "cambiar de rol", el backend acepta un header opcional `X-Active-Role`.
+
+*   **Sin Header**: Se aplican **todos** los permisos de todos los roles activos del usuario (Unión).
+*   **Con Header**: Se aplican **únicamente** los permisos del rol especificado.
+    *   **Seguridad**: Si el usuario envía un rol que no tiene asignado, recibe `403 Forbidden`.
+
 ---
 
 ## 4. Diagramas de Flujo

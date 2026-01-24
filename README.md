@@ -144,15 +144,18 @@ fastapi dev app/main.py
 ### 11. Seguridad y RBAC (Control de Acceso)
 El sistema implementa un modelo de seguridad granular basado en **Roles** y **Módulos**:
 
-*   **Permisos por Módulo**: El acceso se define a nivel de módulo (ej: `tasks`, `products`) usando un identificador único (`slug`).
-*   **Permisos Agregados**: Un usuario puede tener múltiples roles. Sus permisos finales son la **suma** de todos los permisos de sus roles activos.
-*   **Superusuario**: Un usuario con `is_superuser=True` tiene acceso total al sistema, ignorando las reglas de RBAC.
+*   **Permisos por Módulo**: El acceso se define a nivel de módulo usando **Slugs** (ej: `tasks`, `products`).
+*   **Permisos Agregados vs Personificación**:
+    *   Por defecto, se suman los permisos de todos los roles activos (Agregación).
+    *   Si se envía el header `X-Active-Role`, se restringen los permisos exclusivamente a ese rol (Personificación).
+*   **Data Scope**: Soporte para `scope_all` (Ver Todo) vs (Ver Propio).
+*   **Superusuario**: Acceso total ignorando reglas.
 *   **Dependencia de Seguridad**: Se utiliza `PermissionChecker` para proteger endpoints:
     ```python
     # Ejemplo: Requerir permiso de CREAR en el módulo 'tasks'
     Depends(PermissionChecker(module_slug="tasks", required_permission=PermissionAction.CREATE))
     ```
-*   **Menús Dinámicos**: Endpoint `/me/menu/{role_id}` genera la estructura del menú frontend permitida para el rol seleccionado.
+*   **Menús Dinámicos**: Endpoint `/me/menu/{role_slug}` genera la estructura del menú.
 
 Para detalles de implementación y recetas, ver la **[Guía de RBAC (Permisos)](docs/RBAC_GUIDE.md)**.
 

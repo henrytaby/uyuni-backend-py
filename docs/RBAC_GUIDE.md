@@ -48,8 +48,13 @@ erDiagram
     }
 ```
 
-### Lógica de Agregación
-Los permisos son **aditivos**. Si un usuario tiene múltiples roles con acceso al mismo módulo, se combinan sus capacidades (OR lógico).
+### Lógica de Agregación y Personificación
+El sistema opera en dos modos:
+
+1.  **Agregación (Por Defecto)**: Si el usuario no especifica un rol, los permisos son **aditivos**. Se suman todos los permisos de todos los roles activos del usuario.
+2.  **Personificación (Estricto)**: Si el frontend envía el header `X-Active-Role: <slug>`, el sistema ignora los otros roles y calcula permisos **exclusivamente** basados en el rol solicitado.
+    *   Si el usuario no tiene asignado ese rol -> `403 Forbidden`.
+
 **Superusuarios** (`is_superuser=True`) evaden todas las comprobaciones y tienen acceso total (`scope_all=True`).
 
 ---
