@@ -160,11 +160,15 @@ Lista los roles activos del usuario.
   {
     "id": 1,
     "name": "Super Admin",
+    "slug": "super-admin",
+    "description": "Acceso total al sistema",
     "icon": "shield"
   },
   {
     "id": 2,
     "name": "Vendedor",
+    "slug": "seller",
+    "description": "Acceso restringido a ventas",
     "icon": "shopping-cart"
   }
 ]
@@ -176,7 +180,7 @@ Lista los roles activos del usuario.
 
 Obtiene la estructura del menú basada en un rol específico.
 
-- **Endpoint**: `GET /api/auth/me/menu/{role_id}`
+- **Endpoint**: `GET /api/auth/me/menu/{role_slug}`
 - **Header**: `Authorization: Bearer <access_token>`
 
 ### Respuesta Exitosa (200 OK)
@@ -197,7 +201,8 @@ Obtiene la estructura del menú basada en un rol específico.
           "can_create": true,
           "can_update": true,
           "can_delete": false,
-          "can_read": true
+          "can_read": true,
+          "scope_all": true
         }
       }
     ]

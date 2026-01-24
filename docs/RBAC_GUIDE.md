@@ -4,14 +4,18 @@ Este documento explica el sistema RBAC implementado en el proyecto y proporciona
 
 ## Resumen de la Arquitectura
 
-El sistema permite un control de permisos granular a nivel de **Módulo**. Utiliza una "Dependencia de Permisos" que inyecta los permisos del usuario para un módulo específico en el endpoint de la API.
+El sistema permite un control de permisos granular a nivel de **Módulo**. Utiliza **Slugs** (identificadores de texto únicos) para definir relaciones portables entre Roles y Módulos.
 
 ### Componentes Clave en RBAC
 *   **Usuarios**: Pueden tener múltiples **Roles**.
-*   **Roles**: Colecciones de permisos para múltiples **Módulos**.
-*   **Módulos**: Representan áreas funcionales (ej: `Tareas`, `Usuarios`, `Productos`). Identificados por un `slug` único.
-*   **Grupos de Módulos**: Categorización para módulos en el menú del frontend.
-*   **RoleModule**: La tabla de enlace donde se definen los permisos (`can_create` (crear), `can_update` (actualizar), `can_delete` (eliminar)) para un par Rol-Módulo específico. **El acceso de lectura es implícito:** si existe un enlace Rol-Módulo y está activo, el usuario puede leer.
+*   **Roles**: Colecciones de permisos. Se identifican por un `slug` (ej: `admin`, `ventas`).
+*   **Módulos**: Representan áreas funcionales (ej: `Tareas`, `Usuarios`). Identificados por `slug`.
+*   **RoleModule**: Tabla de enlace que define:
+    *   **Acciones**: `can_create`, `can_update`, `can_delete`.
+    *   **Alcance (Scope)**: `scope_all`.
+        *   `True`: El usuario ve **todos** los registros.
+        *   `False`: El usuario ve **solo sus propios** registros.
+    *   **Lectura**: Es implícita si existe el registro activo.
 
 ### Diagrama Entidad-Relación (Simplificado)
 ```mermaid
@@ -26,51 +30,35 @@ erDiagram
         string username
     }
     Role {
+        string slug PK
         string name
-        bool is_active
+        string description
     }
     RoleModule {
+        string role_slug FK
+        string module_slug FK
         bool can_create
         bool can_update
         bool can_delete
+        bool scope_all
     }
     Module {
-        string slug
+        string slug PK
         string name
     }
 ```
 
 ### Lógica de Agregación
-Los permisos son **aditivos**. Si un usuario tiene el `Rol A` (permite Crear) y el `Rol B` (permite Eliminar) para el mismo módulo, el usuario tendrá permisos para **ambas** acciones: Crear y Eliminar.
-**Superusuarios** (`is_superuser=True`) evaden todas las comprobaciones y tienen acceso total.
+Los permisos son **aditivos**. Si un usuario tiene múltiples roles con acceso al mismo módulo, se combinan sus capacidades (OR lógico).
+**Superusuarios** (`is_superuser=True`) evaden todas las comprobaciones y tienen acceso total (`scope_all=True`).
 
 ---
 
 ## 👩‍💻 Recetas para Desarrolladores
 
 ### 1. Protegiendo un Nuevo Endpoint
-Para proteger un endpoint, necesitas usar la dependencia `PermissionChecker`.
-Esta dependencia verifica si el usuario (o sus roles) tiene el nivel de acceso requerido para el módulo objetivo.
+Usa la dependencia `PermissionChecker`.
 
-```mermaid
-flowchart LR
-    A[Petición Entrante] --> B{¿Es Superuser?}
-    B -- Sí --> C[ACCESO TOTAL]
-    B -- No --> D{Iterar Roles Activos}
-    
-    D --> E{¿Rol tiene acceso al Módulo?}
-    E -- No --> F[Denegar (403)]
-    E -- Sí --> G{¿Permiso Acción (Create/Delete)?}
-    
-    G -- Sí --> H[ACCESO CONCEDIDO]
-    G -- No --> F
-```
-
-**Pasos:**
-1.  Importar `PermissionChecker` y `PermissionAction`.
-2.  Agregar la dependencia a tu función del endpoint.
-
-**Ejemplo:**
 ```python
 from fastapi import APIRouter, Depends
 from app.auth.permissions import PermissionChecker, PermissionAction
@@ -78,52 +66,37 @@ from app.auth.schemas import UserModulePermission
 
 router = APIRouter()
 
-# 1. Proteger un Endpoint de Lectura (Chequeo de permiso implícito)
+# 1. Lectura (Implícito)
 @router.get("/")
 async def get_items(
-    _: UserModulePermission = Depends(
-        PermissionChecker(module_slug="mi-modulo", required_permission=PermissionAction.READ)
+    permissions: UserModulePermission = Depends(
+        PermissionChecker(module_slug="facturas", required_permission=PermissionAction.READ)
     ),
 ):
-    return {"msg": "¡Puedes leer esto!"}
+    # Filtrado por Scope
+    if not permissions.scope_all:
+        return {"msg": "Mostrando solo MIS facturas"}
+    return {"msg": "Mostrando TODAS las facturas"}
 
-# 2. Proteger un Endpoint de Escritura
+# 2. Escritura
 @router.post("/")
 async def create_item(
     _: UserModulePermission = Depends(
-        PermissionChecker(module_slug="mi-modulo", required_permission=PermissionAction.CREATE)
+        PermissionChecker(module_slug="facturas", required_permission=PermissionAction.CREATE)
     ),
 ):
     return {"msg": "¡Ítem creado!"}
 ```
 
 ### 2. Registrando un Nuevo Módulo
-Cuando creas un nuevo módulo funcional (ej: "Facturas"), debes registrarlo en la base de datos para que aparezca en el sistema RBAC.
+1.  **Seed Data**: Crea el módulo en la BD.
+2.  **Naming**: Usa `kebab-case` para el slug (ej: `control-calidad`).
 
-1.  **Crear una Migración/Semilla (Seed)**: Necesitas insertar filas en `module_group` (opcional si ya existe) y `module`.
-2.  **Definir un Slug**: Elige un slug único y amigable para URL (ej: `facturas`). Este slug **debe coincidir** con el `module_slug` que uses en tu código (Receta 1).
-
-### 3. Usando Permisos Dentro de la Lógica de Negocio
-A veces necesitas saber *qué* permisos tiene el usuario dentro de tu servicio, más allá de solo bloquear la petición.
-El `PermissionChecker` devuelve un objeto `UserModulePermission`.
-
-```python
-@router.get("/{id}")
-async def get_item(
-    id: int,
-    permissions: UserModulePermission = Depends(
-        PermissionChecker(module_slug="mi-modulo", required_permission=PermissionAction.READ)
-    ),
-):
-    response = {"data": "..."}
-    
-    # Puedes ocultar datos condicionalmente basado en permisos
-    if permissions.can_update:
-        response["edit_url"] = f"/edit/{id}"
-        
-    return response
-```
+### 3. Usando Permisos en el Frontend
+El frontend recibe el objeto de permisos y puede:
+*   Ocultar botones de "Eliminar" si `!can_delete`.
+*   Ocultar filtros de "Ver Todos" si `!scope_all`.
 
 ## Referencia de API
-*   `GET /me/roles`: Lista los roles activos del usuario.
-*   `GET /me/menu/{role_id}`: Devuelve el menú JSON jerárquico para el frontend, filtrado por los permisos del usuario para ese rol específico.
+*   `GET /me/roles`: Lista roles activos con `slug` y `description`.
+*   `GET /me/menu/{role_slug}`: Devuelve el menú jerárquico para un rol específico.
