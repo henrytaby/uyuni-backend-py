@@ -26,32 +26,31 @@ flowchart TD
 
 El primer paso es definir la entidad.
 **Reglas de Oro**:
-1.  Heredar de `SQLModel` y `AuditMixin` (para auditoría automática).
-2.  Usar `uuid.UUID` como Primary Key (UUIDv7 default).
-3.  Nombre de tabla en **plural** (`__tablename__ = "products"`).
+1.  Heredar de **`BaseModel`** (para tener ID UUIDv7) y `AuditMixin` (para auditoría).
+2.  Nombre de tabla en **plural** (`__tablename__ = "products"`).
 
 **Archivo**: `app/modules/{nombre_modulo}/models.py`
 
 ```python
-import uuid
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field
+from app.models.base_model import BaseModel
 from app.models.mixins import AuditMixin
-import uuid6 # Librería para UUIDv7
 
-# Heredar de AuditMixin agrega: created_at, updated_at, created_by_id, updated_by_id
-class NuevoRecurso(SQLModel, AuditMixin, table=True):
+# BaseModel ya incluye: id (UUIDv7)
+# AuditMixin agrega: created_at, updated_at, created_by_id, updated_by_id
+class NuevoRecurso(BaseModel, AuditMixin, table=True):
     __tablename__ = "nuevos_recursos"
 
-    id: uuid.UUID = Field(
-        default_factory=uuid6.uuid7, 
-        primary_key=True,
-        description="Identificador único (UUIDv7)"
-    )
     nombre: str = Field(index=True)
     activo: bool = Field(default=True)
 ```
 
-> **Magia de Auditoría**: Gracias a `AuditMixin` y los Hooks del sistema, **NO** necesitas preocuparte por llenar `created_by_id` o `updated_at`. El sistema lo hace solo.
+> **Magia de la Base**: 
+> *   **IDs**: Al heredar de `BaseModel`, el `id` (UUIDv7) se genera solo.
+> *   **Fechas**: `AuditMixin` gestiona `created_at` y `updated_at` automáticamente (vía factories y eventos de SQL).
+> *   **Usuarios**: Los **Hooks** del sistema inyectan `created_by_id` y `updated_by_id` detectando al usuario autenticado.
+>
+> **Resultado**: El desarrollador no necesita tocar estos campos manualmente jamás.
 
 ---
 
