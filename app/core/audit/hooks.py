@@ -22,6 +22,28 @@ def register_audit_hooks(engine: Engine):
         return
 
     event.listen(Session, "after_flush", audit_changes)
+    event.listen(Session, "before_flush", set_audit_user_fields)
+
+
+def set_audit_user_fields(session: Session, flush_context, instances):
+    user_id = get_audit_user_id()
+    if not user_id:
+        return
+
+    # INSERTs
+    for obj in session.new:
+        if hasattr(obj, "created_by_id"):
+            # Only set if not already set (allow manual override)
+            if not getattr(obj, "created_by_id", None):
+                obj.created_by_id = user_id
+        if hasattr(obj, "updated_by_id"):
+            if not getattr(obj, "updated_by_id", None):
+                obj.updated_by_id = user_id
+
+    # UPDATEs
+    for obj in session.dirty:
+        if hasattr(obj, "updated_by_id"):
+            obj.updated_by_id = user_id
 
 
 def audit_changes(session: Session, flush_context):

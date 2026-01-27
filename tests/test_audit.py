@@ -50,6 +50,18 @@ def test_audit_data_update(
     assert response.status_code == 201
     task_id = response.json()["id"]
 
+    # Verify created_by_id
+    import uuid
+
+    from app.modules.tasks.models import Task
+
+    session.expire_all()
+    created_task = session.get(Task, uuid.UUID(task_id))
+    assert created_task is not None
+    assert created_task.created_by_id is not None
+    # We can't easily check exact UUID match without decoding token,
+    # but not None is enough
+
     session.expire_all()
 
     # Check CREATE log
@@ -70,6 +82,12 @@ def test_audit_data_update(
         f"/api/tasks/{task_id}", json=update_data, headers=superuser_token_headers
     )
     assert response.status_code == 200
+
+    # Verify updated_by_id
+    session.expire_all()
+    updated_task = session.get(Task, uuid.UUID(task_id))
+    assert updated_task is not None
+    assert updated_task.updated_by_id is not None
 
     # Check UPDATE log
     log_update = session.exec(
