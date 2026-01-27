@@ -22,6 +22,12 @@ class ProductService:
                 raise NotFoundException(
                     detail=f"Category Id:{item_data.category_id} doesn't exist"
                 )
+        # Validate Brand
+        if item_data.brand_id:
+            if not self.repository.check_brand_exists(item_data.brand_id):
+                raise NotFoundException(
+                    detail=f"Brand Id:{item_data.brand_id} doesn't exist"
+                )
 
         product_db = Product.model_validate(item_data.model_dump())
 
@@ -44,6 +50,20 @@ class ProductService:
     # UPDATE
     # ----------------------
     def update_product(self, item_id: uuid.UUID, item_data: ProductUpdate):
+        # Validate Category
+        if item_data.category_id:
+            if not self.repository.check_category_exists(item_data.category_id):
+                raise NotFoundException(
+                    detail=f"Category Id:{item_data.category_id} doesn't exist"
+                )
+
+        # Validate Brand
+        if item_data.brand_id:
+            if not self.repository.check_brand_exists(item_data.brand_id):
+                raise NotFoundException(
+                    detail=f"Brand Id:{item_data.brand_id} doesn't exist"
+                )
+
         item_data_dict = item_data.model_dump(exclude_unset=True)
         updated_product = self.repository.update(item_id, item_data_dict)
 

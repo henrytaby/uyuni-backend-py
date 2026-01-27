@@ -2,12 +2,8 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
-from sqlmodel import Session, select
+from pydantic import BaseModel, Field
 
-from app.core.db import engine
-
-from ..catalog.products_brand.models import ProductBrand
 from ..catalog.products_brand.schemas import ProductBrandRead
 from ..catalog.products_category.schemas import ProductCategoryRead
 
@@ -23,16 +19,6 @@ class ProductBase(BaseModel):
 class ProductCreate(ProductBase):
     category_id: Optional[uuid.UUID] = None
     brand_id: Optional[uuid.UUID] = None
-
-    @field_validator("brand_id")
-    @classmethod
-    def validate_brand(cls, value):
-        session = Session(engine)
-        query = select(ProductBrand).where(ProductBrand.id == value)
-        result = session.exec(query).first()
-        if not result:
-            raise ValueError(f"Brand Id:{value} doesn't exist")
-        return value
 
 
 class ProductUpdate(BaseModel):

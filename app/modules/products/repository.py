@@ -37,3 +37,8 @@ class ProductRepository(BaseRepository[Product]):
 
     def check_category_exists(self, category_id: uuid.UUID) -> bool:
         return self.session.get(ProductCategory, category_id) is not None
+
+    def check_brand_exists(self, brand_id: uuid.UUID) -> bool:
+        from ..catalog.products_brand.models import ProductBrand
+
+        return self.session.get(ProductBrand, brand_id) is not None

@@ -69,7 +69,7 @@ def test_audit_data_update(
     response = client.patch(
         f"/api/tasks/{task_id}", json=update_data, headers=superuser_token_headers
     )
-    assert response.status_code == 201
+    assert response.status_code == 200
 
     # Check UPDATE log
     log_update = session.exec(

@@ -108,3 +108,30 @@ Si todo pasa en verde ("All checks passed", "Success"), tu código está listo p
 *   [Reglas de Ruff](https://docs.astral.sh/ruff/rules/): Lista completa de qué significa cada código (E501, F401, etc.).
 *   [FastAPI & MyPy](https://fastapi.tiangolo.com/python-types/): Guía oficial de FastAPI sobre tipos.
 *   [Pydantic Plugin for MyPy](https://docs.pydantic.dev/latest/integrations/mypy/): Detalles sobre la integración de tipos.
+
+---
+
+## 6. Estándares de Excelencia (Clean Code & Arquitectura)
+
+Además de pasar el linter, todo código debe cumplir con estos estándares arquitectónicos y de estilo:
+
+### 6.1. Convenciones de Nombres (Naming)
+*   **Variables y Funciones**: `snake_case` (ej: `create_user`, `is_active`). Deben ser verbos o sustantivos descriptivos.
+*   **Clases**: `PascalCase` (ej: `UserRepository`, `ProductService`).
+*   **Constantes**: `UPPER_CASE` (ej: `MAX_LOGIN_ATTEMPTS`).
+*   **Archivos**: `snake_case` (ej: `user_service.py`).
+
+### 6.2. Arquitectura Limpia (Clean Architecture)
+El código debe respetar estrictamente la jerarquía de capas:
+1.  **Router (Capa HTTP)**: Solo maneja Request/Response, Status Codes y DTOs.
+    *   ❌ *Prohibido*: Lógica de negocio o consultas SQL directas.
+2.  **Service (Capa de Negocio)**: Contiene la lógica del caso de uso.
+    *   ❌ *Prohibido*: Retornar `HTTPException` (usar Excepciones de Dominio como `NotFoundException`).
+    *   ❌ *Prohibido*: Depender de `Request` o `Response` de FastAPI.
+3.  **Repository (Capa de Datos)**: Abstrae el acceso a la DB.
+    *   ❌ *Prohibido*: Lógica de negocio compleja.
+
+### 6.3. Tipado y DTOs
+*   **Schemas (Pydantic)**: Son solo para transferencia de datos.
+    *   ❌ *Prohibido*: Acceder a la Base de Datos dentro de un validador de Pydantic (Violación de Capas).
+*   **Type Hints**: Todo argumento y retorno de función pública debe estar tipado.

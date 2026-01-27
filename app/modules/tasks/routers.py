@@ -58,7 +58,7 @@ async def get_task(
 
 # UPDATE - Actualizar una tarea existente
 # ----------------------
-@router.patch("/{task_id}", response_model=Task, status_code=status.HTTP_201_CREATED)
+@router.patch("/{task_id}", response_model=Task, status_code=status.HTTP_200_OK)
 async def update_task(
     task_id: uuid.UUID,
     task_data: TaskUpdate,

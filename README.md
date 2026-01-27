@@ -75,7 +75,7 @@ cd fastapi-product
 
 ### 3. Crear entorno virtual
 ```bash
-python3 -m venv env
+python3 -m venv venv
 source env/bin/activate
 ```
 
@@ -144,7 +144,7 @@ pytest
 ```
 
 ### 9. Calidad de Código
-El proyecto utiliza herramientas estándar para asegurar la consistencia y calidad.
+El proyecto utiliza herramientas estándar para asegurar la consistencia y calidad, siguiendo principios de **Clean Code** y **SOLID**.
 
 Linting y Formateo (Ruff):
 ```bash
