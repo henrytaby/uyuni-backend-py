@@ -14,13 +14,17 @@ from app.core.config import settings
 from app.core.db import create_db_and_tables, engine
 from app.core.exceptions import (
     BadRequestException,
+    ForbiddenException,
     InternalServerErrorException,
     NotFoundException,
+    UnauthorizedException,
 )
 from app.core.handlers import (
     bad_request_exception_handler,
+    forbidden_exception_handler,
     internal_server_error_handler,
     not_found_exception_handler,
+    unauthorized_exception_handler,
 )
 from app.core.logging import configure_logging
 from app.core.routers import router as api_router
@@ -119,6 +123,8 @@ app.include_router(api_router, prefix=version_prefix)
 
 app.add_exception_handler(NotFoundException, not_found_exception_handler)  # type: ignore
 app.add_exception_handler(BadRequestException, bad_request_exception_handler)  # type: ignore
+app.add_exception_handler(UnauthorizedException, unauthorized_exception_handler)  # type: ignore
+app.add_exception_handler(ForbiddenException, forbidden_exception_handler)  # type: ignore
 app.add_exception_handler(InternalServerErrorException, internal_server_error_handler)  # type: ignore
 
 

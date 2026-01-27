@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session
 
@@ -33,7 +35,7 @@ async def create_customer(
 # ----------------------
 @router.get("/{customer_id}", response_model=Customer)
 async def get_customer(
-    customer_id: int,
+    customer_id: uuid.UUID,
     service: CustomerService = Depends(get_service),
     current_user: User = Depends(get_current_user),
 ):
@@ -46,7 +48,7 @@ async def get_customer(
     "/{customer_id}", response_model=Customer, status_code=status.HTTP_201_CREATED
 )
 async def update_customer(
-    customer_id: int,
+    customer_id: uuid.UUID,
     customer_data: CustomerUpdate,
     service: CustomerService = Depends(get_service),
 ):
@@ -67,6 +69,6 @@ async def get_customers(
 # ----------------------
 @router.delete("/{customer_id}")
 async def delete_customer(
-    customer_id: int, service: CustomerService = Depends(get_service)
+    customer_id: uuid.UUID, service: CustomerService = Depends(get_service)
 ):
     return service.delete_customer(customer_id)

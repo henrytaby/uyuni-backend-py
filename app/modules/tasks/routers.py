@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session
 
@@ -40,7 +42,7 @@ async def create_task(
 # ----------------------
 @router.get("/{task_id}", response_model=Task)
 async def get_task(
-    task_id: int,
+    task_id: uuid.UUID,
     service: TaskService = Depends(get_service),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -58,7 +60,7 @@ async def get_task(
 # ----------------------
 @router.patch("/{task_id}", response_model=Task, status_code=status.HTTP_201_CREATED)
 async def update_task(
-    task_id: int,
+    task_id: uuid.UUID,
     task_data: TaskUpdate,
     service: TaskService = Depends(get_service),
     _: UserModulePermission = Depends(
@@ -94,7 +96,7 @@ async def get_tasks(
 # ----------------------
 @router.delete("/{task_id}")
 async def delete_task(
-    task_id: int,
+    task_id: uuid.UUID,
     service: TaskService = Depends(get_service),
     _: UserModulePermission = Depends(
         PermissionChecker(

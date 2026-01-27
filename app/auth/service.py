@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import NoReturn
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError
 from sqlmodel import select
@@ -10,6 +10,12 @@ from app.auth import schemas, utils
 from app.auth.schemas import ModuleGroupMenu, ModuleMenu, RoleInfo, UserModulePermission
 from app.core.config import settings
 from app.core.db import SessionDep
+from app.core.exceptions import (
+    BadRequestException,
+    ForbiddenException,
+    NotFoundException,
+    UnauthorizedException,
+)
 from app.models.module import ModuleGroup
 from app.models.role import Role
 from app.models.user import User, UserLogLogin, UserRevokedToken
@@ -26,10 +32,7 @@ class AuthService:
         query = select(User).where(User.username == user.username)
         db_user = self.session.exec(query).first()
         if db_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already registered",
-            )
+            raise BadRequestException(detail="Username already registered")
 
         hashed_password = utils.get_password_hash(user.password)
         user_data_dict = user.model_dump(exclude_unset=True)
@@ -106,8 +109,7 @@ class AuthService:
     # PRIVATE HELPERS (Clean Code Extraction)
     # ---------------------------------------
     def _raise_invalid_credentials(self) -> NoReturn:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+        raise UnauthorizedException(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
@@ -116,8 +118,7 @@ class AuthService:
         """Verifies if the user is currently locked out."""
         if user.locked_until and user.locked_until > get_current_time():
             wait_seconds = int((user.locked_until - get_current_time()).total_seconds())
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+            raise ForbiddenException(
                 detail={
                     "message": "Account is locked due to too many failed attempts.",
                     "code": "ACCOUNT_LOCKED",
@@ -200,20 +201,13 @@ class AuthService:
             payload = utils.decode_token(refresh_token)
             username: str = payload.get("sub")
             if username is None:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid refresh token",
-                )
+                raise UnauthorizedException(detail="Invalid refresh token")
         except JWTError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
-            ) from None
+            raise UnauthorizedException(detail="Invalid refresh token") from None
 
         user = utils.get_user(self.session, username)
         if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
-            )
+            raise UnauthorizedException(detail="Invalid refresh token")
 
         # Check if the refresh token is already revoked
         query_revoked = select(UserRevokedToken).where(
@@ -221,10 +215,7 @@ class AuthService:
         )
         revoked_token = self.session.exec(query_revoked).first()
         if revoked_token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked",
-            )
+            raise UnauthorizedException(detail="Token has been revoked")
 
         # Revoke the old refresh token (Rotate)
         # Using 0 as user_id temporarily, or accurate user_id if we want
@@ -246,13 +237,9 @@ class AuthService:
             payload = utils.decode_token(token)
             user_id: int = payload.get("id")
             if user_id is None:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
-                )
+                raise UnauthorizedException(detail="Invalid token")
         except JWTError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
-            ) from None
+            raise UnauthorizedException(detail="Invalid token") from None
 
         # Check if the access token is already revoked
         query = select(UserRevokedToken).where(UserRevokedToken.token == token)
@@ -270,9 +257,8 @@ class AuthService:
 
                 # Ensure the refresh token belongs to the user
                 if rf_user_id != user_id:
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid refresh token ownership",
+                    raise UnauthorizedException(
+                        detail="Invalid refresh token ownership"
                     )
 
                 query_rf = select(UserRevokedToken).where(
@@ -289,10 +275,7 @@ class AuthService:
                 # 2. Raise Error (Strict)
                 # Given strict security, raising error is safer
                 # to signal client client issues.
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid refresh token",
-                ) from None
+                raise UnauthorizedException(detail="Invalid refresh token") from None
 
         # Update the log with logout time
         log_query = select(UserLogLogin).where(UserLogLogin.token == token)
@@ -344,9 +327,7 @@ class AuthService:
             query = select(Role).where(Role.slug == role_slug)
             target_role = self.session.exec(query).first()
             if not target_role or not target_role.is_active:
-                raise HTTPException(
-                    status_code=404, detail="Role not found or inactive"
-                )
+                raise NotFoundException(detail="Role not found or inactive")
             return target_role
 
         # Check if user has this role active
@@ -359,9 +340,7 @@ class AuthService:
             ):
                 return ur.role
 
-        raise HTTPException(
-            status_code=403, detail="User does not have access to this role"
-        )
+        raise ForbiddenException(detail="User does not have access to this role")
 
     def _group_modules(
         self, target_role: Role

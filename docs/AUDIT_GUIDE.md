@@ -91,8 +91,8 @@ Al crear un nuevo modelo con `SQLModel`, la auditoría de datos (Hooks) funciona
 
 | Columna | Tipo | Descripción |
 | :--- | :--- | :--- |
-| `id` | Integer | Identificador único. |
-| `user_id` | Integer | ID del usuario que realizó la acción (o NULL si es Anónimo/Sistema). |
+| `id` | UUID | Identificador único (UUIDv7). |
+| `user_id` | UUID | ID del usuario que realizó la acción (o NULL si es Anónimo/Sistema). |
 | `username` | String | Username capturado en el momento ( redundancia útil por si el user se borra). |
 | `action` | String | `ACCESS`, `CREATE`, `UPDATE`, `DELETE`. |
 | `entity_type` | String | Nombre del Modelo (ej. `Task`, `Product`) o `Endpoint` para accesos. |

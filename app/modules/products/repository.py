@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional, Sequence
 
 from sqlalchemy.orm import selectinload
@@ -25,7 +26,7 @@ class ProductRepository(BaseRepository[Product]):
         )
         return self.session.exec(statement).all()
 
-    def get_by_id_with_relations(self, id: int) -> Optional[Product]:
+    def get_by_id_with_relations(self, id: uuid.UUID) -> Optional[Product]:
         statement = (
             select(Product)
             .where(Product.id == id)
@@ -34,5 +35,5 @@ class ProductRepository(BaseRepository[Product]):
         )
         return self.session.exec(statement).first()
 
-    def check_category_exists(self, category_id: int) -> bool:
+    def check_category_exists(self, category_id: uuid.UUID) -> bool:
         return self.session.get(ProductCategory, category_id) is not None

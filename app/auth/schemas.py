@@ -1,3 +1,4 @@
+import uuid
 from typing import List, Optional
 
 from sqlmodel import Field, SQLModel
@@ -15,7 +16,7 @@ class UserCreate(SQLModel):
 
 
 class User(SQLModel):
-    id: int
+    id: uuid.UUID
     username: str = Field(index=True, unique=True)
     email: str = Field(index=True, unique=True)
     first_name: Optional[str] = Field(default=None)
@@ -26,7 +27,7 @@ class User(SQLModel):
 
 
 class UserResponse(SQLModel):
-    id: int = Field(description="User unique identifier")
+    id: uuid.UUID = Field(description="User unique identifier")
     username: str = Field(description="Unique username")
     email: str = Field(description="User email")
     first_name: Optional[str] = Field(default=None, description="User's first name")
@@ -55,7 +56,7 @@ class LogoutRequest(SQLModel):
 
 
 class RoleInfo(SQLModel):
-    id: int
+    id: uuid.UUID
     name: str
     slug: str
     description: Optional[str] = None

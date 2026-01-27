@@ -1,4 +1,5 @@
-from typing import Generic, Optional, Sequence, Type, TypeVar
+import uuid
+from typing import Generic, Optional, Sequence, Type, TypeVar, Union
 
 from sqlmodel import Session, SQLModel, select
 
@@ -14,7 +15,7 @@ class BaseRepository(Generic[ModelType]):
         statement = select(self.model).offset(offset).limit(limit)
         return self.session.exec(statement).all()
 
-    def get_by_id(self, id: int) -> Optional[ModelType]:
+    def get_by_id(self, id: Union[uuid.UUID, int]) -> Optional[ModelType]:
         return self.session.get(self.model, id)
 
     def create(self, obj: ModelType) -> ModelType:
@@ -23,7 +24,7 @@ class BaseRepository(Generic[ModelType]):
         self.session.refresh(obj)
         return obj
 
-    def update(self, id: int, obj_data: dict) -> Optional[ModelType]:
+    def update(self, id: Union[uuid.UUID, int], obj_data: dict) -> Optional[ModelType]:
         db_obj = self.get_by_id(id)
         if not db_obj:
             return None
@@ -36,7 +37,7 @@ class BaseRepository(Generic[ModelType]):
         self.session.refresh(db_obj)
         return db_obj
 
-    def delete(self, id: int) -> bool:
+    def delete(self, id: Union[uuid.UUID, int]) -> bool:
         db_obj = self.get_by_id(id)
         if not db_obj:
             return False

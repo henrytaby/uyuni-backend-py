@@ -1,3 +1,5 @@
+import uuid
+
 from app.core.exceptions import NotFoundException
 
 from .models import Task
@@ -19,7 +21,7 @@ class TaskService:
 
     # GET ONE
     # ----------------------
-    def get_task(self, item_id: int):
+    def get_task(self, item_id: uuid.UUID):
         task_db = self.repository.get_by_id(item_id)
         if not task_db:
             raise NotFoundException(detail=self.no_task)
@@ -27,7 +29,7 @@ class TaskService:
 
     # UPDATE
     # ----------------------
-    def update_task(self, item_id: int, item_data: TaskUpdate):
+    def update_task(self, item_id: uuid.UUID, item_data: TaskUpdate):
         item_data_dict = item_data.model_dump(exclude_unset=True)
         updated_task = self.repository.update(item_id, item_data_dict)
 
@@ -42,7 +44,7 @@ class TaskService:
 
     # DELETE
     # ----------------------
-    def delete_task(self, item_id: int):
+    def delete_task(self, item_id: uuid.UUID):
         success = self.repository.delete(item_id)
         if not success:
             raise NotFoundException(detail=self.no_task)

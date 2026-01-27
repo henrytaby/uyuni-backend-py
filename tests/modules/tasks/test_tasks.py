@@ -62,6 +62,9 @@ def test_read_task(client: TestClient, superuser_token_headers: dict[str, str]):
 def test_read_task_not_found(
     client: TestClient, superuser_token_headers: dict[str, str]
 ):
-    response = client.get("/api/tasks/999999", headers=superuser_token_headers)
+    import uuid
+
+    random_id = str(uuid.uuid4())
+    response = client.get(f"/api/tasks/{random_id}", headers=superuser_token_headers)
     assert response.status_code == 404
     assert response.json()["detail"] == "Task not found"

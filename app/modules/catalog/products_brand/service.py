@@ -1,3 +1,5 @@
+import uuid
+
 from app.core.exceptions import NotFoundException
 
 from .models import ProductBrand
@@ -19,7 +21,7 @@ class ProductBrandService:
 
     # GET ONE
     # ----------------------
-    def get_product_brand(self, item_id: int):
+    def get_product_brand(self, item_id: uuid.UUID):
         item_db = self.repository.get_by_id(item_id)
         if not item_db:
             raise NotFoundException(detail=self.no_task)
@@ -27,7 +29,7 @@ class ProductBrandService:
 
     # UPDATE
     # ----------------------
-    def update_product_brand(self, item_id: int, item_data: ProductBrandUpdate):
+    def update_product_brand(self, item_id: uuid.UUID, item_data: ProductBrandUpdate):
         item_data_dict = item_data.model_dump(exclude_unset=True)
         updated_item = self.repository.update(item_id, item_data_dict)
 
@@ -42,7 +44,7 @@ class ProductBrandService:
 
     # DELETE
     # ----------------------
-    def delete_product_brand(self, item_id: int):
+    def delete_product_brand(self, item_id: uuid.UUID):
         success = self.repository.delete(item_id)
         if not success:
             raise NotFoundException(detail=self.no_task)

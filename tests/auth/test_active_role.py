@@ -1,5 +1,4 @@
 import pytest
-from fastapi import status
 from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
@@ -27,23 +26,35 @@ def create_test_data(session: Session):
     role_b = Role(name="Role B", slug="role-b", is_active=True)
     # Role C: Unassigned but active
     role_c = Role(name="Role C", slug="role-c", is_active=True)
-    
+
     session.add(role_a)
     session.add(role_b)
     session.add(role_c)
     session.commit()
-    
+
     # Permissions
     rm_a = RoleModule(
-        role_slug=role_a.slug, module_slug=module.slug, is_active=True, can_create=True, can_delete=False
+        role_slug=role_a.slug,
+        module_slug=module.slug,
+        is_active=True,
+        can_create=True,
+        can_delete=False,
     )
     rm_b = RoleModule(
-        role_slug=role_b.slug, module_slug=module.slug, is_active=True, can_create=False, can_delete=True
+        role_slug=role_b.slug,
+        module_slug=module.slug,
+        is_active=True,
+        can_create=False,
+        can_delete=True,
     )
     rm_c = RoleModule(
-        role_slug=role_c.slug, module_slug=module.slug, is_active=True, can_create=True, can_delete=True
+        role_slug=role_c.slug,
+        module_slug=module.slug,
+        is_active=True,
+        can_create=True,
+        can_delete=True,
     )
-    
+
     session.add(rm_a)
     session.add(rm_b)
     session.add(rm_c)
@@ -61,52 +72,64 @@ def create_test_data(session: Session):
     session.add(ur_a)
     session.add(ur_b)
     session.commit()
-    
+
     return user, module
+
 
 def test_no_header_aggregated_permissions(session: Session):
     """Without header, permissions should be aggregated (Create + Delete)."""
     user, module = create_test_data(session)
-    
-    checker_create = PermissionChecker(module_slug="test-module", required_permission=PermissionAction.CREATE)
-    checker_delete = PermissionChecker(module_slug="test-module", required_permission=PermissionAction.DELETE)
-    
-    # Mocking dependency calls manually since we are testing logic, 
-    # but normally we rely on integration tests. Here we assume dependency injection works 
-    # and test the __call__ logic.
-    
+
+    checker_create = PermissionChecker(
+        module_slug="test-module", required_permission=PermissionAction.CREATE
+    )
+    # Remove checker_delete as it is unused
+    pass
+
+    # Mocking dependency calls manually since we are testing logic,
+    # but normally we rely on integration tests.
+    # Here we assume dependency injection works and test the __call__ logic.
+
     perms = checker_create(user=user, active_role_slug=None)
     assert perms.can_create is True
-    assert perms.can_delete is True # Aggregated from Role B
+    assert perms.can_delete is True  # Aggregated from Role B
+
 
 def test_active_role_a(session: Session):
     """With X-Active-Role: role-a, should only have Create."""
     user, module = create_test_data(session)
-    
-    checker = PermissionChecker(module_slug="test-module", required_permission=PermissionAction.CREATE)
-    
+
+    checker = PermissionChecker(
+        module_slug="test-module", required_permission=PermissionAction.CREATE
+    )
+
     perms = checker(user=user, active_role_slug="role-a")
     assert perms.can_create is True
-    assert perms.can_delete is False # Role B is ignored
+    assert perms.can_delete is False  # Role B is ignored
+
 
 def test_active_role_b(session: Session):
     """With X-Active-Role: role-b, should only have Delete."""
     user, module = create_test_data(session)
-    
-    checker = PermissionChecker(module_slug="test-module", required_permission=PermissionAction.DELETE)
-    
+
+    checker = PermissionChecker(
+        module_slug="test-module", required_permission=PermissionAction.DELETE
+    )
+
     perms = checker(user=user, active_role_slug="role-b")
-    assert perms.can_create is False # Role A is ignored
+    assert perms.can_create is False  # Role A is ignored
     assert perms.can_delete is True
+
 
 def test_active_role_unassigned(session: Session):
     """Requesting unassigned Role C should fail."""
     user, module = create_test_data(session)
-    
-    checker = PermissionChecker(module_slug="test-module", required_permission=PermissionAction.READ)
-    
-    with pytest.raises(Exception) as exc:
+
+    checker = PermissionChecker(
+        module_slug="test-module", required_permission=PermissionAction.READ
+    )
+
+    from app.core.exceptions import ForbiddenException
+
+    with pytest.raises(ForbiddenException):
         checker(user=user, active_role_slug="role-c")
-    
-    # Check for 403
-    assert exc.value.status_code == 403

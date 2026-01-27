@@ -136,7 +136,7 @@ Obtiene datos del usuario actual.
 ### Respuesta Exitosa (200 OK)
 ```json
 {
-  "id": 1,
+  "id": "018d4e5f-7d1a-7b3c-9a2e-1c6d8e9f0a2b",
   "username": "admin",
   "email": "admin@example.com",
   "first_name": "Admin",
@@ -158,14 +158,14 @@ Lista los roles activos del usuario.
 ```json
 [
   {
-    "id": 1,
+    "id": "018d4e5f-7d1a-7b3c-9a2e-1c6d8e9f0a10",
     "name": "Super Admin",
     "slug": "super-admin",
     "description": "Acceso total al sistema",
     "icon": "shield"
   },
   {
-    "id": 2,
+    "id": "018d4e5f-7d1a-7b3c-9a2e-1c6d8e9f0a20",
     "name": "Vendedor",
     "slug": "seller",
     "description": "Acceso restringido a ventas",
@@ -226,7 +226,7 @@ export interface TokenResponse {
 }
 
 export interface User {
-  id: number;
+  id: string; // UUIDv7
   username: string;
   email: string;
   first_name?: string;

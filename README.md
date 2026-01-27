@@ -112,9 +112,28 @@ alembic upgrade head
 ```
 
 ### 7. Inicializar Datos (Seeds)
+Para poblar la base de datos con módulos, roles y el usuario administrador.
+
+**Opción A: Ejecutar como módulo (Recomendado)**
+Más limpio y multiplataforma.
 ```bash
-PYTHONPATH=. python3 seeds/seed_create_app.py
+python -m seeds.seed_create_modules
+python -m seeds.seed_users
 ```
+
+**Opción B: Usando PYTHONPATH**
+Útil si prefieres ejecutar el archivo directamente.
+```bash
+export PYTHONPATH=$PYTHONPATH:.
+python seeds/seed_create_modules.py
+python seeds/seed_users.py
+```
+
+*Usuario creado: `admin` / Password: `admin123`*
+
+> [!CAUTION]
+> **SEGURIDAD EN PRODUCCIÓN**:
+> La contraseña `admin123` es solo para desarrollo local. **Debe ser cambiada inmediatamente** antes de desplegar en cualquier entorno productivo o expuesto a internet.
 
 ### 8. Testing Automatizado
 El proyecto incluye tests de integración usando `pytest`. Las pruebas utilizan una base de datos en memoria (SQLite), por lo que no afectan los datos reales.

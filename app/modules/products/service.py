@@ -1,3 +1,5 @@
+import uuid
+
 from app.core.exceptions import InternalServerErrorException, NotFoundException
 
 from .models import Product
@@ -32,7 +34,7 @@ class ProductService:
 
     # GET ONE
     # ----------------------
-    def get_product(self, item_id: int):
+    def get_product(self, item_id: uuid.UUID):
         product_db = self.repository.get_by_id_with_relations(item_id)
 
         if not product_db:
@@ -41,7 +43,7 @@ class ProductService:
 
     # UPDATE
     # ----------------------
-    def update_product(self, item_id: int, item_data: ProductUpdate):
+    def update_product(self, item_id: uuid.UUID, item_data: ProductUpdate):
         item_data_dict = item_data.model_dump(exclude_unset=True)
         updated_product = self.repository.update(item_id, item_data_dict)
 
@@ -56,7 +58,7 @@ class ProductService:
 
     # DELETE
     # ----------------------
-    def delete_product(self, item_id: int):
+    def delete_product(self, item_id: uuid.UUID):
         success = self.repository.delete(item_id)
         if not success:
             raise NotFoundException(detail=self.no_product)

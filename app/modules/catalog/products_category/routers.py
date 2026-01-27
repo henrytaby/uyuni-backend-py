@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, status
 from sqlmodel import Session
 
@@ -30,7 +32,8 @@ async def create_product_category(
 # ----------------------
 @router.get("/{product_category_id}", response_model=ProductCategory)
 async def get_product_category(
-    product_category_id: int, service: ProductCategoryService = Depends(get_service)
+    product_category_id: uuid.UUID,
+    service: ProductCategoryService = Depends(get_service),
 ):
     return service.get_product_category(product_category_id)
 
@@ -43,7 +46,7 @@ async def get_product_category(
     status_code=status.HTTP_201_CREATED,
 )
 async def update_product_category(
-    product_category_id: int,
+    product_category_id: uuid.UUID,
     product_category_data: ProductCategoryUpdate,
     service: ProductCategoryService = Depends(get_service),
 ):
@@ -63,6 +66,7 @@ async def get_product_categories(
 # ----------------------
 @router.delete("/{product_category_id}")
 async def delete_product_category(
-    product_category_id: int, service: ProductCategoryService = Depends(get_service)
+    product_category_id: uuid.UUID,
+    service: ProductCategoryService = Depends(get_service),
 ):
     return service.delete_product_category(product_category_id)

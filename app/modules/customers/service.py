@@ -1,3 +1,5 @@
+import uuid
+
 from app.core.exceptions import NotFoundException
 
 from .models import Customer
@@ -19,7 +21,7 @@ class CustomerService:
 
     # GET ONE
     # ----------------------
-    def get_customer(self, item_id: int):
+    def get_customer(self, item_id: uuid.UUID):
         item_db = self.repository.get_by_id(item_id)
         if not item_db:
             raise NotFoundException(detail=self.no_task)
@@ -27,7 +29,7 @@ class CustomerService:
 
     # UPDATE
     # ----------------------
-    def update_customer(self, item_id: int, item_data: CustomerUpdate):
+    def update_customer(self, item_id: uuid.UUID, item_data: CustomerUpdate):
         item_data_dict = item_data.model_dump(exclude_unset=True)
         updated_item = self.repository.update(item_id, item_data_dict)
 
@@ -42,7 +44,7 @@ class CustomerService:
 
     # DELETE
     # ----------------------
-    def delete_customer(self, item_id: int):
+    def delete_customer(self, item_id: uuid.UUID):
         success = self.repository.delete(item_id)
         if not success:
             raise NotFoundException(detail=self.no_task)

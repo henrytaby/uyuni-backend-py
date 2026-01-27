@@ -1,10 +1,11 @@
 from enum import Enum
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 
 from app.auth.dependencies import get_active_role_slug
 from app.auth.schemas import UserModulePermission
 from app.auth.utils import get_current_user
+from app.core.exceptions import ForbiddenException
 from app.models.user import User
 
 
@@ -58,12 +59,14 @@ class PermissionChecker:
                     roles_to_check.append(ur.role)
                     found_role = True
                     break
-            
+
             # If the user requested a role they don't have, deny access
             if not found_role:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"You do not have access to the active role '{active_role_slug}'",
+                raise ForbiddenException(
+                    detail=(
+                        f"You do not have access to the active role "
+                        f"'{active_role_slug}'"
+                    )
                 )
         else:
             # Legacy Mode: Aggregate all active roles
@@ -79,7 +82,7 @@ class PermissionChecker:
                 if role_module.module_slug == self.module_slug:
                     # Check active status of the assignment
                     # Note: We checked role.is_active above.
-                    
+
                     # Optimization: If we trust the slug, we could skip loading module
                     # if we assume active.
                     # But module.is_active is a business rule.
@@ -123,12 +126,11 @@ class PermissionChecker:
             is_allowed = can_delete
 
         if not is_allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+            raise ForbiddenException(
                 detail=(
                     f"You do not have '{self.required_permission}' "
                     f"permission for module '{self.module_slug}'"
-                ),
+                )
             )
 
         return user_permissions

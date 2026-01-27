@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlmodel import Session, select
 
-from app.core.db import engine
+from app.core import db
 
 from .models import Customer
 
@@ -19,7 +19,7 @@ class CustomerCreate(CustomerBase):
     @field_validator("email")
     @classmethod
     def validate_email(cls, value):
-        session = Session(engine)
+        session = Session(db.engine)
         query = select(Customer).where(Customer.email == value)
         result = session.exec(query).first()
         if result:

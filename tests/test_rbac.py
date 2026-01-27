@@ -1,8 +1,8 @@
 import pytest
-from fastapi import HTTPException
 from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
+from app.core.exceptions import ForbiddenException
 from app.models.module import Module, ModuleGroup
 from app.models.role import Role, RoleModule
 from app.models.user import User, UserRole
@@ -81,7 +81,7 @@ def test_superuser_access(session: Session):
     checker = PermissionChecker(
         module_slug="test-module", required_permission=PermissionAction.CREATE
     )
-    perms = checker(user=superuser)
+    perms = checker(user=superuser, active_role_slug=None)
 
     assert perms.can_create is True
     assert perms.can_read is True
@@ -102,10 +102,8 @@ def test_no_access(session: Session):
         module_slug="test-module", required_permission=PermissionAction.READ
     )
 
-    with pytest.raises(HTTPException) as excinfo:
-        checker(user=user)
-
-    assert excinfo.value.status_code == 403
+    with pytest.raises(ForbiddenException):
+        checker(user=user, active_role_slug=None)
 
 
 def test_read_access(session: Session):
@@ -130,7 +128,7 @@ def test_read_access(session: Session):
     checker = PermissionChecker(
         module_slug="test-module", required_permission=PermissionAction.READ
     )
-    perms = checker(user=user)
+    perms = checker(user=user, active_role_slug=None)
 
     assert perms.can_read is True
     assert perms.can_create is False
@@ -158,7 +156,7 @@ def test_create_access_allowed(session: Session):
     checker = PermissionChecker(
         module_slug="test-module", required_permission=PermissionAction.CREATE
     )
-    perms = checker(user=user)
+    perms = checker(user=user, active_role_slug=None)
 
     assert perms.can_create is True
 
@@ -186,10 +184,8 @@ def test_create_access_denied(session: Session):
         module_slug="test-module", required_permission=PermissionAction.CREATE
     )
 
-    with pytest.raises(HTTPException) as excinfo:
-        checker(user=user)
-
-    assert excinfo.value.status_code == 403
+    with pytest.raises(ForbiddenException):
+        checker(user=user, active_role_slug=None)
 
 
 def test_aggregated_access(session: Session):
@@ -251,14 +247,14 @@ def test_aggregated_access(session: Session):
     checker_create = PermissionChecker(
         module_slug="test-module", required_permission=PermissionAction.CREATE
     )
-    perms_create = checker_create(user=user)
+    perms_create = checker_create(user=user, active_role_slug=None)
     assert perms_create.can_create is True
 
     # Check Delete
     checker_delete = PermissionChecker(
         module_slug="test-module", required_permission=PermissionAction.DELETE
     )
-    perms_delete = checker_delete(user=user)
+    perms_delete = checker_delete(user=user, active_role_slug=None)
     assert perms_delete.can_delete is True
 
     # Check combined object

@@ -48,6 +48,14 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
+
+    # Ensure UUIDs are strings for JWT encoding
+    import uuid
+
+    for k, v in to_encode.items():
+        if isinstance(v, uuid.UUID):
+            to_encode[k] = str(v)
+
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 

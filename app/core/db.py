@@ -1,4 +1,5 @@
 import json
+import uuid
 from typing import Annotated
 
 from fastapi import Depends
@@ -17,6 +18,8 @@ https://fastapi.tiangolo.com/tutorial/sql-databases/#run-the-app
 
 
 def json_serializer(obj):
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
     return json.dumps(obj, ensure_ascii=False)
 
 

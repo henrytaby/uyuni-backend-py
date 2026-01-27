@@ -15,8 +15,19 @@ from app.main import app
 def session_fixture():
     # Use in-memory SQLite for tests
     # Use in-memory SQLite for tests
+    import json
+    import uuid
+
+    def json_serializer(obj):
+        if isinstance(obj, uuid.UUID):
+            return str(obj)
+        return json.dumps(obj, ensure_ascii=False)
+
     test_engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        json_serializer=json_serializer,
     )
     SQLModel.metadata.create_all(test_engine)
 

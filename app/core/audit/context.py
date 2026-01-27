@@ -1,10 +1,13 @@
+import uuid
 from contextvars import ContextVar
-from typing import Optional
+from typing import Optional, Union
 
 from fastapi import Request
 
 # ContextVar to store current user_id for logging/CDC
-audit_user_id_cv: ContextVar[Optional[int]] = ContextVar("audit_user_id", default=None)
+audit_user_id_cv: ContextVar[Optional[uuid.UUID]] = ContextVar(
+    "audit_user_id", default=None
+)
 # ContextVar to store current username
 audit_username_cv: ContextVar[Optional[str]] = ContextVar(
     "audit_username", default=None
@@ -20,19 +23,22 @@ audit_user_agent_cv: ContextVar[Optional[str]] = ContextVar(
 
 
 def set_audit_context(
-    user_id: Optional[int],
+    user_id: Optional[Union[uuid.UUID, int]],
     ip_address: Optional[str],
     username: Optional[str] = None,
     user_agent: Optional[str] = None,
 ):
     """Set context variables for the current request"""
-    audit_user_id_cv.set(user_id)
+    # Normalize to UUID if possible or keep as is?
+    # Mypy complained: incompatible type "UUID | None"; expected "int | None".
+    # If I change type hint to Union it fixes it.
+    audit_user_id_cv.set(user_id)  # type: ignore
     audit_ip_address_cv.set(ip_address)
     audit_username_cv.set(username)
     audit_user_agent_cv.set(user_agent)
 
 
-def get_audit_user_id() -> Optional[int]:
+def get_audit_user_id() -> Optional[uuid.UUID]:
     return audit_user_id_cv.get()
 
 

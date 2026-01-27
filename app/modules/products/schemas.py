@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -20,8 +21,8 @@ class ProductBase(BaseModel):
 
 # Modelo para crear una nueva tarea (hereda de TaskBase)
 class ProductCreate(ProductBase):
-    category_id: Optional[int] = None
-    brand_id: Optional[int] = None
+    category_id: Optional[uuid.UUID] = None
+    brand_id: Optional[uuid.UUID] = None
 
     @field_validator("brand_id")
     @classmethod
@@ -39,12 +40,12 @@ class ProductUpdate(BaseModel):
     price: Optional[int] = None
     description: Optional[str] = None
     image: Optional[str] = None
-    category_id: Optional[int] = None
-    brand_id: Optional[int] = None
+    category_id: Optional[uuid.UUID] = None
+    brand_id: Optional[uuid.UUID] = None
 
 
 class ProductRead(ProductBase):
-    id: int = Field(description="The primary key")
+    id: uuid.UUID = Field(description="The primary key")
     created_at: Optional[datetime] = Field(
         None, description="The timestamp when the data was created"
     )

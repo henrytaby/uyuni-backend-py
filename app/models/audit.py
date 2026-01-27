@@ -1,17 +1,19 @@
+import uuid
 from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import JSON, Column, DateTime
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field
 
+from app.models.base_model import BaseModel
 from app.util.datetime import get_current_time
 
 
-class AuditLog(SQLModel, table=True):
-    __tablename__ = "audit_log"
+class AuditLog(BaseModel, table=True):
+    __tablename__ = "audit_logs"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: Optional[int] = Field(default=None, index=True)
+    # id inherited from BaseModel (UUID)
+    user_id: Optional[uuid.UUID] = Field(default=None, index=True)
     username: Optional[str] = Field(default=None)
     action: str = Field(index=True)  # CREATE, READ, UPDATE, DELETE, ACCESS
     entity_type: str = Field(index=True)  # Product, User, Endpoint

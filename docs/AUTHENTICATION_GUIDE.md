@@ -173,7 +173,8 @@ def _raise_invalid_credentials(self) -> NoReturn:
 ```
 
 ### 3. Manejo de Errores
-*   Usa las excepciones estándar definidas en `core/handlers` o `HTTPException` directa si es específico de auth.
+*   **Prioridad**: Usa Excepciones de Dominio definidas en `app/core/exceptions.py` (ej. `UnauthorizedException`, `ForbiddenException`).
+*   **Evita**: `HTTPException` directa, para desacoplar la lógica de negocio del framework HTTP.
 *   **Nunca** devuelvas `None` para indicar error; levanta una excepción.
 
 ### 4. Configuración

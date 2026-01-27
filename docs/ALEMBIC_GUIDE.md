@@ -29,7 +29,9 @@ Has creado una nueva carpeta de módulo `app/modules/inventory` y definido un mo
 1.  **Definir el Modelo:** Asegúrate de que tu clase herede de `BaseModel` (o `SQLModel`) y tenga `table=True`.
     ```python
     class Product(BaseModel, table=True):
-        ...
+        # ID (UUIDv7) y campos de auditoría (created_at, etc.) son automáticos.
+        name: str
+        price: float
     ```
 2.  **Registrar en `env.py`:** abre `alembic/env.py` y agrega:
     ```python
@@ -42,7 +44,7 @@ Has creado una nueva carpeta de módulo `app/modules/inventory` y definido un mo
     ```
 4.  **Verificar Migración:**
     Revisa el archivo generado en `alembic/versions/`.
-    *   ✅ **Bien:** Ves `op.create_table('product', ...)`
+    *   ✅ **Bien:** Ves `op.create_table('product', ...)` con columnas `id` (UUID) y `created_at` (DateTime) automáticas.
     *   ❌ **Mal:** Ves `def upgrade(): pass` (Migración vacía). **Solución:** Vuelve al Paso 2.
 5.  **Aplicar Migración:**
     ```bash

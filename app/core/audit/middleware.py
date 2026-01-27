@@ -50,7 +50,11 @@ class AuditMiddleware(BaseHTTPMiddleware):
             try:
                 # We reuse the util but handle errors gracefully
                 payload = decode_token(token)
-                user_id = payload.get("id")
+                user_id_str = payload.get("id")
+                if user_id_str:
+                    import uuid
+
+                    user_id = uuid.UUID(str(user_id_str))
                 username = payload.get("sub", "Unknown")
             except Exception:
                 pass  # Use anonymous if token is invalid
