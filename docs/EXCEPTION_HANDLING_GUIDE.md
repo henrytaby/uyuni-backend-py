@@ -1,139 +1,130 @@
-# Guía de Manejo de Excepciones
+# 🛠️ Guía Maestra de Manejo de Excepciones
 
-Esta guía detalla cómo funciona el sistema centralizado de manejo de errores en el proyecto y cómo debes utilizarlo al desarrollar nuevos módulos.
-
----
-
-## 1. Filosofía
-En este proyecto, **NO** devolvemos directamente excepciones HTTP de FastAPI (`HTTPException`) desde la capa de **Servicio** o **Dominio**.
-En su lugar, utilizamos **Excepciones Personalizadas** (`CustomException`) que son agnósticas al framework web.
-
-**¿Por qué?**
-*   **Desacoplamiento**: La lógica de negocio no debe saber que está corriendo sobre HTTP.
-*   **Consistencia**: Aseguramos que todos los errores tengan el mismo formato de respuesta JSON.
-*   **Limpieza**: Los controladores (Routers) quedan limpios de bloques try-catch repetitivos.
+Esta guía es el recurso principal para entender cómo gestionamos los errores en este ecosistema. Si eres un desarrollador nuevo (Junior o Senior), lee esto detenidamente.
 
 ---
 
-## 2. Arquitectura del Flujo de Errores
+## 1. 💡 La Filosofía: "¿Por qué no usar HTTPException?"
 
-El siguiente diagrama muestra cómo fluye una excepción desde que se lanza en el Servicio hasta que llega al Cliente.
+Para un desarrollador Junior, lo más fácil es lanzar un `HTTPException(404, "No encontrado")`. Sin embargo, en arquitectura empresarial seguimos la **Separación de Concernimientos (Separation of Concerns)**.
+
+### ¿Por qué lo hacemos así?
+1.  **Desacoplamiento Total**: Tu lógica de negocio (en `service.py`) no debería saber nada sobre "HTTP" o "JSON". Debería preocuparse solo por las reglas del negocio.
+2.  **Consistencia**: Al centralizar los errores, garantizamos que el frontend siempre reciba la misma estructura de respuesta, sin sorpresas.
+3.  **Clean Code**: Evitamos llenar los Routers o Servicios de bloques `try-except` repetitivos. El error simplemente "fluye" hacia arriba hasta que alguien (el Handler) lo captura.
+
+---
+
+## 2. 🗺️ Mapa de Archivos Relacionados
+
+Para que no te pierdas, aquí están los archivos que "hacen la magia":
+
+```text
+app/
+├── core/
+│   ├── exceptions.py   <-- 1. Aquí se DEFINEN las clases de excepción.
+│   ├── handlers.py     <-- 2. Aquí se decide qué RESPUESTA (JSON) dar.
+│   └── routers.py      <-- (Opcional) Routers base.
+├── main.py             <-- 3. Aquí se REGISTRA la conexión entre Exception -> Handler.
+└── modules/
+    └── [tu_modulo]/
+        └── service.py  <-- 4. Aquí es donde tú LANZAS (raise) el error.
+```
+
+---
+
+## 3. 🔄 Flujo de Vida de un Error
+
+Imagina que buscas un producto que no existe. Así viaja el error:
 
 ```mermaid
 sequenceDiagram
-    participant Cliente
-    participant Router (Controlador)
-    participant Service (Lógica)
-    participant Handler (Manejador Global)
+    participant C as Cliente (Frontend)
+    participant R as Router (API Endpoint)
+    participant S as Service (Lógica de Negocio)
+    participant H as Exception Handler (Global)
 
-    Cliente->>Router: POST /api/products/
-    Router->>Service: create_product(data)
+    C->>R: GET /api/products/999
+    R->>S: get_product(999)
     
-    alt Error de Validación
-        Service--xHandler: Lanza BadRequestException("Datos inválidos")
-    else Recurso No Encontrado
-        Service--xHandler: Lanza NotFoundException("Categoría no existe")
-    else Error Inesperado
-        Service--xHandler: Lanza InternalServerErrorException("Error DB")
-    end
-
-    Handler-->>Cliente: JSONResponse { "detail": "..." } (HTTP 400/404/500)
+    Note over S: No encuentra nada
+    S-->>H: raise NotFoundException("Producto 999 no existe")
+    
+    Note over H: Intercepta el error automáticamente
+    H-->>C: JSON Response { "detail": "..." } (HTTP 404)
 ```
 
 ---
 
-## 3. Tipos de Excepciones Disponibles
+## 4. 📚 Catálogo de Excepciones (¿Cuál usar?)
 
-Todas las excepciones heredan de `app.core.exceptions.CustomException`.
-
-| Excepción | Código HTTP | Cuándo usarla |
+| Clase | Código | Cuándo usarla (Ejemplo) |
 | :--- | :--- | :--- |
-| **`NotFoundException`** | `404 Not Found` | Cuando buscas un registro por ID y no existe. |
-| **`BadRequestException`** | `400 Bad Request` | Cuando la validación de negocio falla (ej. stock negativo, fecha inválida). |
-| **`InternalServerErrorException`** | `500 Internal Server Error` | Para errores críticos inesperados (ej. fallo de conexión a BD ajeno a nosotros). |
+| `NotFoundException` | 404 | "El usuario con ID 5 no existe en la base de datos". |
+| `BadRequestException` | 400 | "No puedes comprar stock negativo" o "Email ya está en uso". |
+| `UnauthorizedException` | 401 | "Token expirado o inválido". |
+| `ForbiddenException` | 403 | "No tienes permiso para borrar este registro" o "Cuenta bloqueada". |
+| `InternalServerErrorException`| 500 | "Fallo crítico conectando con el servicio de correos externo". |
 
 ---
 
-## 4. ¿Cómo implementar en tu Módulo?
+## 5. 👨‍🍳 La Receta: "Quiero agregar una nueva excepción"
 
-### Paso 1: Importar las excepciones
-En tu archivo `service.py`:
+Si necesitas un error nuevo (ej. `ExternalServiceException`), sigue estos 3 pasos:
 
+### Paso 1: Definir la Clase
+Añádela en [exceptions.py](file:///opt/uyuni/uyuni-backend-py/app/core/exceptions.py).
 ```python
-from app.core.exceptions import NotFoundException, BadRequestException, InternalServerErrorException
+class ExternalServiceException(CustomException):
+    """Error cuando un API de terceros falla"""
+    pass
 ```
 
-### Paso 2: Lanzar la excepción (Raise)
-**NUNCA** captures la excepción para silenciarla. **Captúrala solo para relanzarla** con más contexto o lánzala directamente si se cumple una regla de negocio.
-
-#### Ejemplo A: Validación de Negocio
+### Paso 2: Definir el Handler
+Dile a FastAPI cómo responder en [handlers.py](file:///opt/uyuni/uyuni-backend-py/app/core/handlers.py).
 ```python
-# app/modules/products/service.py
-
-def create_product(self, item_data: ProductCreate):
-    # Validar si la categoría existe
-    if not self.repository.check_category_exists(item_data.category_id):
-        # ✅ CORRECTO: Lanzar excepción de dominio
-        raise NotFoundException(
-            detail=f"La categoría {item_data.category_id} no existe"
-        )
-    
-    # ... crear producto
+async def external_service_handler(request: Request, exc: ExternalServiceException):
+    return JSONResponse(
+        status_code=502, # Bad Gateway
+        content={"detail": exc.detail, "source": "ThirdPartyService"},
+    )
 ```
 
-#### Ejemplo B: Manejo de Errores de BD
+### Paso 3: Registrar en Main
+"Enchufa" todo en [main.py](file:///opt/uyuni/uyuni-backend-py/app/main.py).
 ```python
-# app/modules/products/service.py
+from app.core.exceptions import ExternalServiceException
+from app.core.handlers import external_service_handler
 
-def create_product(self, item_data):
-    try:
-        return self.repository.create(item_db)
-    except DatabaseError as e:
-        # ✅ CORRECTO: Envolver error técnico en error de dominio
-        # Loguear el error real (e) usando logger antes de lanzar
-        logger.error(f"Error creando producto: {e}") 
-        raise InternalServerErrorException(
-            detail="Error interno al crear el producto, intente nuevamente."
-        )
-```
-
-### ❌ Lo que NO debes hacer
-
-```python
-# ⛔ INCORRECTO: No uses HTTPException directamente en el Service
-from fastapi import HTTPException
-
-def get_product(self, id):
-    if not product:
-        raise HTTPException(status_code=404, detail="No encontrado") # ❌ Mal
+app.add_exception_handler(ExternalServiceException, external_service_handler)
 ```
 
 ---
 
-## 5. ¿Cómo funciona "bajo el capó"?
+## 6. ⚖️ Senior vs Junior (Mejores Prácticas)
 
-El archivo `app/main.py` conecta las excepciones con los handlers definidos en `app/core/handlers.py`.
-
-```python
-# app/main.py
-app.add_exception_handler(NotFoundException, not_found_exception_handler)
-app.add_exception_handler(BadRequestException, bad_request_exception_handler)
-# ...
-```
-
-Esto intercepta cualquier `NotFoundException` que "suba" desde tu código y la transforma automáticamente en esto:
-
-```json
-// Respuesta HTTP 404
-{
-    "detail": "La categoría 5 no existe"
-}
-```
+| Situación | Junior (Lo que NO hay que hacer) ❌ | Senior (Lo que SÍ hay que hacer) ✅ |
+| :--- | :--- | :--- |
+| **Control de flujo** | Usar excepciones para "saltar" entre funciones. | Usar excepciones solo para situaciones *excepcionales*. |
+| **Mensajes** | `raise BadRequestException("Error")` | `raise BadRequestException(f"El SKU '{sku}' ya existe")` |
+| **En Routers** | Llenar el router con `try...except`. | Dejar que el error burbujee hasta el Handler central. |
+| **Tipado** | No heredar de `CustomException`. | Heredar siempre para mantener la estructura de `detail` y `headers`. |
 
 ---
 
-## 6. Checklist para Onboarding
+## 7. 🔍 Trazabilidad (Request ID)
 
-- [ ] Revisa `app/core/exceptions.py` para ver la lista completa de errores.
-- [ ] Usa siempre excepciones personalizadas en `service.py`.
-- [ ] No uses `try-except` en los `routers.py` a menos que sea estrictamente necesario. Deja que el error "burbujee" hasta el handler global.
+Una ventaja de este sistema es que cada respuesta lleva un **Request ID**. 
+
+> [!TIP]
+> Si una excepción causa un error 500, busca el `request_id` en los logs del servidor para ver exactamente qué pasó antes de que todo explotara. Esto está configurado en el middleware de [main.py](file:///opt/uyuni/uyuni-backend-py/app/main.py).
+
+---
+
+## 8. ✅ Checklist de Integración
+
+- [ ] ¿Mi excepción hereda de `CustomException`?
+- [ ] ¿He evitado usar `HTTPException` en el Service?
+- [ ] ¿El mensaje de error le sirve al usuario de la API?
+- [ ] (Si es nueva) ¿Está registrada en `main.py`?
+- [ ] (Si es técnica) ¿He usado el `logger` antes de lanzarla?
