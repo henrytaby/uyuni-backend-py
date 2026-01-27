@@ -6,13 +6,13 @@ Esta guía describe el flujo de trabajo estándar para añadir una nueva funcion
 
 ```mermaid
 flowchart TD
-    A[1. Modelo DB (SQLModel + Mixins)] --> B[2. Migración Alembic]
-    B --> C[3. Schemas (Pydantic DTOs)]
-    C --> D[4. Repositorio (Acceso a Datos)]
-    D --> E[5. Servicio (Lógica de Negocio)]
-    E --> F[6. Router (API + Inyección)]
-    F --> G[7. Registrar Router]
-    G --> H[8. Tests (Pytest)]
+    A["1. Modelo DB (SQLModel + Mixins)"] --> B["2. Migración Alembic"]
+    B --> C["3. Schemas (Pydantic DTOs)"]
+    C --> D["4. Repositorio (Acceso a Datos)"]
+    D --> E["5. Servicio (Lógica de Negocio)"]
+    E --> F["6. Router (API + Inyección)"]
+    F --> G["7. Registrar Router"]
+    G --> H["8. Tests (Pytest)"]
 ```
 
 > **Nota**: Para los fundamentos teóricos, consulta:
