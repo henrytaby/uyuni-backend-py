@@ -1,3 +1,4 @@
+import uuid
 from datetime import timedelta
 from typing import NoReturn
 
@@ -245,7 +246,8 @@ class AuthService:
         query = select(UserRevokedToken).where(UserRevokedToken.token == token)
         revoked_token = self.session.exec(query).first()
         if not revoked_token:
-            revoked_token = UserRevokedToken(token=token, user_id=user_id)
+            user_uuid = uuid.UUID(str(user_id))
+            revoked_token = UserRevokedToken(token=token, user_id=user_uuid)
             self.session.add(revoked_token)
 
         # Revoke Refresh Token if provided
@@ -266,7 +268,10 @@ class AuthService:
                 )
                 revoked_rf = self.session.exec(query_rf).first()
                 if not revoked_rf:
-                    revoked_rf = UserRevokedToken(token=refresh_token, user_id=user_id)
+                    user_uuid = uuid.UUID(str(user_id))
+                    revoked_rf = UserRevokedToken(
+                        token=refresh_token, user_id=user_uuid
+                    )
                     self.session.add(revoked_rf)
 
             except JWTError:

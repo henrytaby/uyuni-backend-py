@@ -11,16 +11,16 @@ El sistema sigue una arquitectura de **Monolito Modular** con capas claramente d
 
 ```mermaid
 graph TD
-    Client[Cliente HTTP] -->|Request| Middleware[Middleware Layer\n(Audit, Auth, CORS)]
-    Middleware -->|Request| Router[Router Layer\n(Controllers)]
+    Client[Cliente HTTP] -->|Request| Middleware["Middleware Layer\n(Audit, Auth, CORS)"]
+    Middleware -->|Request| Router["Router Layer\n(Controllers)"]
     
     subgraph "Application Core"
-        Router -->|DTOs| Service[Service Layer\n(Business Logic)]
-        Service -->|Entities| Repository[Repository Layer\n(Data Access)]
+        Router -->|DTOs| Service["Service Layer\n(Business Logic)"]
+        Service -->|Entities| Repository["Repository Layer\n(Data Access)"]
     end
     
     subgraph "Infrastructure"
-        Repository -->|SQLModel| DB[(PostgreSQL\nUUIDv7)]
+        Repository -->|SQLModel| DB[("PostgreSQL\nUUIDv7")]
     end
 
     style Component fill:#f9f,stroke:#333

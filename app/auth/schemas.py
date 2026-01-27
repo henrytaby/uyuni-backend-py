@@ -1,6 +1,7 @@
 import uuid
 from typing import List, Optional
 
+from pydantic import ConfigDict
 from sqlmodel import Field, SQLModel
 
 
@@ -12,7 +13,7 @@ class UserCreate(SQLModel):
     first_name: Optional[str] = Field(default=None, description="User's first name")
     last_name: Optional[str] = Field(default=None, description="User's last name")
     password: str = Field(description="Strong password (will be hashed)")
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")  # type: ignore
 
 
 class User(SQLModel):
@@ -23,7 +24,7 @@ class User(SQLModel):
     last_name: Optional[str] = Field(default=None)
     is_verified: bool = Field(default=False)
     password_hash: str
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid", from_attributes=True)  # type: ignore
 
 
 class UserResponse(SQLModel):
@@ -35,7 +36,7 @@ class UserResponse(SQLModel):
     is_verified: bool = Field(
         default=False, description="Whether the email is verified"
     )
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid", from_attributes=True)  # type: ignore
 
 
 class Token(SQLModel):
@@ -61,6 +62,7 @@ class RoleInfo(SQLModel):
     slug: str
     description: Optional[str] = None
     icon: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)  # type: ignore
 
 
 class UserModulePermission(SQLModel):
