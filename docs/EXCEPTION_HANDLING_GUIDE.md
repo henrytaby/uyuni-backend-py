@@ -112,12 +112,46 @@ app.add_exception_handler(ExternalServiceException, external_service_handler)
 
 ---
 
-## 7. 🔍 Trazabilidad (Request ID)
+## 7. 🔍 Observabilidad: El Poder del Request ID
 
-Una ventaja de este sistema es que cada respuesta lleva un **Request ID**. 
+Cuando tienes cientos de usuarios, los logs se mezclan. Por eso, cada petición recibe un **Request ID** (un código único como `48f2fa79...`) que sirve como el "hilo conductor" de todo lo que pasa.
 
-> [!TIP]
-> Si una excepción causa un error 500, busca el `request_id` en los logs del servidor para ver exactamente qué pasó antes de que todo explotara. Esto está configurado en el middleware de [main.py](file:///opt/uyuni/uyuni-backend-py/app/main.py).
+### ¿Cómo funciona la trazabilidad?
+
+Imagina que un usuario intenta loguearse con datos incorrectos. Tu consola te contará la historia completa usando el mismo ID para conectar los eventos:
+
+```text
+# 1. El Exception Handler captura el error y registra el detalle
+2026-01-27... [warning] unauthorized_access  detail=Incorrect username or password  request_id=48f2fa79...
+
+# 2. El Middleware registra que la petición terminó
+2026-01-27... [info] request_completed        method=POST path=/api/auth/login       request_id=48f2fa79... status_code=401
+```
+
+### ¿Dónde encuentro los logs?
+*   **En Desarrollo**: Directamente en tu **terminal** (donde corre `fastapi dev`). Los errores suelen aparecer resaltados en amarillo o rojo.
+*   **En Producción**: Se emiten como **JSON** a la salida estándar (`stdout`), permitiendo que herramientas como Datadog, CloudWatch o ELK los procesen automáticamente.
+
+### Consejos de Análisis para Desarrolladores
+
+1.  **Copia el ID**: Si un usuario reporta un error o ves un fallo en el frontend, busca el `X-Request-ID` en las cabeceras de la respuesta (Network tab del navegador).
+2.  **Filtra en la Terminal**:
+    ```bash
+    # Si guardas logs en un archivo, usa grep para ver solo esa petición
+    grep "48f2fa79-ca98-451d..." app.log
+    ```
+3.  **Logs Manuales**: Si necesitas añadir tus propios logs en el `service.py`, usa `structlog`:
+    ```python
+    import structlog
+    logger = structlog.get_logger()
+
+    def mi_funcion():
+        # Este log incluirá el request_id automáticamente!
+        logger.info("Procesando pago", monto=100)
+    ```
+
+> [!IMPORTANT]
+> Gracias a `structlog.contextvars`, **no necesitas pasar el request_id como argumento** a tus funciones. El sistema lo "inyecta" mágicamente en cada log que hagas dentro del ciclo de vida de la petición.
 
 ---
 
