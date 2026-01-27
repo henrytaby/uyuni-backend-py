@@ -85,6 +85,21 @@ Al crear un nuevo modelo con `SQLModel`, la auditoría de datos (Hooks) funciona
 
 **Requisito Importante**: Asegúrate de que tu modelo herede de `SQLModel` y sea parte de la metadata importada en `alembic/env.py`.
 
+### 3.4. Auditoría de Usuarios (AuditMixin)
+Para rastrear automáticamente **quién creó** o **actualizó** un registro, tu modelo debe heredar de `AuditMixin`.
+
+```python
+from app.models.mixins import AuditMixin
+
+class Task(BaseModel, AuditMixin, table=True):
+    # ... campos ...
+```
+
+**Beneficio**:
+*   `created_at` / `updated_at`: Se manejan solos (Default Factory).
+*   `created_by_id` / `updated_by_id`: Un Hook de SQLAlchemy (`before_flush`) intercepta el guardado e inyecta el ID del usuario actual automáticamente.
+*   **No necesitas pasar el usuario en el Service**.
+
 ---
 
 ## 4. Estructura de la Base de Datos (`audit_log`)
