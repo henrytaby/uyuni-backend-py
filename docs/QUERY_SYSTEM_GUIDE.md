@@ -119,3 +119,26 @@ def get_list(
 > [!TIP]
 > **Performance**: Los filtros fijos (`extra_filters`) sobre columnas indexadas son mucho más rápidos que el `search` global. Úsalos siempre que la lógica de la pantalla lo permita.
 
+---
+
+## 7. El Patrón Specification (Predicate Injection)
+
+En este proyecto, hemos implementado una variante moderna del **Patrón Specification**, a menudo llamada **Inyección de Predicados**.
+
+### ¿Qué es y por qué lo usamos?
+Tradicionalmente, si el negocio necesitaba "Ver solo Gerencias", el desarrollador creaba un método `repository.get_managements()`. Esto llevaba a repositorios gigantes con cientos de métodos casi idénticos.
+
+Con **Predicate Injection**:
+1.  **El Servicio es el Cliente**: El servicio sabe **qué** condiciones deben cumplirse (negocio).
+2.  **El Repositorio es el Motor**: El repositorio sabe **cómo** ejecutar consultas de forma eficiente, segura y paginada.
+
+### Ejemplo de Desacoplamiento:
+Al pasar `[OrgUnit.acronym == acronym]` al repositorio, no estamos pasando "código SQL", estamos pasando una **Especificación de datos**. El Repositorio toma esta especificación y la integra en una consulta que ya tiene:
+*   Búsqueda global con casting automático.
+*   Validación de ordenamiento.
+*   Cálculo de offset/limit.
+
+### Ventajas Arquitectónicas:
+*   **DRY (Don't Repeat Yourself)**: La lógica de paginación y búsqueda se escribe UNA SOLA VEZ en el `BaseRepository`.
+*   **Flexibilidad**: Puedes construir filtros complejos en el Servicio sin modificar una sola línea de la capa de datos.
+

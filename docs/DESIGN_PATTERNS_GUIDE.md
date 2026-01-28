@@ -9,10 +9,10 @@ El proyecto sigue una estructura de capas clásica, favoreciendo la separación 
 
 ```mermaid
 graph TD
-    Client["Cliente (Frontend)"] --> Middleware[""Middleware (Auth/Audit/Log)""]
-    Middleware --> Router[""Router (Controller)""]
-    Router --> Service[""Service (Business Logic)""]
-    Service --> Repository[""Repository (Data Access)""]
+    Client["Cliente (Frontend)"] --> Middleware["Middleware (Auth/Audit/Log)"]
+    Middleware --> Router["Router (Controller)"]
+    Router --> Service["Service (Business Logic)"]
+    Service --> Repository["Repository (Data Access)"]
     Repository --> DB[("Database")]
     
     subgraph "Núcleo de Sistema"
@@ -36,82 +36,45 @@ Encapsula la lógica necesaria para acceder a las fuentes de datos. Proporciona 
 *   **Ubicación**: `app/core/repository.py`, `app/modules/*/repository.py`.
 *   **Uso**:
     *   `BaseRepository[T]`: Una clase genérica que provee métodos estándar (`get`, `get_all`, `create`, `update`, `delete`).
-    *   `StaffRepository`: Extiende `BaseRepository/Product` para agregar consultas complejas específicas (ej. `get_by_id_with_relations` usando `selectinload`).
-*   **Beneficio**: Centraliza las consultas, evita código SQL/ORM repetido en los servicios y facilita el testing.
+    *   **Motor Genérico de Consultas**: El repositorio base gestiona automáticamente la paginación, el ordenamiento y la búsqueda global polimórfica.
+*   **Beneficio**: Centraliza las consultas, evita código SQL/ORM repetido y facilita enormemente el mantenimiento.
 
 ### 2. Service Layer Pattern (Patrón Capa de Servicio)
 Define el límite de la aplicación y encapsula la lógica de negocio del dominio. Controla las transacciones y coordina las respuestas.
 
-*   **Ubicación**: `app/modules/*/service.py` (ej. `AuthService`, `StaffService`).
+*   **Ubicación**: `app/modules/*/service.py`.
 *   **Uso**:
-    *   Contiene todas las reglas de negocio, validaciones complejas, hash de contraseñas, etc.
-    *   Orquesta llamadas a uno o varios repositorios.
-    *   Es agnóstico al framework web (FastAPI); teóricamente podría ser usado por una CLI o un script.
-*   **Beneficio**: Mantiene los controladores ("routers") delgados ("Thin Controllers"), delegando toda la complejidad al servicio.
-
-```mermaid
-sequenceDiagram
-    participant R as Router
-    participant S as Service
-    participant RP as Repository
-    participant DB as Database
-
-    R->>S: create_asset(data)
-    Note over S: Validar negocio (ej. Stock)
-    S->>RP: check_category_exists()
-    RP-->>S: True
-    S->>RP: create(product)
-    RP->>DB: INSERT INTO assets...
-    DB-->>RP: New Product
-    RP-->>S: Asset Model
-    S-->>R: Asset Model
-```
+    *   Contiene todas las reglas de negocio y orquesta llamadas a repositorios.
+    *   Es la "única fuente de verdad" para las reglas de negocio.
+*   **Beneficio**: Mantiene los controladores delgados y la lógica de negocio reutilizable.
 
 ### 3. Dependency Injection (Inyección de Dependencias - DI)
-Es una técnica donde un objeto recibe otros objetos de los cuales depende, en lugar de crearlos internamente.
+Es una técnica donde un objeto recibe otros objetos de los cuales depende.
 
 *   **Ubicación**: En todos los `routers.py` y constructores de servicios.
-*   **Uso**:
-    *   Utilizamos el sistema `Depends(...)` nativo de FastAPI.
-    *   `get_db` inyecta la sesión de base de datos.
-    *   `get_auth_service` inyecta el repositorio y la sesión en el servicio.
-*   **Beneficio**: Invierte el control (`IoC`), permitiendo cambiar implementaciones fácilmente y simplificando drásticamente las pruebas unitarias mediante Mocks.
+*   **Uso**: Utilizamos `Depends(...)` nativo de FastAPI.
+*   **Beneficio**: Invierte el control (`IoC`), facilitando el testing con Mocks.
 
-### 4. Data Transfer Object (DTO)
-Son objetos que transportan datos entre procesos. En este proyecto, utilizamos **Pydantic Models** como DTOs.
+### 4. Specification Pattern / Predicate Injection
+Este patrón permite desacoplar los requisitos de negocio (filtros) de la tecnología de acceso a datos.
+
+*   **Ubicación**: Implementado vía el parámetro `extra_filters` en el repositorio y configurado en los `Service`.
+*   **Uso**:
+    *   El **Servicio** define "qué" datos quiere inyectando predicados de SQLModel (ej: `[OrgUnit.type == "MANAGEMENT"]`).
+    *   El **Repositorio** se encarga del "cómo" (ejecutar la consulta, paginar y aplicar el `search`).
+*   **Beneficio**: Evita crear decenas de métodos en el repositorio para cada filtro diferente. Permite crear "Vistas" de datos complejas desde el servicio manteniendo el repositorio genérico y profesional.
+
+### 5. Data Transfer Object (DTO)
+Utilizamos **Pydantic Models** como DTOs para transportar datos entre capas.
 
 *   **Ubicación**: `app/modules/*/schemas.py`.
-*   **Uso**:
-    *   `StaffCreate`: Define qué datos se aceptan para crear un usuario (DTO de entrada).
-    *   `StaffRead`: Define qué datos se devuelven al cliente (DTO de salida), ocultando campos sensibles como `password_hash`.
-*   **Beneficio**: Desacopla la estructura interna de la base de datos de la API pública. Provee validación de datos automática y documentación (OpenAPI).
+*   **Beneficio**: Desacopla la estructura interna de la base de datos de la API pública.
 
-### 5. Middleware Pattern
-Es un patrón de cadena de responsabilidad donde varios componentes procesan una petición HTTP.
-
-*   **Ubicación**: `app/main.py` y `app/core/audit`.
-*   **Uso**:
-    *   `AuditMiddleware`: Intercepta peticiones para auditoría.
-    *   `CORSMiddleware`: Gestiona cabeceras de seguridad.
-    *   `logging_middleware`: Genera Request IDs únicos para trazabilidad.
+### 6. Middleware Pattern
+Patrón de cadena de responsabilidad para procesar peticiones HTTP (Auditoría, Seguridad, Logs).
 
 ---
 
 ## Guía para Nuevos Desarrolladores
-Para agregar una nueva funcionalidad (ej. "Orders"), sigue este flujo:
+(Consultar `DEVELOPER_GUIDE.md` para el paso a paso de implementación).
 
-1.  **Model**: Crea `modules/orders/models.py` (Entidad de BD).
-2.  **Schema**: Crea `modules/orders/schemas.py` (DTOs de entrada/salida).
-3.  **Repository**:
-    *   Crea `OrderRepository` heredando de `BaseRepository`.
-    *   Si solo necesitas CRUD básico, no agregues nada más.
-4.  **Service**:
-    *   Crea `OrderService`.
-    *   Inyecta `OrderRepository` en el `__init__`.
-    *   Implementa la lógica de negocio.
-5.  **Router**:
-    *   Define los endpoints.
-    *   Inyecta `OrderService` usando `Depends`.
-    *   Llama a los métodos del servicio.
-
-Este diseño garantiza que tu código será coherente con el resto del proyecto.
