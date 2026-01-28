@@ -15,7 +15,7 @@ from app.models.user import User, UserRevokedToken, ...
 from app.models.role import Role, RoleModule
 from app.models.module import Module, ModuleGroup
 # [NUEVO] Agrega tu modelo aquí:
-from app.modules.my_new_module.models import MyNewModel
+from app.modules.core.staff.models import Staff
 ```
 
 ---
@@ -23,7 +23,7 @@ from app.modules.my_new_module.models import MyNewModel
 ## 👨‍💻 Recetas para Desarrolladores
 
 ### Receta 1: Agregando un Nuevo Módulo (Nuevas Tablas)
-Has creado una nueva carpeta de módulo `app/modules/inventory` y definido un modelo `Product` en `app/modules/inventory/models.py`.
+Has creado una nueva carpeta de módulo `app/modules/assets/inventory` y definido un modelo `Product` en `app/modules/assets/inventory/models.py`.
 
 **Pasos:**
 1.  **Definir el Modelo:** Asegúrate de que tu clase herede de `BaseModel` (o `SQLModel`) y tenga `table=True`.
@@ -56,7 +56,7 @@ Quieres agregar una columna `stock_count` al modelo existente `Product`.
 
 **Pasos:**
 1.  **Modificar el Código:**
-    En `app/modules/inventory/models.py`:
+    En `app/modules/assets/inventory/models.py`:
     ```python
     stock_count: int = Field(default=0)
     ```

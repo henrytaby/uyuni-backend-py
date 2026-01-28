@@ -1,4 +1,4 @@
-# Manual del Desarrollador: Creación de Módulos (v2.0)
+# Manual del Desarrollador: Creación de Módulos (v3.0)
 
 Esta guía describe el flujo de trabajo estándar para añadir una nueva funcionalidad (Módulo) al sistema **FastAPI Enterprise**, asegurando el cumplimiento de los estándares de Calidad, Seguridad y Arquitectura.
 
@@ -10,9 +10,10 @@ flowchart TD
     B --> C["3. Schemas (Pydantic DTOs)"]
     C --> D["4. Repositorio (Acceso a Datos)"]
     D --> E["5. Servicio (Lógica de Negocio)"]
-    E --> F["6. Router (API + Inyección)"]
-    F --> G["7. Registrar Router"]
-    G --> H["8. Tests (Pytest)"]
+    F["6. Constantes (Slugs RBAC)"] --> G["7. Router (API + Inyección)"]
+    E --> G
+    G --> H["8. Registrar Router"]
+    H --> I["9. Tests (Pytest)"]
 ```
 
 > **Nota**: Para los fundamentos teóricos, consulta:
@@ -29,7 +30,7 @@ El primer paso es definir la entidad.
 1.  Heredar de **`BaseModel`** (para tener ID UUIDv7) y `AuditMixin` (para auditoría).
 2.  Nombre de tabla en **plural** (`__tablename__ = "products"`).
 
-**Archivo**: `app/modules/{nombre_modulo}/models.py`
+**Archivo**: `app/modules/{dominio}/{submodulo}/models.py`
 
 ```python
 from sqlmodel import Field
@@ -56,7 +57,7 @@ class NuevoRecurso(BaseModel, AuditMixin, table=True):
 
 ### 2. Generar Migración (Alembic)
 
-Registra tu modelo en `alembic/env.py` (si no lo hace automáticamente) y genera el script.
+Registra tu modelo en `alembic/env.py` (importándolo con su ruta absoluta) y genera el script.
 
 ```bash
 # 1. Crear la migración
@@ -70,10 +71,7 @@ alembic upgrade head
 
 ### 3. Crear Schemas (DTOs)
 
-Define qué datos entran y salen.
-**Regla**: Los schemas son "tontos". No deben tener lógica de base de datos.
-
-**Archivo**: `app/modules/{nombre_modulo}/schemas.py`
+**Archivo**: `app/modules/{dominio}/{submodulo}/schemas.py`
 
 ```python
 import uuid
@@ -84,7 +82,7 @@ class NuevoRecursoBase(BaseModel):
     activo: bool = True
 
 class NuevoRecursoCreate(NuevoRecursoBase):
-    pass # ID se genera en backend
+    pass 
 
 class NuevoRecursoRead(NuevoRecursoBase):
     id: uuid.UUID
@@ -97,7 +95,7 @@ class NuevoRecursoRead(NuevoRecursoBase):
 Capa de acceso a datos. Hereda de `BaseRepository`.
 **Regla**: Aquí van las consultas SQL (`select`, `where`).
 
-**Archivo**: `app/modules/{nombre_modulo}/repository.py`
+**Archivo**: `app/modules/{dominio}/{submodulo}/repository.py`
 
 ```python
 from app.core.repository import BaseRepository
@@ -106,106 +104,108 @@ from .models import NuevoRecurso
 class NuevoRecursoRepository(BaseRepository[NuevoRecurso]):
     def __init__(self, session):
         super().__init__(session, NuevoRecurso)
-    
-    # Métodos extra si necesitas búsquedas complejas
-    def get_by_name(self, name: str):
-        statement = select(self.model).where(self.model.nombre == name)
-        return self.session.exec(statement).first()
 ```
 
 ---
 
 ### 5. Crear Servicio (Lógica de Negocio)
 
-Aquí va la validación y reglas de negocio.
-**Regla**: Si necesitas verificar si algo existe, pídeselo al Repositorio. Si falla, lanza `NotFoundException`.
-
-**Archivo**: `app/modules/{nombre_modulo}/service.py`
+**Archivo**: `app/modules/{dominio}/{submodulo}/service.py`
 
 ```python
-import uuid
-from app.core.exceptions import NotFoundException
 from .repository import NuevoRecursoRepository
 from .schemas import NuevoRecursoCreate
+from .models import NuevoRecurso
 
 class NuevoRecursoService:
     def __init__(self, repository: NuevoRecursoRepository):
         self.repository = repository
 
     def crear(self, data: NuevoRecursoCreate):
-        # Ejemplo: Validar unicidad (usando metodo del repo, no SQL directo)
-        # if self.repository.get_by_name(data.nombre): ...
-        
-        # Convertir DTO a Modelo DB
         nuevo_db = NuevoRecurso.model_validate(data)
-        
-        # Guardar (AuditMixin se llenará solo aquí)
         return self.repository.create(nuevo_db)
 ```
 
 ---
 
-### 6. Crear Router (API)
+### 6. Definir Constantes de Identidad (RBAC)
 
-Expone los endpoints.
-**Regla**: Usa Inyección de Dependencias (`Depends`) para obtener el Servicio y el Usuario actual.
+**Archivo**: `app/modules/{dominio}/constants.py`
 
-**Archivo**: `app/modules/{nombre_modulo}/routers.py`
+Cada dominio debe centralizar sus Slugs de módulos en un archivo de constantes local para evitar conflictos entre equipos paralelos.
 
 ```python
-import uuid
+class MiDominioModuleSlug:
+    NUEVO_RECURSO = "mi_nuevo_recurso"
+```
+
+---
+
+### 7. Crear Router (API)
+
+**Archivo**: `app/modules/{dominio}/{submodulo}/routers.py`
+
+```python
 from fastapi import APIRouter, Depends, status
 from app.core.db import get_session
+from app.auth.permissions import PermissionAction, PermissionChecker
+from app.auth.schemas import UserModulePermission
+from ..constants import MiDominioModuleSlug # Importar constantes del dominio
+
 from .service import NuevoRecursoService
 from .repository import NuevoRecursoRepository
 from .schemas import NuevoRecursoCreate, NuevoRecursoRead
 
 router = APIRouter()
 
-# Factoría de dependencias
 def get_service(session = Depends(get_session)):
     repo = NuevoRecursoRepository(session)
     return NuevoRecursoService(repo)
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=NuevoRecursoRead)
+@router.post("/", response_model=NuevoRecursoRead)
 def create_item(
     data: NuevoRecursoCreate, 
-    service: NuevoRecursoService = Depends(get_service)
+    service: NuevoRecursoService = Depends(get_service),
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=MiDominioModuleSlug.NUEVO_RECURSO, 
+            required_permission=PermissionAction.CREATE
+        )
+    ),
 ):
     return service.crear(data)
 ```
 
 ---
 
-### 7. Registrar el Módulo
+### 8. Registrar el Router
 
-Añade tu nuevo router al archivo principal.
+**Archivo**: `app/modules/{dominio}/routers.py`
 
-**Archivo**: `app/core/routers.py`
+Añade el router del submódulo al enrutador agregador del dominio.
 
 ```python
-from app.modules.nuevo_recurso.routers import router as nuevo_router
+from .submodulo import routers as submodulo_routers
 
-api_router.include_router(nuevo_router, prefix="/nuevos", tags=["Nuevos"])
+router.include_router(submodulo_routers.router)
 ```
 
 ---
 
-### 8. Testing Automatizado
+### 9. Testing Automatizado
 
 Crea un test de integración. Usa `TestClient`.
 
-**Archivo**: `tests/modules/nuevo_recurso/test_routers.py`
+**Archivo**: `tests/modules/{dominio}/test_{submodulo}_routers.py`
 
 ```python
 def test_create_nuevo_recurso_ok(client, superuser_token_headers):
     data = {"nombre": "Test 1"}
-    response = client.post("/api/nuevos/", json=data, headers=superuser_token_headers)
+    response = client.post("/api/mi-ruta/", json=data, headers=superuser_token_headers)
     
     assert response.status_code == 201
     content = response.json()
     assert content["nombre"] == "Test 1"
-    assert "id" in content # UUID generado
 ```
 
 ---
@@ -225,3 +225,4 @@ mypy .
 # 3. Tests
 pytest
 ```
+

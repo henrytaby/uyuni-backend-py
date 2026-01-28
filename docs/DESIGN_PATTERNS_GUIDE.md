@@ -1,6 +1,6 @@
 # Patrones de Diseño del Proyecto
 
-Este documento describe la arquitectura y los patrones de diseño implementados en el proyecto `fastapi-product`. Sirve como guía para entender cómo están organizados los componentes y cómo deben desarrollarse nuevas funcionalidades.
+Este documento describe la arquitectura y los patrones de diseño implementados en el proyecto `Uyuni-BackEnd`. Sirve como guía para entender cómo están organizados los componentes y cómo deben desarrollarse nuevas funcionalidades.
 
 ## Arquitectura General: Layered Architecture (Arquitectura en Capas)
 El proyecto sigue una estructura de capas clásica, favoreciendo la separación de preocupaciones (SoC).
@@ -9,13 +9,13 @@ El proyecto sigue una estructura de capas clásica, favoreciendo la separación 
 
 ```mermaid
 graph TD
-    Client["Cliente (Frontend)"] --> Middleware["Middleware (Auth/Audit/Log)"]
-    Middleware --> Router["Router (Controller)"]
-    Router --> Service["Service (Business Logic)"]
-    Service --> Repository["Repository (Data Access)"]
+    Client["Cliente (Frontend)"] --> Middleware[""Middleware (Auth/Audit/Log)""]
+    Middleware --> Router[""Router (Controller)""]
+    Router --> Service[""Service (Business Logic)""]
+    Service --> Repository[""Repository (Data Access)""]
     Repository --> DB[("Database")]
     
-    subgraph "Core Core"
+    subgraph "Núcleo de Sistema"
         Middleware
     end
     
@@ -36,13 +36,13 @@ Encapsula la lógica necesaria para acceder a las fuentes de datos. Proporciona 
 *   **Ubicación**: `app/core/repository.py`, `app/modules/*/repository.py`.
 *   **Uso**:
     *   `BaseRepository[T]`: Una clase genérica que provee métodos estándar (`get`, `get_all`, `create`, `update`, `delete`).
-    *   `ProductRepository`: Extiende `BaseRepository/Product` para agregar consultas complejas específicas (ej. `get_by_id_with_relations` usando `selectinload`).
+    *   `StaffRepository`: Extiende `BaseRepository/Product` para agregar consultas complejas específicas (ej. `get_by_id_with_relations` usando `selectinload`).
 *   **Beneficio**: Centraliza las consultas, evita código SQL/ORM repetido en los servicios y facilita el testing.
 
 ### 2. Service Layer Pattern (Patrón Capa de Servicio)
 Define el límite de la aplicación y encapsula la lógica de negocio del dominio. Controla las transacciones y coordina las respuestas.
 
-*   **Ubicación**: `app/modules/*/service.py` (ej. `AuthService`, `ProductService`).
+*   **Ubicación**: `app/modules/*/service.py` (ej. `AuthService`, `StaffService`).
 *   **Uso**:
     *   Contiene todas las reglas de negocio, validaciones complejas, hash de contraseñas, etc.
     *   Orquesta llamadas a uno o varios repositorios.
@@ -56,15 +56,15 @@ sequenceDiagram
     participant RP as Repository
     participant DB as Database
 
-    R->>S: create_product(data)
+    R->>S: create_asset(data)
     Note over S: Validar negocio (ej. Stock)
     S->>RP: check_category_exists()
     RP-->>S: True
     S->>RP: create(product)
-    RP->>DB: INSERT INTO products...
+    RP->>DB: INSERT INTO assets...
     DB-->>RP: New Product
-    RP-->>S: Product Model
-    S-->>R: Product Model
+    RP-->>S: Asset Model
+    S-->>R: Asset Model
 ```
 
 ### 3. Dependency Injection (Inyección de Dependencias - DI)
@@ -82,8 +82,8 @@ Son objetos que transportan datos entre procesos. En este proyecto, utilizamos *
 
 *   **Ubicación**: `app/modules/*/schemas.py`.
 *   **Uso**:
-    *   `UserCreate`: Define qué datos se aceptan para crear un usuario (DTO de entrada).
-    *   `UserResponse`: Define qué datos se devuelven al cliente (DTO de salida), ocultando campos sensibles como `password_hash`.
+    *   `StaffCreate`: Define qué datos se aceptan para crear un usuario (DTO de entrada).
+    *   `StaffRead`: Define qué datos se devuelven al cliente (DTO de salida), ocultando campos sensibles como `password_hash`.
 *   **Beneficio**: Desacopla la estructura interna de la base de datos de la API pública. Provee validación de datos automática y documentación (OpenAPI).
 
 ### 5. Middleware Pattern

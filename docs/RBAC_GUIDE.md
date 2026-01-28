@@ -9,7 +9,7 @@ El sistema permite un control de permisos granular a nivel de **Módulo**. Utili
 ### Componentes Clave en RBAC
 *   **Usuarios**: Pueden tener múltiples **Roles**.
 *   **Roles**: Colecciones de permisos. Se identifican por un `slug` (ej: `admin`, `ventas`).
-*   **Módulos**: Representan áreas funcionales (ej: `Tareas`, `Usuarios`). Identificados por `slug`.
+*   **Módulos**: Representan áreas funcionales (ej: `Staff`, `Assets`). Identificados por `slug`.
 *   **RoleModule**: Tabla de enlace que define:
     *   **Acciones**: `can_create`, `can_update`, `can_delete`.
     *   **Alcance (Scope)**: `scope_all`.
@@ -20,10 +20,10 @@ El sistema permite un control de permisos granular a nivel de **Módulo**. Utili
 ### Diagrama Entidad-Relación (Simplificado)
 ```mermaid
 erDiagram
-    User ||--o{ UserRole : has
-    Role ||--o{ UserRole : assigned_to
-    Role ||--o{ RoleModule : defines_access
-    Module ||--o{ RoleModule : target_resource
+    User ||--o{ UserRole : "has"
+    Role ||--o{ UserRole : "assigned_to"
+    Role ||--o{ RoleModule : "defines_access"
+    Module ||--o{ RoleModule : "target_resource"
     
     User {
         int id
@@ -62,12 +62,13 @@ El sistema opera en dos modos:
 ## 👩‍💻 Recetas para Desarrolladores
 
 ### 1. Protegiendo un Nuevo Endpoint
-Usa la dependencia `PermissionChecker`.
+Usa la dependencia `PermissionChecker` junto con las constantes de dominio para evitar errores de escritura.
 
 ```python
 from fastapi import APIRouter, Depends
 from app.auth.permissions import PermissionChecker, PermissionAction
 from app.auth.schemas import UserModulePermission
+from app.modules.core.constants import CoreModuleSlug # Importar constante
 
 router = APIRouter()
 
@@ -75,27 +76,33 @@ router = APIRouter()
 @router.get("/")
 async def get_items(
     permissions: UserModulePermission = Depends(
-        PermissionChecker(module_slug="facturas", required_permission=PermissionAction.READ)
+        PermissionChecker(
+            module_slug=CoreModuleSlug.STAFF, 
+            required_permission=PermissionAction.READ
+        )
     ),
 ):
-    # Filtrado por Scope
+    # Filtrado por Scope (Privacidad de datos)
     if not permissions.scope_all:
-        return {"msg": "Mostrando solo MIS facturas"}
-    return {"msg": "Mostrando TODAS las facturas"}
+        return {"msg": "Mostrando solo MIS registros"}
+    return {"msg": "Mostrando TODOS los registros"}
 
-# 2. Escritura
+# 2. Escritura (Requiere permiso explícito)
 @router.post("/")
 async def create_item(
     _: UserModulePermission = Depends(
-        PermissionChecker(module_slug="facturas", required_permission=PermissionAction.CREATE)
+        PermissionChecker(
+            module_slug=CoreModuleSlug.STAFF, 
+            required_permission=PermissionAction.CREATE
+        )
     ),
 ):
     return {"msg": "¡Ítem creado!"}
 ```
 
 ### 2. Registrando un Nuevo Módulo
-1.  **Seed Data**: Crea el módulo en la BD.
-2.  **Naming**: Usa `kebab-case` para el slug (ej: `control-calidad`).
+1.  **Seed Data**: Crea el módulo en la BD (Slug debe coincidir con la constante).
+2.  **Naming**: Usa `snake_case` o `kebab-case` para el slug, pero sé consistente con la constante definida en `constants.py`.
 
 ### 3. Usando Permisos en el Frontend
 El frontend recibe el objeto de permisos y puede:
@@ -105,3 +112,4 @@ El frontend recibe el objeto de permisos y puede:
 ## Referencia de API
 *   `GET /me/roles`: Lista roles activos con `slug` y `description`.
 *   `GET /me/menu/{role_slug}`: Devuelve el menú jerárquico para un rol específico.
+

@@ -7,11 +7,12 @@ from sqlmodel import Session
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.staff.models import Staff
 from app.modules.core.staff.schemas import StaffCreate, StaffRead, StaffUpdate
 from app.modules.core.staff.service import StaffService
 
-router = APIRouter(prefix="/staff", tags=["Core Staff - Personnel"])
+router = APIRouter(prefix="/staff", tags=["Core Staff - Personal"])
 
 
 @router.post("/", response_model=StaffRead)
@@ -20,7 +21,8 @@ def create_staff(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.CREATE
+            module_slug=CoreModuleSlug.STAFF,
+            required_permission=PermissionAction.CREATE,
         )
     ),
 ):
@@ -38,7 +40,7 @@ def get_staff_list(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.READ
+            module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
         )
     ),
 ):
@@ -51,7 +53,7 @@ def count_staff(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.READ
+            module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
         )
     ),
 ):
@@ -65,7 +67,7 @@ def get_staff(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.READ
+            module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
         )
     ),
 ):
@@ -83,7 +85,8 @@ def update_staff(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.UPDATE
+            module_slug=CoreModuleSlug.STAFF,
+            required_permission=PermissionAction.UPDATE,
         )
     ),
 ):
@@ -100,7 +103,8 @@ def delete_staff(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.DELETE
+            module_slug=CoreModuleSlug.STAFF,
+            required_permission=PermissionAction.DELETE,
         )
     ),
 ):

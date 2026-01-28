@@ -10,6 +10,7 @@ from app.core.db import get_session
 from app.modules.assets.areas.models import Area
 from app.modules.assets.areas.schemas import AreaCreate, AreaRead, AreaUpdate
 from app.modules.assets.areas.service import AreaService
+from app.modules.assets.constants import AssetsModuleSlug
 
 router = APIRouter(prefix="/areas", tags=["Assets - Areas"])
 
@@ -20,7 +21,8 @@ def create_area(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="assets", required_permission=PermissionAction.CREATE
+            module_slug=AssetsModuleSlug.GENERAL,
+            required_permission=PermissionAction.CREATE,
         )
     ),
 ):
@@ -37,7 +39,8 @@ def get_areas(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="assets", required_permission=PermissionAction.READ
+            module_slug=AssetsModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
         )
     ),
 ):
@@ -50,7 +53,8 @@ def count_areas(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="assets", required_permission=PermissionAction.READ
+            module_slug=AssetsModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
         )
     ),
 ):
@@ -64,7 +68,8 @@ def get_area(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="assets", required_permission=PermissionAction.READ
+            module_slug=AssetsModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
         )
     ),
 ):
@@ -82,7 +87,8 @@ def update_area(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="assets", required_permission=PermissionAction.UPDATE
+            module_slug=AssetsModuleSlug.GENERAL,
+            required_permission=PermissionAction.UPDATE,
         )
     ),
 ):
@@ -99,7 +105,8 @@ def delete_area(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="assets", required_permission=PermissionAction.DELETE
+            module_slug=AssetsModuleSlug.GENERAL,
+            required_permission=PermissionAction.DELETE,
         )
     ),
 ):

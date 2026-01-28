@@ -33,12 +33,13 @@ from app.core.routers import router as api_router
 configure_logging()
 
 description = """
-API de un Sistema de tareas y productos, usando FastApi con Python.
+API de Gestión de Personal y Activos Fijos (ERP Lite).
 
-Funciones;
-- Crear, Leer, Actualizar y eliminar Tareas
+Funciones:
+- Gestión Integral de Personal (Staff) y Unidades Organizacionales.
+- Administración y Control de Activos Fijos y Actas de Respaldo.
+- Arquitectura Modular Robusta con Auditoría y RBAC.
 """
-# ... existing imports ...
 
 
 @asynccontextmanager
@@ -62,20 +63,48 @@ app = FastAPI(
     },
     openapi_tags=[
         {
+            "name": "Auth",
+            "description": "Gestión de Autenticación, Roles y Permisos de Usuario.",
+        },
+        {
             "name": "Tasks",
-            "description": "Lista de Tareas",
+            "description": "Sistema de gestión de actividades y tareas operativas.",
         },
         {
-            "name": "Products",
-            "description": "Lista de Products",
+            "name": "Core Staff - Personal",
+            "description": "Administración del capital humano y datos maestros del personal.",
         },
         {
-            "name": "Customers",
-            "description": "Lista de Customers",
+            "name": "Core Staff - Org Units",
+            "description": "Gestión de la estructura organizacional y unidades administrativas.",
         },
         {
-            "name": "Assets",
-            "description": "Gestión Integral de Activos Fijos y Actas de Respaldo",
+            "name": "Core Staff - Positions",
+            "description": "Definición y control de cargos y puestos de trabajo.",
+        },
+        {
+            "name": "Assets - Institutions",
+            "description": "Registro de entidades gubernamentales y organizaciones externas.",
+        },
+        {
+            "name": "Assets - Areas",
+            "description": "Control de ubicaciones físicas y áreas geográficas de inventario.",
+        },
+        {
+            "name": "Assets - Asset Groups",
+            "description": "Categorización lógica y contable de los bienes del sistema.",
+        },
+        {
+            "name": "Assets - Asset Statuses",
+            "description": "Gestión de estados de conservación y situación legal de activos.",
+        },
+        {
+            "name": "Assets - Acts",
+            "description": "Control documental de actas de asignación, entrega y respaldo.",
+        },
+        {
+            "name": "Assets - Fixed Assets",
+            "description": "Gestión centralizada de Bienes de Uso, códigos SAF y verificación física.",
         },
     ],
     openapi_url="/openapi.json",

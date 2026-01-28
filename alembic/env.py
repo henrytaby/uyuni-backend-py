@@ -15,12 +15,6 @@ from app.models.module import Module, ModuleGroup
 from app.modules.tasks.models import Task
 from app.models.audit import AuditLog
 
-# Missing modules
-from app.modules.customers.models import Customer
-from app.modules.products.models import Product
-from app.modules.catalog.products_category.models import ProductCategory
-from app.modules.catalog.products_brand.models import ProductBrand
-
 # Fixed Assets & Core Staff
 from app.modules.core.org_units.models import OrgUnit
 from app.modules.core.positions.models import StaffPosition
@@ -32,7 +26,6 @@ from app.modules.assets.groups.models import AssetGroup
 from app.modules.assets.statuses.models import AssetStatus
 from app.modules.assets.acts.models import Act, AssetActLink
 from app.modules.assets.assets.models import FixedAsset
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

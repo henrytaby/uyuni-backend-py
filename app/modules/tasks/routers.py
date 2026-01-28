@@ -6,6 +6,7 @@ from sqlmodel import Session
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.modules.tasks.constants import TasksModuleSlug
 
 from .models import Task
 from .repository import TaskRepository
@@ -28,7 +29,8 @@ async def create_task(
     service: TaskService = Depends(get_service),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="tasks", required_permission=PermissionAction.CREATE
+            module_slug=TasksModuleSlug.GENERAL,
+            required_permission=PermissionAction.CREATE,
         )
     ),
 ):
@@ -46,7 +48,8 @@ async def get_task(
     service: TaskService = Depends(get_service),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="tasks", required_permission=PermissionAction.READ
+            module_slug=TasksModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
         )
     ),
 ):
@@ -65,7 +68,8 @@ async def update_task(
     service: TaskService = Depends(get_service),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="tasks", required_permission=PermissionAction.UPDATE
+            module_slug=TasksModuleSlug.GENERAL,
+            required_permission=PermissionAction.UPDATE,
         )
     ),
 ):
@@ -82,7 +86,8 @@ async def get_tasks(
     service: TaskService = Depends(get_service),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="tasks", required_permission=PermissionAction.READ
+            module_slug=TasksModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
         )
     ),
 ):
@@ -100,7 +105,8 @@ async def delete_task(
     service: TaskService = Depends(get_service),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="tasks", required_permission=PermissionAction.DELETE
+            module_slug=TasksModuleSlug.GENERAL,
+            required_permission=PermissionAction.DELETE,
         )
     ),
 ):

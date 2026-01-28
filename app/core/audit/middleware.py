@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import Request
 from sqlmodel import Session
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -52,8 +54,6 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 payload = decode_token(token)
                 user_id_str = payload.get("id")
                 if user_id_str:
-                    import uuid
-
                     user_id = uuid.UUID(str(user_id_str))
                 username = payload.get("sub", "Unknown")
             except Exception:

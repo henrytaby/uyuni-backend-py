@@ -1,8 +1,8 @@
-"""initial_schema
+"""init_base_structure
 
-Revision ID: f51cbafde077
+Revision ID: 9140397f6a6a
 Revises: 
-Create Date: 2026-01-27 01:22:23.911338
+Create Date: 2026-01-27 22:37:14.475106
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'f51cbafde077'
+revision: str = '9140397f6a6a'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -75,22 +75,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
     op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
-    op.create_table('customers',
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('created_by_id', sa.Uuid(), nullable=True),
-    sa.Column('updated_by_id', sa.Uuid(), nullable=True),
-    sa.Column('id', sa.Uuid(), nullable=False),
-    sa.Column('name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('last_name', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('email', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('age', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['updated_by_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_customers_id'), 'customers', ['id'], unique=False)
     op.create_table('module_groups',
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
@@ -110,32 +94,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_module_groups_id'), 'module_groups', ['id'], unique=False)
     op.create_index(op.f('ix_module_groups_name'), 'module_groups', ['name'], unique=True)
     op.create_index(op.f('ix_module_groups_slug'), 'module_groups', ['slug'], unique=True)
-    op.create_table('product_brands',
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('created_by_id', sa.Uuid(), nullable=True),
-    sa.Column('updated_by_id', sa.Uuid(), nullable=True),
-    sa.Column('id', sa.Uuid(), nullable=False),
-    sa.Column('name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['updated_by_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_product_brands_id'), 'product_brands', ['id'], unique=False)
-    op.create_table('product_categories',
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('created_by_id', sa.Uuid(), nullable=True),
-    sa.Column('updated_by_id', sa.Uuid(), nullable=True),
-    sa.Column('id', sa.Uuid(), nullable=False),
-    sa.Column('name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['updated_by_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_product_categories_id'), 'product_categories', ['id'], unique=False)
     op.create_table('roles',
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
@@ -207,25 +165,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_modules_id'), 'modules', ['id'], unique=False)
     op.create_index(op.f('ix_modules_name'), 'modules', ['name'], unique=True)
     op.create_index(op.f('ix_modules_slug'), 'modules', ['slug'], unique=True)
-    op.create_table('products',
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('created_by_id', sa.Uuid(), nullable=True),
-    sa.Column('updated_by_id', sa.Uuid(), nullable=True),
-    sa.Column('id', sa.Uuid(), nullable=False),
-    sa.Column('title', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('price', sa.Integer(), nullable=False),
-    sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('image', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('category_id', sa.Uuid(), nullable=True),
-    sa.Column('brand_id', sa.Uuid(), nullable=True),
-    sa.ForeignKeyConstraint(['brand_id'], ['product_brands.id'], ),
-    sa.ForeignKeyConstraint(['category_id'], ['product_categories.id'], ),
-    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['updated_by_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_products_id'), 'products', ['id'], unique=False)
     op.create_table('user_roles',
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
@@ -274,8 +213,6 @@ def downgrade() -> None:
     op.drop_table('role_modules')
     op.drop_index(op.f('ix_user_roles_id'), table_name='user_roles')
     op.drop_table('user_roles')
-    op.drop_index(op.f('ix_products_id'), table_name='products')
-    op.drop_table('products')
     op.drop_index(op.f('ix_modules_slug'), table_name='modules')
     op.drop_index(op.f('ix_modules_name'), table_name='modules')
     op.drop_index(op.f('ix_modules_id'), table_name='modules')
@@ -288,16 +225,10 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_roles_name'), table_name='roles')
     op.drop_index(op.f('ix_roles_id'), table_name='roles')
     op.drop_table('roles')
-    op.drop_index(op.f('ix_product_categories_id'), table_name='product_categories')
-    op.drop_table('product_categories')
-    op.drop_index(op.f('ix_product_brands_id'), table_name='product_brands')
-    op.drop_table('product_brands')
     op.drop_index(op.f('ix_module_groups_slug'), table_name='module_groups')
     op.drop_index(op.f('ix_module_groups_name'), table_name='module_groups')
     op.drop_index(op.f('ix_module_groups_id'), table_name='module_groups')
     op.drop_table('module_groups')
-    op.drop_index(op.f('ix_customers_id'), table_name='customers')
-    op.drop_table('customers')
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')

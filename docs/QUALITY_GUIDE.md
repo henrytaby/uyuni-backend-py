@@ -2,7 +2,7 @@
 
 ## 1. Introducción
 
-En este proyecto, mantenemos un estándar alto de calidad de código utilizando herramientas automatizadas de última generación. El objetivo es:
+En Uyuni-BackEnd, mantenemos un estándar alto de calidad de código utilizando herramientas automatizadas de última generación. El objetivo es:
 1.  **Uniformidad**: Que todo el código parezca escrito por una sola persona.
 2.  **Prevención de Errores**: Detectar bugs (variables no usadas, errores de tipo) *antes* de ejecutar el código.
 3.  **Velocidad**: Automatizar revisiones triviales para que los Code Reviews se enfoquen en lógica de negocio.
@@ -80,7 +80,7 @@ mypy .
 
 #### Tipado de SQLModel
 SQLModel combina SQLAlchemy y Pydantic. A veces MyPy se confunde con las consultas.
-*   **Convención**: Si MyPy se queja de algo que sabes que es correcto (ej. `AuditLog.timestamp.desc()`), puedes usar `# type: ignore` al final de la línea, pero úsalo con moderación.
+*   **Convención**: Si MyPy se queja de algo que sabes que es correcto (ej. `"AuditLog.timestamp.desc()"`), puedes usar `# type: ignore` al final de la línea, pero úsalo con moderación.
 
 ---
 
@@ -117,7 +117,7 @@ Además de pasar el linter, todo código debe cumplir con estos estándares arqu
 
 ### 6.1. Convenciones de Nombres (Naming)
 *   **Variables y Funciones**: `snake_case` (ej: `create_user`, `is_active`). Deben ser verbos o sustantivos descriptivos.
-*   **Clases**: `PascalCase` (ej: `UserRepository`, `ProductService`).
+*   **Clases**: `PascalCase` (ej: `StaffRepository`, `StaffService`).
 *   **Constantes**: `UPPER_CASE` (ej: `MAX_LOGIN_ATTEMPTS`).
 *   **Archivos**: `snake_case` (ej: `user_service.py`).
 

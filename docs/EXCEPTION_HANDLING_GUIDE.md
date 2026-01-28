@@ -39,16 +39,16 @@ Imagina que buscas un producto que no existe. Así viaja el error:
 
 ```mermaid
 sequenceDiagram
-    participant C as Cliente (Frontend)
-    participant R as Router (API Endpoint)
-    participant S as Service (Lógica de Negocio)
-    participant H as Exception Handler (Global)
+    participant C as "Cliente (Frontend)"
+    participant R as "Router (API Endpoint)"
+    participant S as "Service (Lógica de Negocio)"
+    participant H as "Exception Handler (Global)"
 
-    C->>R: GET /api/products/999
-    R->>S: get_product(999)
+    C->>R: GET /api/assets/999
+    R->>S: get_asset(999)
     
     Note over S: No encuentra nada
-    S-->>H: raise NotFoundException("Producto 999 no existe")
+    S-->>H: raise NotFoundException("Activo 999 no existe")
     
     Note over H: Intercepta el error automáticamente
     H-->>C: JSON Response { "detail": "..." } (HTTP 404)

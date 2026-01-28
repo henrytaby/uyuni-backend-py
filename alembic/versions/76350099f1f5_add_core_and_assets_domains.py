@@ -1,8 +1,8 @@
-"""Add core staff and fixed assets modules
+"""add_core_and_assets_domains
 
-Revision ID: 65ec41c5e5cd
-Revises: f51cbafde077
-Create Date: 2026-01-27 20:24:17.463506
+Revision ID: 76350099f1f5
+Revises: 9140397f6a6a
+Create Date: 2026-01-27 22:37:39.236360
 
 """
 from typing import Sequence, Union
@@ -13,8 +13,8 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = '65ec41c5e5cd'
-down_revision: Union[str, Sequence[str], None] = 'f51cbafde077'
+revision: str = '76350099f1f5'
+down_revision: Union[str, Sequence[str], None] = '9140397f6a6a'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -86,8 +86,8 @@ def upgrade() -> None:
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('external_id', sa.Integer(), nullable=False),
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
-    sa.Column('level', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
-    sa.Column('position_type', sqlmodel.sql.sqltypes.AutoString(length=10), nullable=True),
+    sa.Column('level', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
+    sa.Column('position_type', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
     sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['updated_by_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -116,21 +116,21 @@ def upgrade() -> None:
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('external_id', sa.Integer(), nullable=False),
     sa.Column('first_name', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
-    sa.Column('last_name_1', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
+    sa.Column('last_name_1', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
     sa.Column('last_name_2', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
     sa.Column('full_name', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
     sa.Column('birth_date', sa.Date(), nullable=True),
-    sa.Column('document_number', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False),
-    sa.Column('document_location', sqlmodel.sql.sqltypes.AutoString(length=10), nullable=True),
+    sa.Column('document_number', sqlmodel.sql.sqltypes.AutoString(length=20), nullable=False),
+    sa.Column('document_location', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
     sa.Column('email', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
-    sa.Column('cellphone', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
-    sa.Column('phone', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
+    sa.Column('cellphone', sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True),
+    sa.Column('phone', sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True),
     sa.Column('address', sqlmodel.sql.sqltypes.AutoString(length=500), nullable=True),
-    sa.Column('status', sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
-    sa.Column('staff_type', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
+    sa.Column('status', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('staff_type', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('movement_type', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
+    sa.Column('position_id', sa.Uuid(), nullable=False),
     sa.Column('org_unit_id', sa.Uuid(), nullable=False),
-    sa.Column('position_id', sa.Uuid(), nullable=True),
     sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['org_unit_id'], ['core_org_unit.id'], ),
     sa.ForeignKeyConstraint(['position_id'], ['core_staff_position.id'], ),

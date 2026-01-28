@@ -7,6 +7,7 @@ from sqlmodel import Session
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.org_units.models import OrgUnit
 from app.modules.core.org_units.schemas import OrgUnitCreate, OrgUnitRead, OrgUnitUpdate
 from app.modules.core.org_units.service import OrgUnitService
@@ -20,7 +21,8 @@ def create_org_unit(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.CREATE
+            module_slug=CoreModuleSlug.STAFF,
+            required_permission=PermissionAction.CREATE,
         )
     ),
 ):
@@ -37,7 +39,7 @@ def get_org_units(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.READ
+            module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
         )
     ),
 ):
@@ -50,7 +52,7 @@ def count_org_units(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.READ
+            module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
         )
     ),
 ):
@@ -64,7 +66,7 @@ def get_org_unit(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.READ
+            module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
         )
     ),
 ):
@@ -82,7 +84,8 @@ def update_org_unit(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.UPDATE
+            module_slug=CoreModuleSlug.STAFF,
+            required_permission=PermissionAction.UPDATE,
         )
     ),
 ):
@@ -99,7 +102,8 @@ def delete_org_unit(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.DELETE
+            module_slug=CoreModuleSlug.STAFF,
+            required_permission=PermissionAction.DELETE,
         )
     ),
 ):

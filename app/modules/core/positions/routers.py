@@ -7,6 +7,7 @@ from sqlmodel import Session
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.positions.models import StaffPosition
 from app.modules.core.positions.schemas import (
     StaffPositionCreate,
@@ -24,7 +25,8 @@ def create_position(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.CREATE
+            module_slug=CoreModuleSlug.STAFF,
+            required_permission=PermissionAction.CREATE,
         )
     ),
 ):
@@ -41,7 +43,7 @@ def get_positions(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.READ
+            module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
         )
     ),
 ):
@@ -54,7 +56,7 @@ def count_positions(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.READ
+            module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
         )
     ),
 ):
@@ -68,7 +70,7 @@ def get_position(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.READ
+            module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
         )
     ),
 ):
@@ -86,7 +88,8 @@ def update_position(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.UPDATE
+            module_slug=CoreModuleSlug.STAFF,
+            required_permission=PermissionAction.UPDATE,
         )
     ),
 ):
@@ -103,7 +106,8 @@ def delete_position(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="core_staff", required_permission=PermissionAction.DELETE
+            module_slug=CoreModuleSlug.STAFF,
+            required_permission=PermissionAction.DELETE,
         )
     ),
 ):

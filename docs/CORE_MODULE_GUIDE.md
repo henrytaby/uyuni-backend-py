@@ -111,3 +111,9 @@ Al importar routers como alias en el agregador de Core, utiliza siempre minúscu
 
 > [!NOTE]
 > Este módulo utiliza `TYPE_CHECKING` para resolver referencias circulares entre modelos jerárquicos y relaciones cruzadas, manteniendo la compatibilidad estricta con **MyPy**.
+
+## 5. Integración RBAC
+Los submódulos de Core utilizan constantes específicas para su protección granular:
+- **Staff**: CoreModuleSlug.STAFF (slug: core_staff).
+- **Org Units**: CoreModuleSlug.ORG_UNIT (slug: core_org_unit).
+- **Positions**: CoreModuleSlug.POSITIONS (slug: core_positions).

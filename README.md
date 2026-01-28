@@ -1,18 +1,17 @@
-# Uyuni BackEnd API
+# Uyuni-BackEnd API
 
-API RESTful construida con FastAPI para la gestión de productos, tareas, categorías y marcas.
+API RESTful construida con FastAPI para la gestión integral de Personal (Staff) y Activos Fijos.
 
 ## Descripción
 
-Este proyecto es una API modular diseñada con buenas prácticas de ingeniería de software, enfocada en la escalabilidad y mantenibilidad. Permite gestionar:
+Este proyecto es una API profesional diseñada con una **Arquitectura Modular (DDD-Lite)**, enfocada en la escalabilidad y mantenibilidad empresarial. Permite gestionar:
 
-*   **Tareas**: Control básico de tareas.
-*   **Productos**: Gestión de inventario con relaciones a categorías y marcas.
-*   **Clientes**: Administración de usuarios/clientes.
-*   **Catálogo**: Gestión centralizada de Categorías y Marcas.
-*   **Seguridad**: Autenticación JWT robusta con **Rotación de Tokens**, Logout seguro (Blacklist), **Protección Anti-Bruteforce (Lockout)** y Hashing de contraseñas.
-*   **Auditoría**: Sistema completo de registro de accesos y cambios de datos (CDC) con almacenamiento histórico.
-
+*   **Gestión de Personal (Core)**: Control de empleados, unidades organizacionales y cargos.
+*   **Activos Fijos (Assets)**: Inventario detallado, códigos SAF, estados de conservación y ubicaciones físicas.
+*   **Gestión Documental**: Control de actas de asignación y entrega vinculadas a activos.
+*   **Tareas**: Sistema básico de seguimiento de actividades operativas.
+*   **Seguridad**: Autenticación JWT robusta con **Rotación de Tokens**, Logout seguro y **RBAC (Control de Acceso Basado en Roles)**.
+*   **Auditoría**: Registro transversal de accesos y cambios de datos (CDC) mediante Hooks de SQLAlchemy.
 ## Arquitectura
 
 El proyecto implementa una **Arquitectura Modular** apoyada en el **Patrón Repositorio**.
@@ -20,8 +19,8 @@ El proyecto implementa una **Arquitectura Modular** apoyada en el **Patrón Repo
 ### Diagrama de Flujo de Datos
 ```mermaid
 graph LR
-    A[Router] --> B[Service]
-    B --> C[Repository]
+    A["Router"] --> B["Service"]
+    B --> C["Repository"]
     C --> D["Database (SQLModel)"]
 ```
 
@@ -169,12 +168,16 @@ El sistema implementa un modelo de seguridad granular basado en **Roles** y **M�
     *   Si se envía el header `X-Active-Role`, se restringen los permisos exclusivamente a ese rol (Personificación).
 *   **Data Scope**: Soporte para `scope_all` (Ver Todo) vs (Ver Propio).
 *   **Superusuario**: Acceso total ignorando reglas.
-*   **Dependencia de Seguridad**: Se utiliza `PermissionChecker` para proteger endpoints:
+*   **Dependencia de Seguridad**: Se utiliza `PermissionChecker` para proteger endpoints usando constantes modulares:
     ```python
-    # Ejemplo: Requerir permiso de CREAR en el módulo 'tasks'
-    Depends(PermissionChecker(module_slug="tasks", required_permission=PermissionAction.CREATE))
-    ```
-*   **Menús Dinámicos**: Endpoint `/me/menu/{role_slug}` genera la estructura del menú.
+    # Ejemplo: Requerir permiso de LECTURA en el módulo 'staff'
+    from app.modules.core.constants import CoreModuleSlug
+    
+    Depends(PermissionChecker(
+        module_slug=CoreModuleSlug.STAFF, 
+        required_permission=PermissionAction.READ
+    ))
+    ```*   **Menús Dinámicos**: Endpoint `/me/menu/{role_slug}` genera la estructura del menú.
 
 Para detalles de implementación y recetas, ver la **[Guía de RBAC (Permisos)](docs/RBAC_GUIDE.md)**.
 

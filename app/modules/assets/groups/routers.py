@@ -7,6 +7,7 @@ from sqlmodel import Session
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.modules.assets.constants import AssetsModuleSlug
 from app.modules.assets.groups.models import AssetGroup
 from app.modules.assets.groups.schemas import (
     AssetGroupCreate,
@@ -24,7 +25,8 @@ def create_group(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="assets", required_permission=PermissionAction.CREATE
+            module_slug=AssetsModuleSlug.GENERAL,
+            required_permission=PermissionAction.CREATE,
         )
     ),
 ):
@@ -41,7 +43,8 @@ def get_groups(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="assets", required_permission=PermissionAction.READ
+            module_slug=AssetsModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
         )
     ),
 ):
@@ -54,7 +57,8 @@ def count_groups(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="assets", required_permission=PermissionAction.READ
+            module_slug=AssetsModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
         )
     ),
 ):
@@ -68,7 +72,8 @@ def get_group(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="assets", required_permission=PermissionAction.READ
+            module_slug=AssetsModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
         )
     ),
 ):
@@ -86,7 +91,8 @@ def update_group(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="assets", required_permission=PermissionAction.UPDATE
+            module_slug=AssetsModuleSlug.GENERAL,
+            required_permission=PermissionAction.UPDATE,
         )
     ),
 ):
@@ -103,7 +109,8 @@ def delete_group(
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug="assets", required_permission=PermissionAction.DELETE
+            module_slug=AssetsModuleSlug.GENERAL,
+            required_permission=PermissionAction.DELETE,
         )
     ),
 ):
