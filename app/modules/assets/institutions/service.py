@@ -20,8 +20,9 @@ class InstitutionService:
         limit: int = 100,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
+        search: Optional[str] = None,
     ) -> Sequence[Institution]:
-        return self.repository.get_all(offset, limit, sort_by, sort_order)
+        return self.repository.get_all(offset, limit, sort_by, sort_order, search)
 
     def get_by_id(self, id: UUID) -> Optional[Institution]:
         return self.repository.get_by_id(id)
@@ -32,5 +33,5 @@ class InstitutionService:
     def delete(self, id: UUID) -> bool:
         return self.repository.delete(id)
 
-    def count(self) -> int:
-        return self.repository.count()
+    def count(self, search: Optional[str] = None) -> int:
+        return self.repository.count(search)

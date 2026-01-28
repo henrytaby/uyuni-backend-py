@@ -36,6 +36,7 @@ def get_org_units(
     limit: int = 100,
     sort_by: Optional[str] = Query(None),
     sort_order: str = Query("asc"),
+    search: Optional[str] = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -44,11 +45,12 @@ def get_org_units(
     ),
 ):
     service = OrgUnitService(session)
-    return service.get_all(offset, limit, sort_by, sort_order)
+    return service.get_all(offset, limit, sort_by, sort_order, search)
 
 
 @router.get("/count")
 def count_org_units(
+    search: Optional[str] = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -57,7 +59,43 @@ def count_org_units(
     ),
 ):
     service = OrgUnitService(session)
-    return {"total": service.count()}
+    return {"total": service.count(search)}
+
+
+@router.get("/acronym/{acronym}", response_model=List[OrgUnitRead])
+def get_org_units_by_acronym(
+    acronym: str,
+    offset: int = 0,
+    limit: int = 100,
+    sort_by: Optional[str] = Query(None),
+    sort_order: str = Query("asc"),
+    search: Optional[str] = Query(None),
+    session: Session = Depends(get_session),
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
+        )
+    ),
+):
+    service = OrgUnitService(session)
+    return service.get_by_acronym_paginated(
+        acronym, offset, limit, sort_by, sort_order, search
+    )
+
+
+@router.get("/acronym/{acronym}/count")
+def count_org_units_by_acronym(
+    acronym: str,
+    search: Optional[str] = Query(None),
+    session: Session = Depends(get_session),
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
+        )
+    ),
+):
+    service = OrgUnitService(session)
+    return {"total": service.count_by_acronym(acronym, search)}
 
 
 @router.get("/{id}", response_model=OrgUnitRead)

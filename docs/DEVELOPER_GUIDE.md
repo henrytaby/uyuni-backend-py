@@ -102,6 +102,8 @@ from app.core.repository import BaseRepository
 from .models import NuevoRecurso
 
 class NuevoRecursoRepository(BaseRepository[NuevoRecurso]):
+    # Define campos para búsqueda global (?search=)
+    searchable_fields = ["nombre", "codigo"] 
     def __init__(self, session):
         super().__init__(session, NuevoRecurso)
 ```

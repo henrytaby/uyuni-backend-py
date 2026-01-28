@@ -72,11 +72,13 @@ app = FastAPI(
         },
         {
             "name": "Core Staff - Personal",
-            "description": "Administración del capital humano y datos maestros del personal.",
+            "description": "Administración del capital humano "
+            "y datos maestros del personal.",
         },
         {
             "name": "Core Staff - Org Units",
-            "description": "Gestión de la estructura organizacional y unidades administrativas.",
+            "description": "Gestión de la estructura organizacional "
+            "y unidades administrativas.",
         },
         {
             "name": "Core Staff - Positions",
@@ -84,27 +86,33 @@ app = FastAPI(
         },
         {
             "name": "Assets - Institutions",
-            "description": "Registro de entidades gubernamentales y organizaciones externas.",
+            "description": "Registro de entidades gubernamentales "
+            "y organizaciones externas.",
         },
         {
             "name": "Assets - Areas",
-            "description": "Control de ubicaciones físicas y áreas geográficas de inventario.",
+            "description": "Control de ubicaciones físicas "
+            "y áreas geográficas de inventario.",
         },
         {
             "name": "Assets - Asset Groups",
-            "description": "Categorización lógica y contable de los bienes del sistema.",
+            "description": "Categorización lógica y contable "
+            "de los bienes del sistema.",
         },
         {
             "name": "Assets - Asset Statuses",
-            "description": "Gestión de estados de conservación y situación legal de activos.",
+            "description": "Gestión de estados de conservación "
+            "y situación legal de activos.",
         },
         {
             "name": "Assets - Acts",
-            "description": "Control documental de actas de asignación, entrega y respaldo.",
+            "description": "Control documental de actas de asignación, "
+            "entrega y respaldo.",
         },
         {
             "name": "Assets - Fixed Assets",
-            "description": "Gestión centralizada de Bienes de Uso, códigos SAF y verificación física.",
+            "description": "Gestión centralizada de Bienes de Uso, "
+            "códigos SAF y verificación física.",
         },
     ],
     openapi_url="/openapi.json",

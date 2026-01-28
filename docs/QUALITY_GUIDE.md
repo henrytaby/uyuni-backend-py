@@ -27,18 +27,6 @@ La configuración se encuentra en el archivo `ruff.toml`.
 *   **Versión Python**: `3.10`.
 *   **Exclusiones**: La carpeta `alembic/` (migraciones autogeneradas) está excluida.
 
-#### Reglas Activas (`[lint] select`)
-Habilitamos familias de reglas específicas:
-*   `E` (pycodestyle errors): Errores de estilo básicos.
-*   `W` (pycodestyle warnings): Advertencias de estilo.
-*   `F` (pyflakes): Errores lógicos (variables no usadas, imports rotos).
-*   **`I` (isort)**: **Ordenamiento de imports**. Ruff ordena tus imports automáticamente (Librería estándar -> Terceros -> Proyecto).
-*   `B` (flake8-bugbear): Detección de patrones propensos a bugs.
-
-#### Excepciones Importantes
-*   **Ignore `B008`**: "Do not perform function calls in argument defaults".
-    *   *Por qué*: FastAPI usa `Depends()` como valor por defecto en argumentos de función. Esta regla choca con el diseño de FastAPI, por eso la desactivamos.
-
 ### 2.3. Uso para Desarrolladores
 
 ```bash
@@ -56,31 +44,16 @@ ruff format .
 
 ## 3. MyPy (Tipado Estático)
 
-[MyPy](https://mypy.readthedocs.io/) es un verificador de tipos estático. Python es dinámico, pero con "Type Hints" (pistas de tipo) y MyPy, podemos validar la corrección del código sin ejecutarlo.
+[MyPy](https://mypy.readthedocs.io/) es un verificador de tipos estático.
 
 ### 3.1. ¿Para qué se usa?
 Para asegurar que si una función espera un `int`, no le pases un `str`. Esto previene `TypeError` en producción.
 
-### 3.2. Configuración (`mypy.ini`)
-
-*   **Plugin Pydantic**: `plugins = pydantic.mypy`.
-    *   *Crucial*: Permite a MyPy entender los modelos de Pydantic y SQLModel, que usan mucha metaprogramación y validación en tiempo de ejecución.
-*   **Ignore Missing Imports**: `True`. Evita errores si usamos librerías externas que no tienen tipos definidos.
-*   **Strictness**:
-    *   `warn_return_any`: Avisa si una función devuelve `Any` cuando debería devolver algo específico.
-    *   `warn_unused_configs`: Avisa si hay configuración basura en el archivo.
-
-### 3.3. Uso para Desarrolladores
+### 3.2. Uso para Desarrolladores
 
 ```bash
 mypy .
 ```
-
-**Nota**: Si ves errores de `import`, a veces es necesario crear un archivo `__init__.py` en carpetas de scripts para que MyPy las trate como módulos.
-
-#### Tipado de SQLModel
-SQLModel combina SQLAlchemy y Pydantic. A veces MyPy se confunde con las consultas.
-*   **Convención**: Si MyPy se queja de algo que sabes que es correcto (ej. `"AuditLog.timestamp.desc()"`), puedes usar `# type: ignore` al final de la línea, pero úsalo con moderación.
 
 ---
 
@@ -90,48 +63,50 @@ Antes de hacer `git commit`, ejecuta siempre:
 
 ```bash
 # 1. Corrige imports y errores simples
-./env/bin/ruff check --fix .
+ruff check --fix .
 
 # 2. Formatea el código bonito
-./env/bin/ruff format .
+ruff format .
 
 # 3. Verifica tipos estrictos
-./env/bin/mypy .
+mypy .
 ```
 
-Si todo pasa en verde ("All checks passed", "Success"), tu código está listo para revisión.
-
 ---
 
-## 5. Recursos Adicionales
+## 5. Estándares de Excelencia (Clean Code & Arquitectura)
 
-*   [Reglas de Ruff](https://docs.astral.sh/ruff/rules/): Lista completa de qué significa cada código (E501, F401, etc.).
-*   [FastAPI & MyPy](https://fastapi.tiangolo.com/python-types/): Guía oficial de FastAPI sobre tipos.
-*   [Pydantic Plugin for MyPy](https://docs.pydantic.dev/latest/integrations/mypy/): Detalles sobre la integración de tipos.
-
----
-
-## 6. Estándares de Excelencia (Clean Code & Arquitectura)
-
-Además de pasar el linter, todo código debe cumplir con estos estándares arquitectónicos y de estilo:
-
-### 6.1. Convenciones de Nombres (Naming)
+### 5.1. Convenciones de Nombres (Naming)
 *   **Variables y Funciones**: `snake_case` (ej: `create_user`, `is_active`). Deben ser verbos o sustantivos descriptivos.
 *   **Clases**: `PascalCase` (ej: `StaffRepository`, `StaffService`).
 *   **Constantes**: `UPPER_CASE` (ej: `MAX_LOGIN_ATTEMPTS`).
 *   **Archivos**: `snake_case` (ej: `user_service.py`).
 
-### 6.2. Arquitectura Limpia (Clean Architecture)
+#### 5.1.1. Métodos Privados y Encapsulamiento (`_`)
+Siguiendo el estándar **PEP 8**, cualquier método o variable que sea de uso **estrictamente interno** de una clase debe comenzar con un guion bajo (`_`).
+
+*   **¿Por qué usar `_nombre`?**: 
+    1.  **Encapsulamiento**: Separa la "Cocina" (lógica técnica) de la "Puerta Principal" (acciones que el Router puede invocar).
+    2.  **Seguridad**: Indica a otros desarrolladores que ese método no debe ser llamado desde fuera de la clase.
+    3.  **Limpia el Autocompletado**: Los IDEs ocultan estos métodos al escribir `service.`, dejando solo las acciones de negocio visibles.
+
+**Ejemplo en Servicios**:
+```python
+class OrgUnitService:
+    # Acción Pública (Lo que el Router ve)
+    def get_management_units(self, ...):
+        filters = self._get_filters() # Usa el ayudante interno
+        return self.repository.get_all(..., extra_filters=filters)
+
+    # Ayudante Privado (Oculto al Router)
+    def _get_filters(self):
+        return [OrgUnit.type == "MANAGEMENT"]
+```
+
+### 5.2. Arquitectura Limpia (Clean Architecture)
 El código debe respetar estrictamente la jerarquía de capas:
 1.  **Router (Capa HTTP)**: Solo maneja Request/Response, Status Codes y DTOs.
-    *   ❌ *Prohibido*: Lógica de negocio o consultas SQL directas.
 2.  **Service (Capa de Negocio)**: Contiene la lógica del caso de uso.
-    *   ❌ *Prohibido*: Retornar `HTTPException` (usar Excepciones de Dominio como `NotFoundException`).
-    *   ❌ *Prohibido*: Depender de `Request` o `Response` de FastAPI.
 3.  **Repository (Capa de Datos)**: Abstrae el acceso a la DB.
-    *   ❌ *Prohibido*: Lógica de negocio compleja.
 
-### 6.3. Tipado y DTOs
-*   **Schemas (Pydantic)**: Son solo para transferencia de datos.
-    *   ❌ *Prohibido*: Acceder a la Base de Datos dentro de un validador de Pydantic (Violación de Capas).
-*   **Type Hints**: Todo argumento y retorno de función pública debe estar tipado.
+Riverside

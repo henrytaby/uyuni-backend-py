@@ -20,11 +20,9 @@ class StaffService:
         limit: int = 100,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
-        query: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> Sequence[Staff]:
-        if query:
-            return self.repository.search(query, offset, limit, sort_by, sort_order)
-        return self.repository.get_all(offset, limit, sort_by, sort_order)
+        return self.repository.get_all(offset, limit, sort_by, sort_order, search)
 
     def get_by_id(self, id: UUID) -> Optional[Staff]:
         return self.repository.get_by_id(id)
@@ -35,5 +33,5 @@ class StaffService:
     def delete(self, id: UUID) -> bool:
         return self.repository.delete(id)
 
-    def count(self) -> int:
-        return self.repository.count()
+    def count(self, search: Optional[str] = None) -> int:
+        return self.repository.count(search)

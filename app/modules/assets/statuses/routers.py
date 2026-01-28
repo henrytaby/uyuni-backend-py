@@ -40,6 +40,7 @@ def get_statuses(
     limit: int = 100,
     sort_by: Optional[str] = Query(None),
     sort_order: str = Query("asc"),
+    search: Optional[str] = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -49,11 +50,12 @@ def get_statuses(
     ),
 ):
     service = AssetStatusService(session)
-    return service.get_all(offset, limit, sort_by, sort_order)
+    return service.get_all(offset, limit, sort_by, sort_order, search)
 
 
 @router.get("/count")
 def count_statuses(
+    search: Optional[str] = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -63,7 +65,7 @@ def count_statuses(
     ),
 ):
     service = AssetStatusService(session)
-    return {"total": service.count()}
+    return {"total": service.count(search)}
 
 
 @router.get("/{id}", response_model=AssetStatusRead)

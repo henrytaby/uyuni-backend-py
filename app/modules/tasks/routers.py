@@ -83,6 +83,11 @@ async def update_task(
 # ----------------------
 @router.get("/", response_model=list[Task])
 async def get_tasks(
+    offset: int = 0,
+    limit: int = 100,
+    sort_by: str | None = None,
+    sort_order: str = "asc",
+    search: str | None = None,
     service: TaskService = Depends(get_service),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -94,7 +99,24 @@ async def get_tasks(
     """
     Get all tasks.
     """
-    return service.get_tasks()
+    return service.get_tasks(offset, limit, sort_by, sort_order, search)
+
+
+@router.get("/count")
+async def count_tasks(
+    search: str | None = None,
+    service: TaskService = Depends(get_service),
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=TasksModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
+        )
+    ),
+):
+    """
+    Count tasks.
+    """
+    return {"total": service.count(search)}
 
 
 # DELETE - Eliminar una tarea

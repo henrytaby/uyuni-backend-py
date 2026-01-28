@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 
 from app.core.exceptions import NotFoundException
 
@@ -39,8 +40,18 @@ class TaskService:
 
     # GET ALL PLANS
     # ----------------------
-    def get_tasks(self, offset: int = 0, limit: int = 100):
-        return self.repository.get_all(offset, limit)
+    def get_tasks(
+        self,
+        offset: int = 0,
+        limit: int = 100,
+        sort_by: Optional[str] = None,
+        sort_order: str = "asc",
+        search: Optional[str] = None,
+    ):
+        return self.repository.get_all(offset, limit, sort_by, sort_order, search)
+
+    def count(self, search: Optional[str] = None) -> int:
+        return self.repository.count(search)
 
     # DELETE
     # ----------------------

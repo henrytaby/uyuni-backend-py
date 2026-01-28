@@ -11,6 +11,7 @@ Este proyecto es una API profesional diseñada con una **Arquitectura Modular (D
 *   **Gestión Documental**: Control de actas de asignación y entrega vinculadas a activos.
 *   **Tareas**: Sistema básico de seguimiento de actividades operativas.
 *   **Seguridad**: Autenticación JWT robusta con **Rotación de Tokens**, Logout seguro y **RBAC (Control de Acceso Basado en Roles)**.
+*   **Búsqueda Inteligente**: Motor de búsqueda global polimórfico y sistema de filtros avanzados (AND/OR) inyectables.
 *   **Auditoría**: Registro transversal de accesos y cambios de datos (CDC) mediante Hooks de SQLAlchemy.
 ## Arquitectura
 
@@ -247,6 +248,7 @@ if not user:
 ### 11. Documentación para Desarrolladores
 ¿Quieres profundizar en el desarrollo? Consulta nuestras guías detalladas:
 
+2.  **[Guía del Sistema de Consultas (Búsqueda y Filtros)](docs/QUERY_SYSTEM_GUIDE.md)**
 1.  **[Manual del Desarrollador (Creación de Módulos)](docs/DEVELOPER_GUIDE.md)**
 2.  **[Guía de Autenticación y Seguridad](docs/AUTHENTICATION_GUIDE.md)**
 3.  **[Guía de Testing Automatizado](docs/TESTING_GUIDE.md)**

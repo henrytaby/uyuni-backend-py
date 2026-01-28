@@ -1,15 +1,38 @@
 import uuid
-from typing import Generic, Optional, Sequence, Type, TypeVar, Union
+from typing import Any, Generic, List, Optional, Sequence, Type, TypeVar, Union
 
-from sqlmodel import Session, SQLModel, select
+from sqlalchemy import String, cast
+from sqlmodel import Session, SQLModel, col, func, or_, select
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
 
 
 class BaseRepository(Generic[ModelType]):
+    searchable_fields: List[str] = []
+
     def __init__(self, session: Session, model: Type[ModelType]):
         self.session = session
         self.model = model
+
+    def _apply_search(self, statement, search: Optional[str]):
+        if search and self.searchable_fields:
+            search_filters = []
+            for field in self.searchable_fields:
+                if not hasattr(self.model, field):
+                    continue
+
+                column = getattr(self.model, field)
+                # Cast all fields to String for a true "Global Search"
+                # This handles mixed types (int, float) in PostgreSQL
+                try:
+                    target = col(column)
+                    search_filters.append(cast(target, String).ilike(f"%{search}%"))
+                except Exception:
+                    search_filters.append(cast(column, String).ilike(f"%{search}%"))
+
+            if search_filters:
+                statement = statement.where(or_(*search_filters))
+        return statement
 
     def get_all(
         self,
@@ -17,8 +40,17 @@ class BaseRepository(Generic[ModelType]):
         limit: int = 100,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
+        search: Optional[str] = None,
+        extra_filters: Optional[List[Any]] = None,
     ) -> Sequence[ModelType]:
         statement = select(self.model)
+
+        # Apply generic search
+        statement = self._apply_search(statement, search)
+
+        # Apply extra filters if provided
+        if extra_filters:
+            statement = statement.where(*extra_filters)
 
         if sort_by and hasattr(self.model, sort_by):
             column = getattr(self.model, sort_by)
@@ -30,10 +62,18 @@ class BaseRepository(Generic[ModelType]):
         statement = statement.offset(offset).limit(limit)
         return self.session.exec(statement).all()
 
-    def count(self) -> int:
-        from sqlmodel import func
-
+    def count(
+        self, search: Optional[str] = None, extra_filters: Optional[List[Any]] = None
+    ) -> int:
         statement = select(func.count()).select_from(self.model)
+
+        # Apply generic search to count
+        statement = self._apply_search(statement, search)
+
+        # Apply extra filters to count
+        if extra_filters:
+            statement = statement.where(*extra_filters)
+
         return self.session.exec(statement).one()
 
     def get_by_id(self, id: Union[uuid.UUID, int]) -> Optional[ModelType]:
