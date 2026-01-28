@@ -1,8 +1,10 @@
 from fastapi import APIRouter
 
 from app.auth import routers as Auth
+from app.modules.assets import routers as Assets
 from app.modules.catalog.products_brand import routers as Brand
 from app.modules.catalog.products_category import routers as ProductCategory
+from app.modules.core import routers as Core
 from app.modules.customers import routers as Customer
 from app.modules.products import routers as Product
 from app.modules.tasks import routers as Task
@@ -23,3 +25,9 @@ router.include_router(
 router.include_router(
     Brand.router, prefix="/catalog/product_brand", tags=["Products Brand"]
 )
+
+# Core Domain (Unified Entry Point)
+router.include_router(Core.router)
+
+# Assets
+router.include_router(Assets.router)

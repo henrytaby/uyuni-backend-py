@@ -11,9 +11,30 @@ class BaseRepository(Generic[ModelType]):
         self.session = session
         self.model = model
 
-    def get_all(self, offset: int = 0, limit: int = 100) -> Sequence[ModelType]:
-        statement = select(self.model).offset(offset).limit(limit)
+    def get_all(
+        self,
+        offset: int = 0,
+        limit: int = 100,
+        sort_by: Optional[str] = None,
+        sort_order: str = "asc",
+    ) -> Sequence[ModelType]:
+        statement = select(self.model)
+
+        if sort_by and hasattr(self.model, sort_by):
+            column = getattr(self.model, sort_by)
+            if sort_order.lower() == "desc":
+                statement = statement.order_by(column.desc())
+            else:
+                statement = statement.order_by(column.asc())
+
+        statement = statement.offset(offset).limit(limit)
         return self.session.exec(statement).all()
+
+    def count(self) -> int:
+        from sqlmodel import func
+
+        statement = select(func.count()).select_from(self.model)
+        return self.session.exec(statement).one()
 
     def get_by_id(self, id: Union[uuid.UUID, int]) -> Optional[ModelType]:
         return self.session.get(self.model, id)

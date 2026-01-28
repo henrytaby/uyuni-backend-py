@@ -73,6 +73,10 @@ app = FastAPI(
             "name": "Customers",
             "description": "Lista de Customers",
         },
+        {
+            "name": "Assets",
+            "description": "Gestión Integral de Activos Fijos y Actas de Respaldo",
+        },
     ],
     openapi_url="/openapi.json",
 )
