@@ -1,12 +1,13 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.core.exceptions import NotFoundException
 from app.modules.assets.acts.models import Act
 from app.modules.assets.acts.schemas import ActCreate, ActRead, ActUpdate
 from app.modules.assets.acts.service import ActService
@@ -78,7 +79,7 @@ def get_act(
     service = ActService(session)
     act = service.get_by_id(id)
     if not act:
-        raise HTTPException(status_code=404, detail="Act not found")
+        raise NotFoundException(detail="Act not found")
     return act
 
 
@@ -97,7 +98,7 @@ def update_act(
     service = ActService(session)
     act = service.update(id, data.model_dump(exclude_unset=True))
     if not act:
-        raise HTTPException(status_code=404, detail="Act not found")
+        raise NotFoundException(detail="Act not found")
     return act
 
 
@@ -114,5 +115,5 @@ def delete_act(
 ):
     service = ActService(session)
     if not service.delete(id):
-        raise HTTPException(status_code=404, detail="Act not found")
+        raise NotFoundException(detail="Act not found")
     return {"ok": True}

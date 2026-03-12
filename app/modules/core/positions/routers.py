@@ -1,12 +1,13 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.core.exceptions import NotFoundException
 from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.positions.models import StaffPosition
 from app.modules.core.positions.schemas import (
@@ -77,7 +78,7 @@ def get_position(
     service = StaffPositionService(session)
     position = service.get_by_id(id)
     if not position:
-        raise HTTPException(status_code=404, detail="Position not found")
+        raise NotFoundException(detail="Position not found")
     return position
 
 
@@ -96,7 +97,7 @@ def update_position(
     service = StaffPositionService(session)
     position = service.update(id, data.model_dump(exclude_unset=True))
     if not position:
-        raise HTTPException(status_code=404, detail="Position not found")
+        raise NotFoundException(detail="Position not found")
     return position
 
 
@@ -113,5 +114,5 @@ def delete_position(
 ):
     service = StaffPositionService(session)
     if not service.delete(id):
-        raise HTTPException(status_code=404, detail="Position not found")
+        raise NotFoundException(detail="Position not found")
     return {"ok": True}

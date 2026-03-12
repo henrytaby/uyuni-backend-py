@@ -27,7 +27,7 @@ class RoleModule(BaseModel, AuditMixin, table=True):
         description="If True, user can see all data. If False, only own data.",
     )
 
-    # Relatoinship
+    # Relationship
     role_slug: Optional[str] = Field(default=None, foreign_key="roles.slug")
     role: Optional["Role"] = Relationship(back_populates="role_modules")
 
@@ -44,6 +44,6 @@ class Role(BaseModel, AuditMixin, table=True):
     icon: str | None = Field(default=None)
     sort_order: int | None = Field(default=None)
 
-    # Relatoinship
+    # Relationship
     role_modules: List["RoleModule"] = Relationship(back_populates="role")
     user_roles: List["UserRole"] = Relationship(back_populates="role")

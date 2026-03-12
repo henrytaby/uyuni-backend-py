@@ -1,12 +1,13 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.core.exceptions import NotFoundException
 from app.modules.assets.constants import AssetsModuleSlug
 from app.modules.assets.statuses.models import AssetStatus
 from app.modules.assets.statuses.schemas import (
@@ -82,7 +83,7 @@ def get_status(
     service = AssetStatusService(session)
     status = service.get_by_id(id)
     if not status:
-        raise HTTPException(status_code=404, detail="Asset Status not found")
+        raise NotFoundException(detail="Asset Status not found")
     return status
 
 
@@ -101,7 +102,7 @@ def update_status(
     service = AssetStatusService(session)
     status = service.update(id, data.model_dump(exclude_unset=True))
     if not status:
-        raise HTTPException(status_code=404, detail="Asset Status not found")
+        raise NotFoundException(detail="Asset Status not found")
     return status
 
 
@@ -118,5 +119,5 @@ def delete_status(
 ):
     service = AssetStatusService(session)
     if not service.delete(id):
-        raise HTTPException(status_code=404, detail="Asset Status not found")
+        raise NotFoundException(detail="Asset Status not found")
     return {"ok": True}

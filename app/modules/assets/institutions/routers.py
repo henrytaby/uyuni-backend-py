@@ -1,12 +1,13 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.core.exceptions import NotFoundException
 from app.modules.assets.constants import AssetsModuleSlug
 from app.modules.assets.institutions.models import Institution
 from app.modules.assets.institutions.schemas import (
@@ -82,7 +83,7 @@ def get_institution(
     service = InstitutionService(session)
     institution = service.get_by_id(id)
     if not institution:
-        raise HTTPException(status_code=404, detail="Institution not found")
+        raise NotFoundException(detail="Institution not found")
     return institution
 
 
@@ -101,7 +102,7 @@ def update_institution(
     service = InstitutionService(session)
     institution = service.update(id, data.model_dump(exclude_unset=True))
     if not institution:
-        raise HTTPException(status_code=404, detail="Institution not found")
+        raise NotFoundException(detail="Institution not found")
     return institution
 
 
@@ -118,5 +119,5 @@ def delete_institution(
 ):
     service = InstitutionService(session)
     if not service.delete(id):
-        raise HTTPException(status_code=404, detail="Institution not found")
+        raise NotFoundException(detail="Institution not found")
     return {"ok": True}

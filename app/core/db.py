@@ -14,10 +14,14 @@ from app.core.config import settings
 """
 Docs about this implementation
 https://fastapi.tiangolo.com/tutorial/sql-databases/#run-the-app
+
+WARNING: create_db_and_tables() uses SQLModel.metadata.create_all() which is
+suitable for development and testing. For production deployments, use Alembic
+migrations to manage database schema changes safely.
 """
 
 
-def json_serializer(obj):
+def json_serializer(obj) -> str:
     if isinstance(obj, uuid.UUID):
         return str(obj)
     return json.dumps(obj, ensure_ascii=False)

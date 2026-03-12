@@ -200,7 +200,7 @@ class AuthService:
     def refresh_access_token(self, refresh_token: str):
         try:
             payload = utils.decode_token(refresh_token)
-            username: str = payload.get("sub")
+            username = payload.get("sub")
             if username is None:
                 raise UnauthorizedException(detail="Invalid refresh token")
         except JWTError:
@@ -236,7 +236,7 @@ class AuthService:
     def logout(self, token: str, refresh_token: str | None = None):
         try:
             payload = utils.decode_token(token)
-            user_id: int = payload.get("id")
+            user_id = payload.get("id")
             if user_id is None:
                 raise UnauthorizedException(detail="Invalid token")
         except JWTError:
@@ -255,7 +255,7 @@ class AuthService:
             try:
                 # Validate the refresh token before revoking
                 rf_payload = utils.decode_token(refresh_token)
-                rf_user_id: int = rf_payload.get("id")
+                rf_user_id = rf_payload.get("id")
 
                 # Ensure the refresh token belongs to the user
                 if rf_user_id != user_id:

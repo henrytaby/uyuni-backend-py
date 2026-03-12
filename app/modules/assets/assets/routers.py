@@ -1,12 +1,13 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.core.exceptions import NotFoundException
 from app.modules.assets.assets.models import FixedAsset
 from app.modules.assets.assets.schemas import (
     FixedAssetCreate,
@@ -82,7 +83,7 @@ def get_asset(
     service = FixedAssetService(session)
     asset = service.get_by_id(id)
     if not asset:
-        raise HTTPException(status_code=404, detail="Asset not found")
+        raise NotFoundException(detail="Asset not found")
     return asset
 
 
@@ -101,7 +102,7 @@ def update_asset(
     service = FixedAssetService(session)
     asset = service.update(id, data.model_dump(exclude_unset=True))
     if not asset:
-        raise HTTPException(status_code=404, detail="Asset not found")
+        raise NotFoundException(detail="Asset not found")
     return asset
 
 
@@ -118,5 +119,5 @@ def delete_asset(
 ):
     service = FixedAssetService(session)
     if not service.delete(id):
-        raise HTTPException(status_code=404, detail="Asset not found")
+        raise NotFoundException(detail="Asset not found")
     return {"ok": True}

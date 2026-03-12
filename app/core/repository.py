@@ -60,7 +60,7 @@ class BaseRepository(Generic[ModelType]):
                 statement = statement.order_by(column.asc())
 
         statement = statement.offset(offset).limit(limit)
-        return self.session.exec(statement).all()
+        return self.session.exec(statement).all()  # type: ignore[no-any-return]
 
     def count(
         self, search: Optional[str] = None, extra_filters: Optional[List[Any]] = None
@@ -74,7 +74,8 @@ class BaseRepository(Generic[ModelType]):
         if extra_filters:
             statement = statement.where(*extra_filters)
 
-        return self.session.exec(statement).one()
+        result = self.session.exec(statement).one()
+        return int(result)  # type: ignore[arg-type]
 
     def get_by_id(self, id: Union[uuid.UUID, int]) -> Optional[ModelType]:
         return self.session.get(self.model, id)

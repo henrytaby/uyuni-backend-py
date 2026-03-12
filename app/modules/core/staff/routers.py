@@ -1,12 +1,13 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.core.exceptions import NotFoundException
 from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.staff.models import Staff
 from app.modules.core.staff.schemas import StaffCreate, StaffRead, StaffUpdate
@@ -75,7 +76,7 @@ def get_staff(
     service = StaffService(session)
     staff = service.get_by_id(id)
     if not staff:
-        raise HTTPException(status_code=404, detail="Staff not found")
+        raise NotFoundException(detail="Staff not found")
     return staff
 
 
@@ -94,7 +95,7 @@ def update_staff(
     service = StaffService(session)
     staff = service.update(id, data.model_dump(exclude_unset=True))
     if not staff:
-        raise HTTPException(status_code=404, detail="Staff not found")
+        raise NotFoundException(detail="Staff not found")
     return staff
 
 
@@ -111,5 +112,5 @@ def delete_staff(
 ):
     service = StaffService(session)
     if not service.delete(id):
-        raise HTTPException(status_code=404, detail="Staff not found")
+        raise NotFoundException(detail="Staff not found")
     return {"ok": True}

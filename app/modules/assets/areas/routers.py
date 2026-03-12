@@ -1,12 +1,13 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.core.exceptions import NotFoundException
 from app.modules.assets.areas.models import Area
 from app.modules.assets.areas.schemas import AreaCreate, AreaRead, AreaUpdate
 from app.modules.assets.areas.service import AreaService
@@ -78,7 +79,7 @@ def get_area(
     service = AreaService(session)
     area = service.get_by_id(id)
     if not area:
-        raise HTTPException(status_code=404, detail="Area not found")
+        raise NotFoundException(detail="Area not found")
     return area
 
 
@@ -97,7 +98,7 @@ def update_area(
     service = AreaService(session)
     area = service.update(id, data.model_dump(exclude_unset=True))
     if not area:
-        raise HTTPException(status_code=404, detail="Area not found")
+        raise NotFoundException(detail="Area not found")
     return area
 
 
@@ -114,5 +115,5 @@ def delete_area(
 ):
     service = AreaService(session)
     if not service.delete(id):
-        raise HTTPException(status_code=404, detail="Area not found")
+        raise NotFoundException(detail="Area not found")
     return {"ok": True}

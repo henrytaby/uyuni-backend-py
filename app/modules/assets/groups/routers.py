@@ -1,12 +1,13 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.core.exceptions import NotFoundException
 from app.modules.assets.constants import AssetsModuleSlug
 from app.modules.assets.groups.models import AssetGroup
 from app.modules.assets.groups.schemas import (
@@ -82,7 +83,7 @@ def get_group(
     service = AssetGroupService(session)
     group = service.get_by_id(id)
     if not group:
-        raise HTTPException(status_code=404, detail="Asset Group not found")
+        raise NotFoundException(detail="Asset Group not found")
     return group
 
 
@@ -101,7 +102,7 @@ def update_group(
     service = AssetGroupService(session)
     group = service.update(id, data.model_dump(exclude_unset=True))
     if not group:
-        raise HTTPException(status_code=404, detail="Asset Group not found")
+        raise NotFoundException(detail="Asset Group not found")
     return group
 
 
@@ -118,5 +119,5 @@ def delete_group(
 ):
     service = AssetGroupService(session)
     if not service.delete(id):
-        raise HTTPException(status_code=404, detail="Asset Group not found")
+        raise NotFoundException(detail="Asset Group not found")
     return {"ok": True}

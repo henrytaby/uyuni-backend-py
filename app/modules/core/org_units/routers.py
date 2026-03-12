@@ -1,12 +1,13 @@
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import get_session
+from app.core.exceptions import NotFoundException
 from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.org_units.models import OrgUnit
 from app.modules.core.org_units.schemas import OrgUnitCreate, OrgUnitRead, OrgUnitUpdate
@@ -111,7 +112,7 @@ def get_org_unit(
     service = OrgUnitService(session)
     org_unit = service.get_by_id(id)
     if not org_unit:
-        raise HTTPException(status_code=404, detail="Org Unit not found")
+        raise NotFoundException(detail="Org Unit not found")
     return org_unit
 
 
@@ -130,7 +131,7 @@ def update_org_unit(
     service = OrgUnitService(session)
     org_unit = service.update(id, data.model_dump(exclude_unset=True))
     if not org_unit:
-        raise HTTPException(status_code=404, detail="Org Unit not found")
+        raise NotFoundException(detail="Org Unit not found")
     return org_unit
 
 
@@ -147,5 +148,5 @@ def delete_org_unit(
 ):
     service = OrgUnitService(session)
     if not service.delete(id):
-        raise HTTPException(status_code=404, detail="Org Unit not found")
+        raise NotFoundException(detail="Org Unit not found")
     return {"ok": True}

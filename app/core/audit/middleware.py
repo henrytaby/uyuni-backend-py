@@ -1,5 +1,6 @@
 import uuid
 
+import structlog
 from fastapi import Request
 from sqlmodel import Session
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -10,6 +11,8 @@ from app.core.config import settings
 from app.models.audit import AuditLog
 
 from .context import set_audit_context
+
+logger = structlog.get_logger("audit.middleware")
 
 
 class AuditMiddleware(BaseHTTPMiddleware):
@@ -97,6 +100,6 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 session.add(log)
                 session.commit()
         except Exception as e:
-            print(f"Audit Log Error: {e}")
+            logger.error("audit_log_error", error=str(e), path=path, method=method)
 
         return response
