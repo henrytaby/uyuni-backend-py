@@ -1,0 +1,7 @@
+{
+  "instructions": [
+    "AGENTS.md",
+    ".kilo/rules/memory-bank/*.md"
+  ],
+  "default_agent": "code"
+}

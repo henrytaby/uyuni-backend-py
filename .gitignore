@@ -188,4 +188,12 @@ pip-selfcheck.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,venv
 
+### Kilo Code ###
+.kilo/node_modules/
+.kilo/package.json
+.kilo/bun.lock
+
+### Legacy (deprecated) ###
+.kilocode/
+
 ### End of .gitignore ###
