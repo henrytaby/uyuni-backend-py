@@ -37,7 +37,7 @@ This is the Uyuni Backend - a FastAPI enterprise application with:
 1. Follow Clean Code principles (SOLID, DRY, KISS)
 2. Complete type hints on all functions
 3. Use structlog for logging (never print())
-4. Use NotFoundException/ForbiddenException for error handling
+4. Use CustomException hierarchy: NotFoundException, BadRequestException, UnauthorizedException, ForbiddenException, InternalServerErrorException
 5. All models must be imported in alembic/env.py
 6. Use Alembic migrations (never create_all() in production)
 7. In-Memory SQLite for tests

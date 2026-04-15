@@ -33,7 +33,7 @@ Each domain module contains: `routers.py`, `service.py`, `repository.py`, `model
 - Strict Clean Code principles (SOLID, DRY, KISS)
 - Complete type hints required
 - Use structlog for all logging (never print())
-- Custom exceptions: `NotFoundException`, `ForbiddenException`
+- Custom exceptions: `NotFoundException`, `ForbiddenException`, `BadRequestException`, `UnauthorizedException`, `InternalServerErrorException` (all extend `CustomException`)
 - All models must be imported in `alembic/env.py`
 - Use Alembic migrations (never `create_all()` in production)
 - In-Memory SQLite for tests
@@ -44,11 +44,29 @@ Each domain module contains: `routers.py`, `service.py`, `repository.py`, `model
 - `/typecheck` - Run Mypy type checking
 - `/migrate` - Run Alembic database migrations
 
-## Memory Bank
-Detailed project context is maintained in `.kilo/rules/memory-bank/`:
-- `projectbrief.md` - Project objectives and features
-- `productContext.md` - User personas and workflows
-- `systemPatterns.md` - Architecture and design patterns
-- `techContext.md` - Tech stack and project structure
-- `progress.md` - Milestones and current status
-- `developerPersona.md` - Developer role definition
+## AI Agent Configuration (`.kilo/`)
+
+This project uses a `.kilo/` configuration directory for AI agent tooling.
+Other AI tools (Cursor, Gemini, Qwen, Kimi, Cline, etc.) can reference these files for full project context.
+
+### Root Config
+- `kilo.json` - Points to all instruction files and sets `code` as default agent
+
+### Agents (`.kilo/agent/`)
+- `code.md` - **Primary agent**: Senior Backend Developer with full edit/bash permissions. Handles coding, testing, migrations, and linting.
+- `architect.md` - **Sub-agent**: Architecture and database design specialist. Read-heavy with restricted edits. Invoked internally by `code` for strategic decisions.
+
+### Commands (`.kilo/command/`)
+- `test.md` - Defines `/test` command: runs `pytest $ARGUMENTS` with optional file/directory targeting
+- `lint.md` - Defines `/lint` command: runs `ruff check --fix` + `ruff format` on `app/` and `tests/`
+- `typecheck.md` - Defines `/typecheck` command: runs `mypy app/ --ignore-missing-imports`
+- `migrate.md` - Defines `/migrate` command: runs `alembic upgrade head` or `alembic revision --autogenerate` with a message
+
+### Memory Bank (`.kilo/rules/memory-bank/`)
+Detailed project context maintained across sessions:
+- `projectbrief.md` - Project objectives, features, structure, target users, and success metrics
+- `productContext.md` - User personas (Admin, Asset Manager, Staff Manager, Auditor), workflows, and technical constraints
+- `systemPatterns.md` - Architecture layers, design patterns (Repository, DI, RBAC, Audit), data models, error handling, and testing strategy
+- `techContext.md` - Tech stack details, dev setup, environment variables, project structure, API endpoints, database schema, and deployment
+- `progress.md` - Completed milestones (5 phases), in-progress items, pending features, known issues, and technical debt
+- `developerPersona.md` - Developer role definition: Senior Backend Architect with 10 core competencies and response style guidelines

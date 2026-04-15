@@ -127,32 +127,67 @@ Architecture:
 
 ### Custom Exceptions
 ```python
-class NotFoundException(HTTPException):
-    def __init__(self, detail: str = "Resource not found"):
-        super().__init__(status_code=404, detail=detail)
+class CustomException(Exception):
+    def __init__(self, detail: Any, headers: Optional[dict[str, str]] = None):
+        self.detail = detail
+        self.headers = headers
 
-class ForbiddenException(HTTPException):
-    def __init__(self, detail: str = "Access denied"):
-        super().__init__(status_code=403, detail=detail)
+class NotFoundException(CustomException): ...
+class BadRequestException(CustomException): ...
+class UnauthorizedException(CustomException): ...
+class ForbiddenException(CustomException): ...
+class InternalServerErrorException(CustomException): ...
 ```
 
 ### Global Handlers
-Registered in `app/core/handlers.py`:
+Registered in `app/core/handlers.py` — each handler maps an exception to its HTTP status code:
 - `NotFoundException` → 404 response
+- `BadRequestException` → 400 response
+- `UnauthorizedException` → 401 response
 - `ForbiddenException` → 403 response
-- Generic `Exception` → 500 response (with logging)
+- `InternalServerErrorException` → 500 response (with logging)
 
 ## Configuration
 
 ### Environment Variables
 ```python
 class Settings(BaseSettings):
+    # App
+    PROJECT_NAME: str = "Uyuni-BackEnd"
+    VERSION: str = "v1"
+    PORT: int = 8000
+    ENVIRONMENT: str = "local"
+
+    # CORS
+    BACKEND_CORS_ORIGINS: list[AnyHttpUrl] = []
+
+    # Database
     DATABASE_URL: str
+
+    # Auth
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    MAX_LOGIN_ATTEMPTS: int = 5
-    LOCKOUT_DURATION_MINUTES: int = 30
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
+    REFRESH_TOKEN_EXPIRE_DAYS: int
+
+    # Security Lockout
+    SECURITY_LOGIN_MAX_ATTEMPTS: int = 5
+    SECURITY_LOCKOUT_MINUTES: int = 15
+
+    # Utils
+    TIME_ZONE: int
+    PROJECT_ROOT: str = ...
+
+    # Audit
+    ENABLE_ACCESS_AUDIT: bool = True
+    ENABLE_DATA_AUDIT: bool = True
+
+    # Log Controls
+    ENABLE_ACCESS_LOGS: bool = True
+    ACCESS_LOGS_ONLY_ERRORS: bool = False
+    AUDIT_EXCLUDED_PATHS: list[str] = [...]
+    AUDIT_LOG_EXCLUDE_STATUS_CODES: list[int] = [404]
+    AUDIT_LOG_INCLUDED_METHODS: list[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 ```
 
 ### Database Connection
@@ -208,3 +243,23 @@ alembic upgrade head
 - `docs/AUTHENTICATION_GUIDE.md` - JWT Authentication
 - `docs/ALEMBIC_GUIDE.md` - Database Migrations
 - `docs/AUDIT_GUIDE.md` - Audit System
+- `docs/ASSETS_MODULE_GUIDE.md` - Assets module usage
+- `docs/AUTH_ANALYSIS.md` - Authentication analysis
+- `docs/CODE_STANDARDS_REVIEW.md` - Code standards review
+- `docs/CORE_MODULE_GUIDE.md` - Core module usage
+- `docs/DESIGN_PATTERNS_GUIDE.md` - Design patterns reference
+- `docs/DEVELOPER_GUIDE.md` - Developer onboarding guide
+- `docs/EXCEPTION_HANDLING_GUIDE.md` - Exception handling patterns
+- `docs/FRONTEND_AUTH_GUIDE.md` - Frontend authentication integration
+- `docs/OBSERVABILITY_GUIDE.md` - Observability and monitoring
+- `docs/PROJECT_ANALYSIS.md` - Project analysis
+- `docs/PROJECT_ANALYSIS_REVIEW.md` - Project analysis review
+- `docs/QUALITY_GUIDE.md` - Code quality standards
+- `docs/QUERY_SYSTEM_GUIDE.md` - Query system guide
+- `docs/SOLID_GUIDE.md` - SOLID principles reference
+- `docs/TESTING_GUIDE.md` - Testing strategy and patterns
+
+### Utility Scripts
+- `scripts/archive_audit.py` - Archive and prune old audit logs (cold storage)
+- `scripts/demo_audit.py` - Audit system demonstration
+- `scripts/reset_db_schema.py` - Reset database schema

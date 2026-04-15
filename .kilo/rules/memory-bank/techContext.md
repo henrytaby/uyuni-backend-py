@@ -59,12 +59,23 @@ uvicorn app.main:app --reload
 ### Environment Variables
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | Required |
-| `SECRET_KEY` | JWT signing key | Required |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime | 15 |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token lifetime | 7 |
-| `MAX_LOGIN_ATTEMPTS` | Failed attempts before lockout | 5 |
-| `LOCKOUT_DURATION_MINUTES` | Account lockout duration | 30 |
+| `PROJECT_NAME` | Application name | `"Uyuni-BackEnd"` |
+| `VERSION` | API version | `"v1"` |
+| `PORT` | Server port | `8000` |
+| `ENVIRONMENT` | Runtime environment | `"local"` |
+| `BACKEND_CORS_ORIGINS` | Allowed CORS origins | `[]` |
+| `DATABASE_URL` | PostgreSQL connection string | **Required** |
+| `SECRET_KEY` | JWT signing key | **Required** |
+| `ALGORITHM` | JWT algorithm | **Required** |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime (minutes) | **Required** |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token lifetime (days) | **Required** |
+| `SECURITY_LOGIN_MAX_ATTEMPTS` | Failed attempts before lockout | `5` |
+| `SECURITY_LOCKOUT_MINUTES` | Account lockout duration (minutes) | `15` |
+| `TIME_ZONE` | UTC offset | **Required** |
+| `ENABLE_ACCESS_AUDIT` | Enable access audit logging | `True` |
+| `ENABLE_DATA_AUDIT` | Enable CDC audit logging | `True` |
+| `ENABLE_ACCESS_LOGS` | Master switch for access logging | `True` |
+| `ACCESS_LOGS_ONLY_ERRORS` | Only log 4xx/5xx responses | `False` |
 
 ## Project Structure
 
@@ -99,6 +110,9 @@ uyuni-backend-py/
 ├── docs/                  # Documentation
 ├── seeds/                 # Database seed scripts
 └── scripts/               # Utility scripts
+    ├── archive_audit.py       # Archive and prune old audit logs
+    ├── demo_audit.py          # Audit system demonstration
+    └── reset_db_schema.py     # Reset database schema
 ```
 
 ## API Endpoints
