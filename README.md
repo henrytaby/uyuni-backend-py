@@ -54,7 +54,7 @@ Uso de `pydantic-settings` para cargar y validar variables de entorno desde `.en
 
 ## Tecnologías
 
-*   **Python 3.10+**
+*   **Python 3.12**
 *   **FastAPI**: Framework web moderno y rápido.
 *   **SQLModel**: ORM que combina SQLAlchemy y Pydantic.
 *   **PostgreSQL**: Base de datos relacional.
@@ -63,7 +63,7 @@ Uso de `pydantic-settings` para cargar y validar variables de entorno desde `.en
 ## Instalación y Configuración
 
 ### 1. Requisitos Previos
-*   Python 3.10+
+*   Python 3.12
 *   PostgreSQL
 *   Git
 
@@ -178,7 +178,9 @@ El sistema implementa un modelo de seguridad granular basado en **Roles** y **M�
         module_slug=CoreModuleSlug.STAFF, 
         required_permission=PermissionAction.READ
     ))
-    ```*   **Menús Dinámicos**: Endpoint `/me/menu/{role_slug}` genera la estructura del menú.
+    ```
+    
+*   **Menús Dinámicos**: Endpoint `/me/menu/{role_slug}` genera la estructura del menú.
 
 Para detalles de implementación y recetas, ver la **[Guía de RBAC (Permisos)](docs/RBAC_GUIDE.md)**.
 
@@ -259,6 +261,31 @@ if not user:
 8.  **[Guía de Calidad de Código (Linting & Typing)](docs/QUALITY_GUIDE.md)**
 9.  **[Guía de Principios SOLID](docs/SOLID_GUIDE.md)**
 10. **[Guía de Patrones de Diseño](docs/DESIGN_PATTERNS_GUIDE.md)**
+11. **[Guía de Auditoría](docs/AUDIT_GUIDE.md)**
+
+## Scripts y Utilidades
+
+El proyecto incluye scripts en la carpeta `scripts/` para tareas de mantenimiento. **Siempre deben ejecutarse usando el intérprete del entorno virtual (`venv`)**.
+
+### 1. Limpieza de Base de Datos
+Borra el esquema público y lo recrea (útil en desarrollo para empezar de cero).
+```bash
+./venv/bin/python scripts/reset_db_schema.py
+```
+
+### 2. Archivado de Auditoría
+Mueve logs antiguos de la base de datos a archivos comprimidos en disco.
+```bash
+# Ejemplo: Archivar logs de más de 90 días en la carpeta 'archive/'
+./venv/bin/python scripts/archive_audit.py --days 90 --dir archive
+```
+
+### 3. Demo de Auditoría
+Script interactivo que realiza operaciones (Login, Create, Update) y muestra los logs generados en tiempo real.
+```bash
+./venv/bin/python scripts/demo_audit.py
+```
+
 ## Ejecución
 
 Modo desarrollo (con hot-reload):

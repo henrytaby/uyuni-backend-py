@@ -81,7 +81,7 @@ Usamos pares de **Access Token** (corto plazo) y **Refresh Token** (largo plazo)
 *   **Access Token**: 15 minutos. Stateless. Se usa para cada request.
 *   **Refresh Token**: 7 días. Stateful (se valida en BD). Se usa SOLO para obtener nuevos access tokens.
 *   **Logout Hardening**:
-    *   El endpoint `/logout` **requiere autenticación**.
+    *   El endpoint `/api/auth/logout` **requiere autenticación**.
     *   Valida que el `refresh_token` enviado pertenezca al usuario del `access_token`.
     *   Si es válido, revoca AMBOS tokens añadiéndolos a `UserRevokedToken` (Blacklist).
 
@@ -133,7 +133,7 @@ sequenceDiagram
     participant Service
     participant DB
     
-    User->>Router: POST /logout(access_token, refresh_token)
+    User->>Router: POST /api/auth/logout(access_token, refresh_token)
     Router->>Service: Valida access_token (Dependency)
     Service->>Service: Decodifica refresh_token
     Service->>Service: Verifica ownership (refresh.user_id == access.user_id)

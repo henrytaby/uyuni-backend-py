@@ -102,7 +102,7 @@ El Router solo llama a los métodos públicos. No tiene acceso a los privados (`
 @router.get("/by-acronym/{acronym}")
 def get_list(
     acronym: str,
-    search: Optional[str] = Query(None),
+    search: str | None = Query(None),
     service: MyService = Depends(get_service)
 ):
     # El Router no sabe nada de _get_my_filters, solo pide la acción de negocio

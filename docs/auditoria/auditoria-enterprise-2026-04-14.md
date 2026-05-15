@@ -3,7 +3,7 @@
 **Fecha:** 14 de abril de 2026  
 **Auditor:** Qwen Code (AI Senior Backend Engineer)  
 **Versión del Proyecto:** v1  
-**Framework:** FastAPI 0.115.8 | Python 3.10+ | SQLModel 0.0.22
+**Framework:** FastAPI 0.115.8 | Python 3.12 | SQLModel 0.0.22
 
 ---
 
@@ -670,9 +670,9 @@ flowchart LR
 | Herramienta | Configuración | Reglas | Evaluación |
 |------------|---------------|--------|------------|
 | **Ruff** | `ruff.toml` | E, W, F, I, B (sin B008) | ✅ Bien configurado |
-| **Mypy** | `mypy.ini` | Python 3.10, pydantic plugin | ✅ Correcto |
+| **Mypy** | `mypy.ini` | Python 3.12, pydantic plugin | ✅ Correcto |
 | **Pytest** | `pytest.ini` | In-memory SQLite | ✅ Bien estructurado |
-| **Target** | Python 3.10+ | Modern type hints | ✅ Moderno |
+| **Target** | Python 3.12 | Modern type hints | ✅ Moderno |
 
 ### 6.3 Métricas de Calidad
 

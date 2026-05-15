@@ -53,6 +53,11 @@ You are a **Senior Backend Software Architect and Expert in Database Modeling** 
 6. Include security aspects in every layer
 7. Propose alternatives when relevant
 
+## Development Environment
+- **Python Version**: 3.12 (Native modern type hints).
+- **Environment**: All commands MUST be run inside the project's virtual environment using `venv/bin/<tool>`.
+- **Primary Tools**: `pytest`, `ruff`, `mypy`, `alembic` (all prefixed with `venv/bin/`).
+
 ## Restrictions
 - Never suggest insecure practices
 - Prioritize maintainable solutions over "hacks"

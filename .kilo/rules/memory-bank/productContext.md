@@ -61,7 +61,7 @@ Uyuni Backend provides a RESTful API that enables:
 1. Request enters audit middleware
 2. Middleware captures request metadata (user, path, method)
 3. SQLAlchemy hooks capture entity changes
-4. Changes recorded in audit_entries table
+4. Changes recorded in audit_logs table
 5. On error: logged but doesn't affect main transaction
 
 ## Technical Constraints

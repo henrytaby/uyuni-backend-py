@@ -35,7 +35,7 @@ El archivo `tests/conftest.py` es el corazón de nuestro sistema de pruebas. Con
     *   Útil si necesitas relacionar datos con un usuario existente.
 
 4.  **`superuser_token_headers`**:
-    *   Realiza un login real contra el endpoint `/api/auth/token` usando el usuario `superuser`.
+    *   Realiza un login real contra el endpoint `/api/auth/login` usando el usuario `superuser`.
     *   Devuelve un diccionario: `{"Authorization": "Bearer <token>"}`.
     *   Este es el fixture que usarás en el 90% de los tests de endpoints protegidos.
 
@@ -47,16 +47,16 @@ Desde la raíz del proyecto (asegúrate de tener el entorno virtual activado):
 
 ```bash
 # Ejecutar todos los tests
-pytest
+./venv/bin/pytest
 
 # Ejecutar con salida detallada (ver nombres de tests)
-pytest -v
+./venv/bin/pytest -v
 
 # Ejecutar tests que coincidan con un nombre específico (ej: "create")
-pytest -k "create"
+./venv/bin/pytest -k "create"
 
 # Ejecutar y detenerse al primer fallo
-pytest -x
+./venv/bin/pytest -x
 ```
 
 ---

@@ -75,7 +75,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Archive old audit logs")
     parser.add_argument("--days", type=int, default=90, help="Days of retention")
     parser.add_argument(
-        "--dir", type=str, default="/opt/uab/archive", help="Archive directory"
+        "--dir", type=str, default="archive", help="Archive directory"
     )
 
     args = parser.parse_args()

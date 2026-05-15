@@ -40,7 +40,7 @@ Has creado una nueva carpeta de módulo `app/modules/assets/inventory` y definid
 3.  **Generar Migración:**
     Ejecuta el siguiente comando en tu terminal (asegúrate de que el entorno virtual esté activo):
     ```bash
-    alembic revision --autogenerate -m "Agregar tabla de productos de inventario"
+    ./venv/bin/alembic revision --autogenerate -m "Agregar tabla de productos de inventario"
     ```
 4.  **Verificar Migración:**
     Revisa el archivo generado en `alembic/versions/`.
@@ -48,7 +48,7 @@ Has creado una nueva carpeta de módulo `app/modules/assets/inventory` y definid
     *   ❌ **Mal:** Ves `def upgrade(): pass` (Migración vacía). **Solución:** Vuelve al Paso 2.
 5.  **Aplicar Migración:**
     ```bash
-    alembic upgrade head
+    ./venv/bin/alembic upgrade head
     ```
 
 ### Receta 2: Modificando un Modelo Existente
@@ -62,10 +62,10 @@ Quieres agregar una columna `stock_count` al modelo existente `Product`.
     ```
 2.  **Generar Migración:**
     ```bash
-    alembic revision --autogenerate -m "Agregar stock_count a producto"
+    ./venv/bin/alembic revision --autogenerate -m "Agregar stock_count a producto"
     ```
 3.  **Verificar y Aplicar:**
-    Revisa el archivo buscando `op.add_column(...)` y ejecuta `alembic upgrade head`.
+    Revisa el archivo buscando `op.add_column(...)` y ejecuta `./venv/bin/alembic upgrade head`.
 
 ### Error Común: `UndefinedTable`
 Si ves un error como `psycopg2.errors.UndefinedTable: relation "product" does not exist`, significa:

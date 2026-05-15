@@ -24,7 +24,7 @@ Las herramientas principales son **Ruff** (Linting y Formateo) y **MyPy** (Tipad
 La configuración se encuentra en el archivo `ruff.toml`.
 
 *   **Longitud de línea**: `88` caracteres (Estándar de la industria).
-*   **Versión Python**: `3.10`.
+*   **Versión Python**: `3.12`.
 *   **Exclusiones**: La carpeta `alembic/` (migraciones autogeneradas) está excluida.
 
 ### 2.3. Uso para Desarrolladores

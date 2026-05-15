@@ -50,7 +50,7 @@ def run_demo():
         "password": "password",
     }  # Assuming default superuser
     try:
-        response = httpx.post(f"{BASE_URL}/api/auth/token", data=login_data)
+        response = httpx.post(f"{BASE_URL}/api/auth/login", data=login_data)
         if response.status_code != 200:
             print(f"Login failed: {response.text}")
             # Try generic admin if superuser fails, or maybe we need to create one?
@@ -65,8 +65,7 @@ def run_demo():
         task_data = {
             "title": "Audit Demo Task",
             "description": "This task was created to test the audit system.",
-            "status": "pending",
-            "is_active": True,
+            "completed": False,
         }
         res_create = httpx.post(
             f"{BASE_URL}/api/tasks/", json=task_data, headers=headers
@@ -79,7 +78,7 @@ def run_demo():
         print(f"Task created with ID: {task_id}\n")
 
         print("--- 3. Updating the Task (Triggers ACCESS + UPDATE Audit) ---")
-        update_data = {"title": "Audit Demo Task (Updated)", "status": "in_progress"}
+        update_data = {"title": "Audit Demo Task (Updated)", "completed": True}
         res_update = httpx.patch(
             f"{BASE_URL}/api/tasks/{task_id}", json=update_data, headers=headers
         )

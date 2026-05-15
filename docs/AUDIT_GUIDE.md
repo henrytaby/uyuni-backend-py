@@ -154,7 +154,7 @@ Se debe configurar un **Cron Job** (tarea programada) en el servidor para ejecut
 
 ```bash
 # Ejemplo de ejecución manual (archivar logs de más de 30 días)
-python scripts/archive_audit.py --days 30 --dir /mnt/backups/audit
+./venv/bin/python scripts/archive_audit.py --days 30 --dir /mnt/backups/audit
 ```
 
 ---
