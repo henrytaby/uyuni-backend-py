@@ -19,23 +19,23 @@ class Staff(BaseModel, AuditMixin, table=True):
     first_name: str = Field(max_length=100)
     last_name_1: str = Field(max_length=100)
     last_name_2: str | None = Field(default=None, max_length=100)
-    full_name: str = Field(max_length=255)
+    full_name: str = Field(max_length=255, index=True)
 
     birth_date: date | None = None
     document_number: str = Field(index=True, unique=True, max_length=20)
     document_location: str | None = Field(default=None, max_length=50)
 
-    email: str | None = Field(default=None, max_length=255)
+    email: str | None = Field(default=None, max_length=255, index=True)
     cellphone: str | None = Field(default=None, max_length=20)
     phone: str | None = Field(default=None, max_length=20)
     address: str | None = Field(default=None, max_length=500)
 
     status: str = Field(default="INCORPORADO")
     staff_type: str = Field(default="SERVIDOR PÚBLICO")
-    is_active: bool = Field(default=True)
+    is_active: bool = Field(default=True, index=True)
 
-    position_id: uuid.UUID = Field(foreign_key="core_staff_position.id")
-    org_unit_id: uuid.UUID = Field(foreign_key="core_org_unit.id")
+    position_id: uuid.UUID = Field(foreign_key="core_staff_position.id", index=True)
+    org_unit_id: uuid.UUID = Field(foreign_key="core_org_unit.id", index=True)
 
     # Relationships
     org_unit: "OrgUnit" = Relationship(back_populates="staff")

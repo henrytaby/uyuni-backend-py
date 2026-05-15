@@ -14,10 +14,10 @@ class StaffPosition(BaseModel, AuditMixin, table=True):
 
     external_id: int = Field(index=True, description="Original system item number")
     item_number: int | None = Field(default=None, description="Public institution item number")
-    name: str = Field(max_length=255)
+    name: str = Field(max_length=255, index=True)
     level: str | None = Field(default=None, max_length=50)
     position_type: str | None = Field(default=None, max_length=100)
-    is_active: bool = Field(default=True)
+    is_active: bool = Field(default=True, index=True)
 
     # Relationships
     staff: List["Staff"] = Relationship(back_populates="position")

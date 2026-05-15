@@ -37,6 +37,8 @@ def get_staff_list(
     sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
     search: str | None = Query(None),
+    is_active: bool | None = Query(None),
+    org_unit_id: UUID | None = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -45,12 +47,22 @@ def get_staff_list(
     ),
 ):
     service = StaffService(session)
-    return service.get_all(offset, limit, sort_by, sort_order, search)
+    return service.get_all(
+        offset=offset,
+        limit=limit,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        search=search,
+        is_active=is_active,
+        org_unit_id=org_unit_id,
+    )
 
 
 @router.get("/count")
 def count_staff(
     search: str | None = Query(None),
+    is_active: bool | None = Query(None),
+    org_unit_id: UUID | None = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -59,7 +71,13 @@ def count_staff(
     ),
 ):
     service = StaffService(session)
-    return {"total": service.count(search)}
+    return {
+        "total": service.count(
+            search=search,
+            is_active=is_active,
+            org_unit_id=org_unit_id,
+        )
+    }
 
 
 @router.get("/{id}", response_model=StaffReadDetailed)
