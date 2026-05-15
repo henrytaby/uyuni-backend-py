@@ -55,6 +55,8 @@
 - [x] Upgraded to Python 3.12 (recreated venv with `python3.12 -m venv venv`)
 - [x] Updated all AI agent config files to enforce venv usage (`venv/bin/<tool>`)
 - [x] Updated all memory-bank files to reflect Python 3.12
+- [x] Implemented ETL Data Synchronization script (`sync_siger.py`) with UPSERT and Soft-Delete capabilities from external `an_core` DB.
+- [x] Extended `core` domain models (`Staff`, `StaffPosition`, `OrgUnit`) to support external integer mappings (`external_id`, `item_number`, `external_parent_id`) and `is_active` soft-deletes.
 
 ### In Progress
 - [ ] Rate limiting for authentication endpoints

@@ -286,6 +286,13 @@ Script interactivo que realiza operaciones (Login, Create, Update) y muestra los
 ./venv/bin/python scripts/demo_audit.py
 ```
 
+### 4. Sincronización de Datos ETL (SIGER)
+Script idempotente (Upsert + Soft-Delete) para sincronizar masivamente Unidades Organizacionales, Cargos y Funcionarios desde la base de datos externa `an_core` hacia `fastapi_product` preservando llaves foráneas UUID locales.
+```bash
+# Requiere configurar SYNC_DATABASE_URL en .env
+./venv/bin/python scripts/sync_siger.py
+```
+
 ## Ejecución
 
 Modo desarrollo (con hot-reload):

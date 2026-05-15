@@ -28,6 +28,7 @@ Each domain module contains: `routers.py`, `service.py`, `repository.py`, `model
 - **Dependency Injection**: FastAPI `Depends()` throughout
 - **RBAC**: User → Role → RoleModule → Module + Permissions (CRUD)
 - **Audit**: Middleware captures request context + SQLAlchemy hooks for CDC
+- **ETL Synchronization**: Python scripts (e.g. `sync_siger.py`) using Upsert and Soft-Delete (`is_active=False`) mapping sequential external IDs to internal `UUIDv7` keys (`external_id`).
 
 ## Code Conventions
 - Strict Clean Code principles (SOLID, DRY, KISS)

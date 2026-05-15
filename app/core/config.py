@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str
+    SYNC_DATABASE_URL: str | None = None
 
     # Auth
     SECRET_KEY: str

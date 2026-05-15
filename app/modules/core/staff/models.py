@@ -33,6 +33,7 @@ class Staff(BaseModel, AuditMixin, table=True):
     status: str = Field(default="INCORPORADO")
     staff_type: str = Field(default="SERVIDOR PÚBLICO")
     movement_type: str | None = Field(default=None, max_length=100)
+    is_active: bool = Field(default=True)
 
     position_id: uuid.UUID = Field(foreign_key="core_staff_position.id")
     org_unit_id: uuid.UUID = Field(foreign_key="core_org_unit.id")
