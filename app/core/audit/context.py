@@ -8,9 +8,7 @@ audit_user_id_cv: ContextVar[uuid.UUID | None] = ContextVar(
     "audit_user_id", default=None
 )
 # ContextVar to store current username
-audit_username_cv: ContextVar[str | None] = ContextVar(
-    "audit_username", default=None
-)
+audit_username_cv: ContextVar[str | None] = ContextVar("audit_username", default=None)
 # ContextVar to store current IP address
 audit_ip_address_cv: ContextVar[str | None] = ContextVar(
     "audit_ip_address", default=None

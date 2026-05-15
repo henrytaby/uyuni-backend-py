@@ -101,8 +101,6 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 session.add(log)
                 session.commit()
         except Exception as e:
-            logger.error(
-                "audit_log_error", error=str(e), path=path, method=method
-            )
+            logger.error("audit_log_error", error=str(e), path=path, method=method)
 
         return response

@@ -58,7 +58,7 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     description=description,
     version=settings.VERSION,
-    redoc_url=None,  # Disabled default due to jsdelivr.net being blocked in some networks
+    redoc_url=None,  # Disabled default due to jsdelivr.net being blocked
     license_info={"name": "MIT License", "url": "https://opensource.org/license/mit"},
     contact={
         "name": "Henry Alejandro Taby Zenteno",

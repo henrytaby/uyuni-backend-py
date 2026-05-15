@@ -39,9 +39,7 @@ class FixedAsset(BaseModel, AuditMixin, table=True):
     org_unit_id: UUID = Field(foreign_key="core_org_unit.id")
 
     assigned_staff_id: UUID | None = Field(default=None, foreign_key="core_staff.id")
-    custodian_staff_id: UUID | None = Field(
-        default=None, foreign_key="core_staff.id"
-    )
+    custodian_staff_id: UUID | None = Field(default=None, foreign_key="core_staff.id")
 
     # Relationships
     group: "AssetGroup" = Relationship(back_populates="fixed_assets")
