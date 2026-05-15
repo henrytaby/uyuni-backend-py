@@ -6,7 +6,6 @@ from sqlmodel import Session
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.auth.utils import decode_token
-from app.core import db
 from app.core.config import settings
 from app.models.audit import AuditLog
 
@@ -16,6 +15,15 @@ logger = structlog.get_logger("audit.middleware")
 
 
 class AuditMiddleware(BaseHTTPMiddleware):
+    """Middleware that logs access events to the audit_logs table.
+
+    The SQLAlchemy engine is resolved at runtime via ``request.app.state.engine``,
+    which is the standard FastAPI pattern for sharing application state across
+    middleware and endpoints. The engine is assigned during the application
+    lifespan (see ``main.py``) and can be swapped in tests by setting
+    ``app.state.engine = test_engine``.
+    """
+
     async def dispatch(self, request: Request, call_next):
         # 1. Check Global Disable
         if not settings.ENABLE_ACCESS_AUDIT:
@@ -38,22 +46,15 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 else:
                     return await call_next(request)
 
-        # 3. Process Request (We need to run this to get dependencies
-        # resolved like skip_audit)
-        # Note: Middleware runs BEFORE dependencies, so populating ContextVars
-        # here is tricky if we depend on deps.
-        # However, for JWT extraction we can do it manually here.
-
-        # Extract User ID from Token (Manual decode to avoid interfering
+        # 2. Extract User ID from Token (Manual decode to avoid interfering
         # with Auth Dependencies)
-        user_id = None
-        username = "Anonymous"
+        user_id: uuid.UUID | None = None
+        username: str = "Anonymous"
 
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
             try:
-                # We reuse the util but handle errors gracefully
                 payload = decode_token(token)
                 user_id_str = payload.get("id")
                 if user_id_str:
@@ -62,44 +63,46 @@ class AuditMiddleware(BaseHTTPMiddleware):
             except Exception:
                 pass  # Use anonymous if token is invalid
 
-        # Set ContextVars for Hooks
+        # 3. Set ContextVars for CDC Hooks
         ip_address = request.client.host if request.client else "unknown"
         user_agent = request.headers.get("user-agent")
         set_audit_context(user_id, ip_address, username, user_agent)
 
         response = await call_next(request)
 
-        # 4. Check Status Code Exclusion (New)
+        # 4. Check Status Code Exclusion
         if response.status_code in settings.AUDIT_LOG_EXCLUDE_STATUS_CODES:
             return response
 
-        # 5. Check Method Inclusion (New)
+        # 5. Check Method Inclusion
         if request.method.upper() not in settings.AUDIT_LOG_INCLUDED_METHODS:
             return response
 
-        # 4. Check Request State (set by dependencies)
+        # 6. Check Request State (set by skip_access_audit dependency)
         if hasattr(request.state, "skip_audit") and request.state.skip_audit:
             return response
 
-        # 5. Log Access (Async Fire & Forget ideally, but for now
-        # Synchronous or BackgroundTask)
-        # Since we are in middleware, we should be careful about blocking.
-        # Writing to DB is fast enough for this scale.
+        # 7. Log Access — engine resolved from app.state (FastAPI native pattern).
         try:
-            with Session(db.engine) as session:
+            with Session(request.app.state.engine) as session:
                 log = AuditLog(
                     user_id=user_id,
                     username=username,
                     action="ACCESS",
                     entity_type="Endpoint",
                     entity_id=path,
-                    changes={"method": method, "status_code": response.status_code},
+                    changes={
+                        "method": method,
+                        "status_code": response.status_code,
+                    },
                     ip_address=ip_address,
-                    user_agent=request.headers.get("user-agent"),
+                    user_agent=user_agent,
                 )
                 session.add(log)
                 session.commit()
         except Exception as e:
-            logger.error("audit_log_error", error=str(e), path=path, method=method)
+            logger.error(
+                "audit_log_error", error=str(e), path=path, method=method
+            )
 
         return response

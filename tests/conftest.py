@@ -14,7 +14,6 @@ from app.main import app
 @pytest.fixture(name="session")
 def session_fixture():
     # Use in-memory SQLite for tests
-    # Use in-memory SQLite for tests
     import json
     import uuid
 
@@ -31,10 +30,14 @@ def session_fixture():
     )
     SQLModel.metadata.create_all(test_engine)
 
-    # Patch global engine
+    # Patch global engine for get_session() and other direct references
     from app.core import db
 
     db.engine = test_engine
+
+    # Patch app.state.engine so AuditMiddleware (which resolves the engine
+    # via request.app.state.engine) uses the test engine.
+    app.state.engine = test_engine
 
     # Also register hooks manually here since lifespan might have run with old engine
     # (though hooks are on Session class, so it's fine)

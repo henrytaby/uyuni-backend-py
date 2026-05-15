@@ -3,6 +3,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import Depends
+from sqlalchemy.engine import Engine
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.config import settings
@@ -27,7 +28,7 @@ def json_serializer(obj) -> str:
     return json.dumps(obj, ensure_ascii=False)
 
 
-engine = create_engine(
+engine: Engine = create_engine(
     settings.DATABASE_URL,
     echo=False,
     json_serializer=json_serializer,

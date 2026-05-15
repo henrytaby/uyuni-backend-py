@@ -44,6 +44,8 @@ Funciones:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Expose engine via app.state for middleware/endpoints (FastAPI pattern)
+    app.state.engine = engine
     create_db_and_tables()
     register_audit_hooks(engine)
     yield

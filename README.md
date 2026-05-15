@@ -76,7 +76,7 @@ cd fastapi-product
 ### 3. Crear entorno virtual
 ```bash
 python3 -m venv venv
-source env/bin/activate
+source venv/bin/activate
 ```
 
 ### 4. Instalar dependencias
