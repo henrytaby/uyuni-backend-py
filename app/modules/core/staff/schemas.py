@@ -42,7 +42,6 @@ class StaffBase(BaseModel):
     address: str | None = None
     status: str = "INCORPORADO"
     staff_type: str = "SERVIDOR PÚBLICO"
-    movement_type: str | None = None
     position_id: UUID
     org_unit_id: UUID
 
@@ -66,7 +65,6 @@ class StaffUpdate(BaseModel):
     address: str | None = None
     status: str | None = None
     staff_type: str | None = None
-    movement_type: str | None = None
     position_id: UUID | None = None
     org_unit_id: UUID | None = None
 
@@ -81,7 +79,6 @@ class StaffRead(StaffBase):
     phone: str | None = Field(exclude=True)
     status: str = Field(exclude=True)
     staff_type: str = Field(exclude=True)
-    movement_type: str | None = Field(exclude=True)
 
 
 class StaffReadDetailed(StaffRead):
