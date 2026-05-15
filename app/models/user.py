@@ -25,10 +25,10 @@ class User(BaseModel, AuditMixin, table=True):
 
     # Security & Analytics
     failed_login_attempts: int = Field(default=0)
-    locked_until: Optional[datetime] = Field(
+    locked_until: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=False), nullable=True)
     )
-    last_login_at: Optional[datetime] = Field(
+    last_login_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=False), nullable=True)
     )
     # Relationship
@@ -43,13 +43,13 @@ class UserRole(BaseModel, AuditMixin, table=True):
     is_active: bool = Field(default=True)
 
     # Relationship
-    user_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id")
+    user_id: uuid.UUID | None = Field(default=None, foreign_key="users.id")
     user: Optional["User"] = Relationship(
         back_populates="user_roles",
         sa_relationship_kwargs={"foreign_keys": "[UserRole.user_id]"},
     )
 
-    role_slug: Optional[str] = Field(default=None, foreign_key="roles.slug")
+    role_slug: str | None = Field(default=None, foreign_key="roles.slug")
     role: Optional["Role"] = Relationship(back_populates="user_roles")
 
 
@@ -57,7 +57,7 @@ class UserRevokedToken(BaseModel, table=True):
     __tablename__ = "user_revoked_tokens"
     token: str = Field(index=True, unique=True)
     user_id: uuid.UUID = Field(index=True)
-    revoked_at: Optional[datetime] = Field(
+    revoked_at: datetime | None = Field(
         default_factory=get_current_time,
         sa_column=Column(DateTime(timezone=False), nullable=True),
         description="The timestamp when the token was Revoked",
@@ -66,33 +66,33 @@ class UserRevokedToken(BaseModel, table=True):
 
 class UserLogLogin(BaseModel, table=True):
     __tablename__ = "user_log_logins"
-    created_at: Optional[datetime] = Field(
+    created_at: datetime | None = Field(
         default_factory=get_current_time,
         sa_column=Column(DateTime(timezone=False), nullable=True),
         description="The timestamp when the log was created",
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None,
         sa_column=Column(
             DateTime(timezone=False), onupdate=get_current_time, nullable=True
         ),
         description="The timestamp when the log was last updated",
     )
-    user_id: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id")
-    username: Optional[str] = Field(
+    user_id: uuid.UUID | None = Field(default=None, foreign_key="users.id")
+    username: str | None = Field(
         description="The username used in the login attempt", default=None
     )
     # Security: Password field removed to prevent logging sensitive data
 
-    token: Optional[str] = Field(description="The generated token", default=None)
-    token_expiration: Optional[datetime] = Field(
+    token: str | None = Field(description="The generated token", default=None)
+    token_expiration: datetime | None = Field(
         description="The expiration date and time of the token", default=None
     )
     ip_address: str = Field(
         description="The IP address from where the user is authenticating"
     )
     host_info: str = Field(description="Host information")
-    logged_out_at: Optional[datetime] = Field(
+    logged_out_at: datetime | None = Field(
         default=None,
         sa_column=Column(DateTime(timezone=False), nullable=True),
         description="The timestamp when the user logged out",

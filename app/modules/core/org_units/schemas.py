@@ -1,4 +1,3 @@
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -7,10 +6,10 @@ from pydantic import BaseModel
 class OrgUnitBase(BaseModel):
     external_id: int
     name: str
-    acronym: Optional[str] = None
-    general_unit: Optional[str] = None
+    acronym: str | None = None
+    general_unit: str | None = None
     type: str
-    parent_id: Optional[UUID] = None
+    parent_id: UUID | None = None
 
 
 class OrgUnitCreate(OrgUnitBase):
@@ -18,12 +17,12 @@ class OrgUnitCreate(OrgUnitBase):
 
 
 class OrgUnitUpdate(BaseModel):
-    external_id: Optional[int] = None
-    name: Optional[str] = None
-    acronym: Optional[str] = None
-    general_unit: Optional[str] = None
-    type: Optional[str] = None
-    parent_id: Optional[UUID] = None
+    external_id: int | None = None
+    name: str | None = None
+    acronym: str | None = None
+    general_unit: str | None = None
+    type: str | None = None
+    parent_id: UUID | None = None
 
 
 class OrgUnitRead(OrgUnitBase):

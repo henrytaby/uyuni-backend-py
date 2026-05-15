@@ -1,4 +1,3 @@
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -13,7 +12,7 @@ class AssetGroupCreate(AssetGroupBase):
 
 
 class AssetGroupUpdate(BaseModel):
-    name: Optional[str] = None
+    name: str | None = None
 
 
 class AssetGroupRead(AssetGroupBase):

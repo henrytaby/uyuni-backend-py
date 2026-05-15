@@ -1,5 +1,4 @@
 import uuid
-from typing import Optional
 
 from app.core.exceptions import NotFoundException
 
@@ -44,13 +43,13 @@ class TaskService:
         self,
         offset: int = 0,
         limit: int = 100,
-        sort_by: Optional[str] = None,
+        sort_by: str | None = None,
         sort_order: str = "asc",
-        search: Optional[str] = None,
+        search: str | None = None,
     ):
         return self.repository.get_all(offset, limit, sort_by, sort_order, search)
 
-    def count(self, search: Optional[str] = None) -> int:
+    def count(self, search: str | None = None) -> int:
         return self.repository.count(search)
 
     # DELETE

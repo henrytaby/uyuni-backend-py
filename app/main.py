@@ -1,13 +1,15 @@
 import time
 import uuid
+from collections.abc import Callable
 from contextlib import asynccontextmanager
+from typing import Any, cast
 
 import structlog
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 from app.core.audit import AuditMiddleware, register_audit_hooks
 from app.core.config import settings
@@ -56,7 +58,7 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     description=description,
     version=settings.VERSION,
-    redoc_url=None,  # Disable default Redoc to customize CDN
+    redoc_url=None,  # Disabled default due to jsdelivr.net being blocked in some networks
     license_info={"name": "MIT License", "url": "https://opensource.org/license/mit"},
     contact={
         "name": "Henry Alejandro Taby Zenteno",
@@ -132,7 +134,7 @@ app.add_middleware(AuditMiddleware)
 
 
 @app.middleware("http")
-async def logging_middleware(request: Request, call_next):
+async def logging_middleware(request: Request, call_next: Callable[[Request], Any]):
     request_id = str(uuid.uuid4())
     structlog.contextvars.clear_contextvars()
     structlog.contextvars.bind_contextvars(request_id=request_id)
@@ -172,15 +174,19 @@ app.add_exception_handler(InternalServerErrorException, internal_server_error_ha
 
 
 @app.get("/")
-async def read_items():
+async def read_items() -> FileResponse:
     return FileResponse("./app/index.html")
 
 
 @app.get("/redoc", include_in_schema=False)
-async def redoc_html():
+async def redoc_html() -> HTMLResponse:
+    """
+    Custom Redoc setup to use unpkg.com CDN instead of the default jsdelivr.net
+    which may be blocked in some network environments.
+    """
     return get_redoc_html(
-        openapi_url=app.openapi_url,
-        title=app.title + " - ReDoc",
+        openapi_url=cast(str, app.openapi_url),
+        title=f"{app.title} - ReDoc",
         redoc_js_url="https://unpkg.com/redoc@latest/bundles/redoc.standalone.js",
     )
 

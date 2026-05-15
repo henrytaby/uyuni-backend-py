@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -9,7 +7,7 @@ class TaskBase(BaseModel):
     """
 
     title: str = Field(description="The title of the task")
-    description: Optional[str] = Field(None, description="The description of the task")
+    description: str | None = Field(None, description="The description of the task")
     completed: bool = Field(False, description="The completion status of the task")
 
 

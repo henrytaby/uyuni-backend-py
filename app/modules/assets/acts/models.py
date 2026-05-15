@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List
 from uuid import UUID
 
 from sqlmodel import Field, Relationship, SQLModel
@@ -22,10 +22,10 @@ class Act(BaseModel, AuditMixin, table=True):
     __tablename__ = "assets_act"
 
     act_number: str = Field(index=True, unique=True, max_length=100)
-    registered_at: Optional[datetime] = Field(default=None)
-    pdf_attachment: Optional[str] = Field(default=None, max_length=500)
+    registered_at: datetime | None = Field(default=None)
+    pdf_attachment: str | None = Field(default=None, max_length=500)
 
-    staff_id: Optional[UUID] = Field(default=None, foreign_key="core_staff.id")
+    staff_id: UUID | None = Field(default=None, foreign_key="core_staff.id")
 
     # Relationships
     fixed_assets: List["FixedAsset"] = Relationship(

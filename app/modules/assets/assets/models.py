@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List
 from uuid import UUID
 
 from sqlmodel import Field, Relationship
@@ -18,19 +18,19 @@ if TYPE_CHECKING:
 class FixedAsset(BaseModel, AuditMixin, table=True):
     __tablename__ = "assets_fixed_asset"
 
-    old_code: Optional[str] = Field(default=None, index=True, max_length=100)
-    new_code: Optional[str] = Field(default=None, index=True, max_length=100)
+    old_code: str | None = Field(default=None, index=True, max_length=100)
+    new_code: str | None = Field(default=None, index=True, max_length=100)
     description: str = Field(max_length=1000)
-    serial_number: Optional[str] = Field(default=None, max_length=100)
-    location_detail: Optional[str] = Field(default=None, max_length=500)
-    observations: Optional[str] = Field(default=None, max_length=1000)
+    serial_number: str | None = Field(default=None, max_length=100)
+    location_detail: str | None = Field(default=None, max_length=500)
+    observations: str | None = Field(default=None, max_length=1000)
 
     is_saf: bool = Field(default=True)
     is_physically_verified: bool = Field(default=False)
     is_decommissioned: bool = Field(default=False)
 
-    registered_at: Optional[datetime] = Field(default=None)
-    source_files: Optional[str] = Field(default=None, max_length=500)
+    registered_at: datetime | None = Field(default=None)
+    source_files: str | None = Field(default=None, max_length=500)
 
     # Foreign Keys
     group_id: UUID = Field(foreign_key="assets_asset_group.id")
@@ -38,8 +38,8 @@ class FixedAsset(BaseModel, AuditMixin, table=True):
     area_id: UUID = Field(foreign_key="assets_area.id")
     org_unit_id: UUID = Field(foreign_key="core_org_unit.id")
 
-    assigned_staff_id: Optional[UUID] = Field(default=None, foreign_key="core_staff.id")
-    custodian_staff_id: Optional[UUID] = Field(
+    assigned_staff_id: UUID | None = Field(default=None, foreign_key="core_staff.id")
+    custodian_staff_id: UUID | None = Field(
         default=None, foreign_key="core_staff.id"
     )
 

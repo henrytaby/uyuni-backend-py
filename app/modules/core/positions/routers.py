@@ -1,4 +1,3 @@
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -35,11 +34,11 @@ def create_position(
     return service.create(StaffPosition(**data.model_dump()))
 
 
-@router.get("/", response_model=List[StaffPositionRead])
+@router.get("/", response_model=list[StaffPositionRead])
 def get_positions(
     offset: int = 0,
     limit: int = 100,
-    sort_by: Optional[str] = Query(None),
+    sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(

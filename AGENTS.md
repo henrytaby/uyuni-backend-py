@@ -4,7 +4,7 @@
 Uyuni Backend is a Python/FastAPI enterprise backend with JWT auth, RBAC, audit logging, and modular domain architecture (assets, core, tasks).
 
 ## Tech Stack
-- **Framework**: FastAPI (Python 3.10+) with Pydantic v2
+- **Framework**: FastAPI (Python 3.12) with Pydantic v2
 - **ORM**: SQLModel (SQLAlchemy + Pydantic), async
 - **Database**: PostgreSQL (prod) / SQLite (dev/test)
 - **Auth**: JWT with access/refresh token rotation, bcrypt
@@ -38,11 +38,20 @@ Each domain module contains: `routers.py`, `service.py`, `repository.py`, `model
 - Use Alembic migrations (never `create_all()` in production)
 - In-Memory SQLite for tests
 
+## Virtual Environment
+- The project uses a **venv** located at `venv/` in the project root
+- **All Python commands must be run inside the venv** — use `venv/bin/<tool>` to execute tools
+- Examples: `venv/bin/pytest`, `venv/bin/ruff`, `venv/bin/mypy`, `venv/bin/alembic`, `venv/bin/python`
+- Never run Python tools without the venv prefix (e.g., do NOT run bare `pytest`, `ruff`, `mypy`, `alembic`)
+- To activate interactively: `source venv/bin/activate`
+
 ## Commands
 - `/test` - Run tests with pytest
 - `/lint` - Run Ruff linting and formatting
 - `/typecheck` - Run Mypy type checking
 - `/migrate` - Run Alembic database migrations
+
+**Note**: All commands automatically use the project venv (`venv/bin/`).
 
 ## AI Agent Configuration (`.kilo/`)
 

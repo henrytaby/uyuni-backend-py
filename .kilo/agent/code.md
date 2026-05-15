@@ -27,6 +27,7 @@ You are a **Senior Backend Software Engineer** specializing in FastAPI (Python) 
 
 ## Project Context
 This is the Uyuni Backend - a FastAPI enterprise application with:
+- Python 3.12 with project venv at `venv/`
 - JWT auth with token rotation and account lockout
 - RBAC with CRUD permissions per module
 - Audit logging (CDC + access logging)
@@ -42,3 +43,4 @@ This is the Uyuni Backend - a FastAPI enterprise application with:
 6. Use Alembic migrations (never create_all() in production)
 7. In-Memory SQLite for tests
 8. Follow the layered architecture: Routers → Services → Repositories → Models
+9. All Python commands must use the project venv (`venv/bin/`): e.g., `venv/bin/pytest`, `venv/bin/ruff`, `venv/bin/mypy`, `venv/bin/alembic`, `venv/bin/python` — never run bare tool names

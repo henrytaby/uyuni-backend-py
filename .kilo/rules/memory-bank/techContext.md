@@ -4,7 +4,7 @@
 
 ### Core Framework
 - **FastAPI**: Modern async Python web framework with automatic OpenAPI documentation
-- **Python 3.10+**: Using modern type hints and pattern matching
+- **Python 3.12**: Using modern type hints, pattern matching, and performance improvements
 - **Pydantic v2**: Data validation and settings management
 
 ### Database Layer
@@ -32,15 +32,15 @@
 
 ### Prerequisites
 ```bash
-Python 3.10+
+Python 3.12
 PostgreSQL 14+ (or SQLite for development)
 ```
 
 ### Installation
 ```bash
 # Create virtual environment
-python -m venv env
-source env/bin/activate
+python3.12 -m venv venv
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -50,11 +50,18 @@ cp .env.example .env
 # Edit .env with your configuration
 
 # Run database migrations
-alembic upgrade head
+venv/bin/alembic upgrade head
 
 # Start development server
-uvicorn app.main:app --reload
+venv/bin/uvicorn app.main:app --reload
 ```
+
+### Virtual Environment
+- The project uses a **venv** located at `venv/` in the project root
+- **All Python commands must be run inside the venv** — use `venv/bin/<tool>` to execute tools
+- Examples: `venv/bin/pytest`, `venv/bin/ruff`, `venv/bin/mypy`, `venv/bin/alembic`, `venv/bin/python`
+- Never run Python tools without the venv prefix (e.g., do NOT run bare `pytest`, `ruff`, `mypy`, `alembic`)
+- To activate interactively: `source venv/bin/activate`
 
 ### Environment Variables
 | Variable | Description | Default |
@@ -186,13 +193,13 @@ The application is configured for Vercel serverless deployment:
 ### Run Tests
 ```bash
 # Run all tests
-pytest
+venv/bin/pytest
 
 # Run with coverage
-pytest --cov=app
+venv/bin/pytest --cov=app
 
 # Run specific test file
-pytest tests/test_rbac.py
+venv/bin/pytest tests/test_rbac.py
 ```
 
 ### Test Structure

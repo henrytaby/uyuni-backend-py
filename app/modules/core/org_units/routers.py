@@ -1,4 +1,3 @@
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -31,13 +30,13 @@ def create_org_unit(
     return service.create(OrgUnit(**data.model_dump()))
 
 
-@router.get("/", response_model=List[OrgUnitRead])
+@router.get("/", response_model=list[OrgUnitRead])
 def get_org_units(
     offset: int = 0,
     limit: int = 100,
-    sort_by: Optional[str] = Query(None),
+    sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
-    search: Optional[str] = Query(None),
+    search: str | None = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -51,7 +50,7 @@ def get_org_units(
 
 @router.get("/count")
 def count_org_units(
-    search: Optional[str] = Query(None),
+    search: str | None = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -63,14 +62,14 @@ def count_org_units(
     return {"total": service.count(search)}
 
 
-@router.get("/acronym/{acronym}", response_model=List[OrgUnitRead])
+@router.get("/acronym/{acronym}", response_model=list[OrgUnitRead])
 def get_org_units_by_acronym(
     acronym: str,
     offset: int = 0,
     limit: int = 100,
-    sort_by: Optional[str] = Query(None),
+    sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
-    search: Optional[str] = Query(None),
+    search: str | None = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -87,7 +86,7 @@ def get_org_units_by_acronym(
 @router.get("/acronym/{acronym}/count")
 def count_org_units_by_acronym(
     acronym: str,
-    search: Optional[str] = Query(None),
+    search: str | None = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(

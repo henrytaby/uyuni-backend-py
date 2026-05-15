@@ -1,4 +1,3 @@
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -35,13 +34,13 @@ def create_status(
     return service.create(AssetStatus(**data.model_dump()))
 
 
-@router.get("/", response_model=List[AssetStatusRead])
+@router.get("/", response_model=list[AssetStatusRead])
 def get_statuses(
     offset: int = 0,
     limit: int = 100,
-    sort_by: Optional[str] = Query(None),
+    sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
-    search: Optional[str] = Query(None),
+    search: str | None = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -56,7 +55,7 @@ def get_statuses(
 
 @router.get("/count")
 def count_statuses(
-    search: Optional[str] = Query(None),
+    search: str | None = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(

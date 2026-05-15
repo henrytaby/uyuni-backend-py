@@ -226,8 +226,8 @@ Tests run against an **In-Memory SQLite** database (`tests/conftest.py`) to ensu
 
 ### Database Migrations
 ```bash
-alembic revision --autogenerate -m "description"
-alembic upgrade head
+venv/bin/alembic revision --autogenerate -m "description"
+venv/bin/alembic upgrade head
 ```
 
 **Critical**: Models MUST be imported in `alembic/env.py` to be detected.

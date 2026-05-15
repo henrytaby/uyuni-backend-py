@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from sqlmodel import DateTime, Field, SQLModel
 
@@ -13,24 +12,24 @@ class AuditMixin(SQLModel):
     to a model.
     """
 
-    created_at: Optional[datetime] = Field(
+    created_at: datetime | None = Field(
         default_factory=get_current_time,
         sa_type=DateTime(timezone=False),  # type: ignore
         description="The timestamp when the data was created",
     )
-    updated_at: Optional[datetime] = Field(
+    updated_at: datetime | None = Field(
         default=None,
         sa_type=DateTime(timezone=False),  # type: ignore
         sa_column_kwargs={"onupdate": get_current_time},
         description="The timestamp when the data was last updated",
     )
 
-    created_by_id: Optional[uuid.UUID] = Field(
+    created_by_id: uuid.UUID | None = Field(
         default=None,
         foreign_key="users.id",
         description="The user who created this record",
     )
-    updated_by_id: Optional[uuid.UUID] = Field(
+    updated_by_id: uuid.UUID | None = Field(
         default=None,
         foreign_key="users.id",
         description="The user who last updated this record",

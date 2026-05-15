@@ -1,4 +1,4 @@
-from typing import Optional
+
 
 from sqlmodel import Field
 
@@ -14,7 +14,7 @@ class Task(BaseModel, AuditMixin, table=True):
     __tablename__ = "tasks"
 
     title: str = Field(default=None, description="The title of the task")
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None, description="The description of the task"
     )
     completed: bool = Field(

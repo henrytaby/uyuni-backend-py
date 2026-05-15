@@ -31,7 +31,7 @@ class Module(BaseModel, AuditMixin, table=True):
     route: str | None = Field(default=None)
     sort_order: int | None = Field(default=None)
     # Relationship
-    group_slug: Optional[str] = Field(default=None, foreign_key="module_groups.slug")
+    group_slug: str | None = Field(default=None, foreign_key="module_groups.slug")
     group: Optional["ModuleGroup"] = Relationship(back_populates="modules")
 
     role_modules: List["RoleModule"] = Relationship(back_populates="module")

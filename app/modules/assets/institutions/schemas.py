@@ -1,4 +1,3 @@
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -6,7 +5,7 @@ from pydantic import BaseModel
 
 class InstitutionBase(BaseModel):
     name: str
-    code: Optional[str] = None
+    code: str | None = None
 
 
 class InstitutionCreate(InstitutionBase):
@@ -14,8 +13,8 @@ class InstitutionCreate(InstitutionBase):
 
 
 class InstitutionUpdate(BaseModel):
-    name: Optional[str] = None
-    code: Optional[str] = None
+    name: str | None = None
+    code: str | None = None
 
 
 class InstitutionRead(InstitutionBase):

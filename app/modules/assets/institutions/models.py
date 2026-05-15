@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List
 
 from sqlmodel import Field, Relationship
 
@@ -13,7 +13,7 @@ class Institution(BaseModel, AuditMixin, table=True):
     __tablename__ = "assets_institution"
 
     name: str = Field(max_length=255, description="ADUANA NACIONAL")
-    code: Optional[str] = Field(default=None, max_length=50)
+    code: str | None = Field(default=None, max_length=50)
 
     # Relationships
     areas: List["Area"] = Relationship(back_populates="institution")

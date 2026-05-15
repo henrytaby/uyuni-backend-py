@@ -1,4 +1,4 @@
-from typing import Optional, Sequence
+from typing import Sequence
 from uuid import UUID
 
 from sqlmodel import Session
@@ -18,15 +18,15 @@ class StaffPositionService:
         self,
         offset: int = 0,
         limit: int = 100,
-        sort_by: Optional[str] = None,
+        sort_by: str | None = None,
         sort_order: str = "asc",
     ) -> Sequence[StaffPosition]:
         return self.repository.get_all(offset, limit, sort_by, sort_order)
 
-    def get_by_id(self, id: UUID) -> Optional[StaffPosition]:
+    def get_by_id(self, id: UUID) -> StaffPosition | None:
         return self.repository.get_by_id(id)
 
-    def update(self, id: UUID, data: dict) -> Optional[StaffPosition]:
+    def update(self, id: UUID, data: dict) -> StaffPosition | None:
         return self.repository.update(id, data)
 
     def delete(self, id: UUID) -> bool:

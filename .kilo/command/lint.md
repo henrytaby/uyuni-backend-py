@@ -4,7 +4,9 @@ agent: code
 ---
 Run Ruff to check and fix linting issues.
 
-Execute: `ruff check app/ tests/ --fix && ruff format app/ tests/`
+Execute: `venv/bin/ruff check app/ tests/ --fix && venv/bin/ruff format app/ tests/`
+
+**Important**: Always use `venv/bin/ruff` — never run bare `ruff` as it may use the system Python instead of the project venv (Python 3.12).
 
 This will:
 1. Check for lint errors and auto-fix them

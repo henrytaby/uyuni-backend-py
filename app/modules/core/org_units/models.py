@@ -15,11 +15,11 @@ class OrgUnit(BaseModel, AuditMixin, table=True):
 
     external_id: int = Field(index=True, unique=True, description="Orig. system code")
     name: str = Field(max_length=255)
-    acronym: Optional[str] = Field(default=None, max_length=50)
-    general_unit: Optional[str] = Field(default=None, max_length=10)
+    acronym: str | None = Field(default=None, max_length=50)
+    general_unit: str | None = Field(default=None, max_length=10)
     type: str = Field(description="MANAGEMENT / DEPARTMENT")
 
-    parent_id: Optional[UUID] = Field(default=None, foreign_key="core_org_unit.id")
+    parent_id: UUID | None = Field(default=None, foreign_key="core_org_unit.id")
 
     # Relationships
     staff: List["Staff"] = Relationship(back_populates="org_unit")

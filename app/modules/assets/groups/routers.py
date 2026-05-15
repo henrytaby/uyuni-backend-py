@@ -1,4 +1,3 @@
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -35,13 +34,13 @@ def create_group(
     return service.create(AssetGroup(**data.model_dump()))
 
 
-@router.get("/", response_model=List[AssetGroupRead])
+@router.get("/", response_model=list[AssetGroupRead])
 def get_groups(
     offset: int = 0,
     limit: int = 100,
-    sort_by: Optional[str] = Query(None),
+    sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
-    search: Optional[str] = Query(None),
+    search: str | None = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
@@ -56,7 +55,7 @@ def get_groups(
 
 @router.get("/count")
 def count_groups(
-    search: Optional[str] = Query(None),
+    search: str | None = Query(None),
     session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(

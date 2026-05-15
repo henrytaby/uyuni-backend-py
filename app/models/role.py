@@ -28,10 +28,10 @@ class RoleModule(BaseModel, AuditMixin, table=True):
     )
 
     # Relationship
-    role_slug: Optional[str] = Field(default=None, foreign_key="roles.slug")
+    role_slug: str | None = Field(default=None, foreign_key="roles.slug")
     role: Optional["Role"] = Relationship(back_populates="role_modules")
 
-    module_slug: Optional[str] = Field(default=None, foreign_key="modules.slug")
+    module_slug: str | None = Field(default=None, foreign_key="modules.slug")
     module: Optional["Module"] = Relationship(back_populates="role_modules")
 
 

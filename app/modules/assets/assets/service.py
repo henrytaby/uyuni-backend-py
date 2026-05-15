@@ -1,4 +1,4 @@
-from typing import Optional, Sequence
+from typing import Sequence
 from uuid import UUID
 
 from sqlmodel import Session
@@ -18,20 +18,20 @@ class FixedAssetService:
         self,
         offset: int = 0,
         limit: int = 100,
-        sort_by: Optional[str] = None,
+        sort_by: str | None = None,
         sort_order: str = "asc",
-        search: Optional[str] = None,
+        search: str | None = None,
     ) -> Sequence[FixedAsset]:
         return self.repository.get_all(offset, limit, sort_by, sort_order, search)
 
-    def get_by_id(self, id: UUID) -> Optional[FixedAsset]:
+    def get_by_id(self, id: UUID) -> FixedAsset | None:
         return self.repository.get_by_id(id)
 
-    def update(self, id: UUID, data: dict) -> Optional[FixedAsset]:
+    def update(self, id: UUID, data: dict) -> FixedAsset | None:
         return self.repository.update(id, data)
 
     def delete(self, id: UUID) -> bool:
         return self.repository.delete(id)
 
-    def count(self, search: Optional[str] = None) -> int:
+    def count(self, search: str | None = None) -> int:
         return self.repository.count(search)

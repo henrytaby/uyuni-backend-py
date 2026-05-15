@@ -51,6 +51,11 @@
 - [x] Fixed mypy type errors in repository.py and service.py
 - [x] Created Memory Bank documentation
 
+### Recent Improvements (May 2026)
+- [x] Upgraded to Python 3.12 (recreated venv with `python3.12 -m venv venv`)
+- [x] Updated all AI agent config files to enforce venv usage (`venv/bin/<tool>`)
+- [x] Updated all memory-bank files to reflect Python 3.12
+
 ### In Progress
 - [ ] Rate limiting for authentication endpoints
 - [ ] Health check endpoint with database connectivity
