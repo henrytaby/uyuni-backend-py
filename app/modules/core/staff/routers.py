@@ -9,7 +9,7 @@ from app.core.db import get_session
 from app.core.exceptions import NotFoundException
 from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.staff.models import Staff
-from app.modules.core.staff.schemas import StaffCreate, StaffRead, StaffUpdate
+from app.modules.core.staff.schemas import StaffCreate, StaffRead, StaffReadDetailed, StaffUpdate
 from app.modules.core.staff.service import StaffService
 
 router = APIRouter(prefix="/staff", tags=["Core Staff - Personal"])
@@ -30,7 +30,7 @@ def create_staff(
     return service.create(Staff(**data.model_dump()))
 
 
-@router.get("/", response_model=list[StaffRead])
+@router.get("/", response_model=list[StaffReadDetailed])
 def get_staff_list(
     offset: int = 0,
     limit: int = 100,
@@ -62,7 +62,7 @@ def count_staff(
     return {"total": service.count(search)}
 
 
-@router.get("/{id}", response_model=StaffRead)
+@router.get("/{id}", response_model=StaffReadDetailed)
 def get_staff(
     id: UUID,
     session: Session = Depends(get_session),
