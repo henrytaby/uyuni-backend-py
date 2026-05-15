@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy import event, inspect
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
@@ -46,7 +48,7 @@ def set_audit_user_fields(session: Session, flush_context, instances):
             obj.updated_by_id = user_id
 
 
-def audit_changes(session: Session, flush_context):
+def audit_changes(session: Session, flush_context: Any) -> None:
     # This hook runs after flush but before commit
     # We collect changes and insert audit logs into the SAME transaction
 
@@ -73,8 +75,14 @@ def audit_changes(session: Session, flush_context):
 
 
 def create_log(
-    session: Session, obj, action: str, user_id, ip_address, username, user_agent
-):
+    session: Session,
+    obj: Any,
+    action: str,
+    user_id: Any,
+    ip_address: str | None,
+    username: str | None,
+    user_agent: str | None,
+) -> None:
     if not isinstance(obj, SQLModel):
         return
 

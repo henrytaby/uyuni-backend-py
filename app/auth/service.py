@@ -233,7 +233,7 @@ class AuthService:
             "refresh_token": new_refresh_token,
         }
 
-    def logout(self, token: str, refresh_token: str | None = None):
+    def logout(self, token: str, refresh_token: str | None = None) -> None:
         try:
             payload = utils.decode_token(token)
             user_id = payload.get("id")

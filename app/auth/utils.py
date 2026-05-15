@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -30,7 +30,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return cast(bool, pwd_context.verify(plain_password, hashed_password))
 
 
-def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
+def authenticate_user(db: Session, username: str, password: str) -> User | None:
     """Authenticate a user by username and password."""
     user = get_user(db, username)
     if not user:
@@ -40,7 +40,7 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
     return user
 
 
-def get_user(db: Session, username: str) -> Optional[User]:
+def get_user(db: Session, username: str) -> User | None:
     """Retrieve a user by username from the database."""
     query = select(User).where(User.username == username)
     return db.exec(query).first()

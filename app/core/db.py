@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends
 from sqlalchemy.engine import Engine
@@ -22,7 +22,7 @@ migrations to manage database schema changes safely.
 """
 
 
-def json_serializer(obj) -> str:
+def json_serializer(obj: Any) -> str:
     if isinstance(obj, uuid.UUID):
         return str(obj)
     return json.dumps(obj, ensure_ascii=False)

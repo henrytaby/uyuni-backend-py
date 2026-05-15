@@ -1,5 +1,4 @@
 import uuid
-from typing import List, Optional
 
 from pydantic import ConfigDict
 from sqlmodel import Field, SQLModel
@@ -10,8 +9,8 @@ class UserCreate(SQLModel):
         index=True, unique=True, description="Unique username for login"
     )
     email: str = Field(index=True, unique=True, description="Valid email address")
-    first_name: Optional[str] = Field(default=None, description="User's first name")
-    last_name: Optional[str] = Field(default=None, description="User's last name")
+    first_name: str | None = Field(default=None, description="User's first name")
+    last_name: str | None = Field(default=None, description="User's last name")
     password: str = Field(description="Strong password (will be hashed)")
     model_config = ConfigDict(extra="forbid")  # type: ignore
 
@@ -20,8 +19,8 @@ class User(SQLModel):
     id: uuid.UUID
     username: str = Field(index=True, unique=True)
     email: str = Field(index=True, unique=True)
-    first_name: Optional[str] = Field(default=None)
-    last_name: Optional[str] = Field(default=None)
+    first_name: str | None = Field(default=None)
+    last_name: str | None = Field(default=None)
     is_verified: bool = Field(default=False)
     password_hash: str
     model_config = ConfigDict(extra="forbid", from_attributes=True)  # type: ignore
@@ -31,8 +30,8 @@ class UserResponse(SQLModel):
     id: uuid.UUID = Field(description="User unique identifier")
     username: str = Field(description="Unique username")
     email: str = Field(description="User email")
-    first_name: Optional[str] = Field(default=None, description="User's first name")
-    last_name: Optional[str] = Field(default=None, description="User's last name")
+    first_name: str | None = Field(default=None, description="User's first name")
+    last_name: str | None = Field(default=None, description="User's last name")
     is_verified: bool = Field(
         default=False, description="Whether the email is verified"
     )
@@ -46,7 +45,7 @@ class Token(SQLModel):
 
 
 class TokenData(SQLModel):
-    username: Optional[str] = None
+    username: str | None = None
 
 
 class LogoutRequest(SQLModel):
@@ -60,8 +59,8 @@ class RoleInfo(SQLModel):
     id: uuid.UUID
     name: str
     slug: str
-    description: Optional[str] = None
-    icon: Optional[str] = None
+    description: str | None = None
+    icon: str | None = None
     model_config = ConfigDict(from_attributes=True)  # type: ignore
 
 
@@ -79,15 +78,15 @@ class UserModulePermission(SQLModel):
 class ModuleMenu(SQLModel):
     name: str
     slug: str
-    route: Optional[str] = None
-    icon: Optional[str] = None
-    sort_order: Optional[int] = None
+    route: str | None = None
+    icon: str | None = None
+    sort_order: int | None = None
     permissions: UserModulePermission
 
 
 class ModuleGroupMenu(SQLModel):
     group_name: str
     slug: str
-    icon: Optional[str] = None
-    sort_order: Optional[int] = None
-    modules: List[ModuleMenu]
+    icon: str | None = None
+    sort_order: int | None = None
+    modules: list[ModuleMenu]

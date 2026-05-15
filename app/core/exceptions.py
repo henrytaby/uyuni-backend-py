@@ -1,8 +1,8 @@
-from typing import Any, Optional
+from typing import Any
 
 
 class CustomException(Exception):
-    def __init__(self, detail: Any, headers: Optional[dict[str, str]] = None):
+    def __init__(self, detail: Any, headers: dict[str, str] | None = None):
         self.detail = detail
         self.headers = headers
 

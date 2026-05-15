@@ -1,14 +1,12 @@
 import uuid
-from typing import Any, Generic, List, Optional, Sequence, Type, TypeVar, Union
+from typing import Any, Optional, Sequence, Type
 
 from sqlalchemy import String, cast
 from sqlmodel import Session, SQLModel, col, func, or_, select
 
-ModelType = TypeVar("ModelType", bound=SQLModel)
 
-
-class BaseRepository(Generic[ModelType]):
-    searchable_fields: List[str] = []
+class BaseRepository[ModelType: SQLModel]:
+    searchable_fields: list[str] = []
 
     def __init__(self, session: Session, model: Type[ModelType]):
         self.session = session
@@ -41,7 +39,7 @@ class BaseRepository(Generic[ModelType]):
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
         search: Optional[str] = None,
-        extra_filters: Optional[List[Any]] = None,
+        extra_filters: Optional[list[Any]] = None,
     ) -> Sequence[ModelType]:
         statement = select(self.model)
 
@@ -63,7 +61,7 @@ class BaseRepository(Generic[ModelType]):
         return self.session.exec(statement).all()  # type: ignore[no-any-return]
 
     def count(
-        self, search: Optional[str] = None, extra_filters: Optional[List[Any]] = None
+        self, search: Optional[str] = None, extra_filters: Optional[list[Any]] = None
     ) -> int:
         statement = select(func.count()).select_from(self.model)
 
@@ -77,7 +75,7 @@ class BaseRepository(Generic[ModelType]):
         result = self.session.exec(statement).one()
         return int(result)  # type: ignore[arg-type]
 
-    def get_by_id(self, id: Union[uuid.UUID, int]) -> Optional[ModelType]:
+    def get_by_id(self, id: uuid.UUID | int) -> Optional[ModelType]:
         return self.session.get(self.model, id)
 
     def create(self, obj: ModelType) -> ModelType:
@@ -86,7 +84,7 @@ class BaseRepository(Generic[ModelType]):
         self.session.refresh(obj)
         return obj
 
-    def update(self, id: Union[uuid.UUID, int], obj_data: dict) -> Optional[ModelType]:
+    def update(self, id: uuid.UUID | int, obj_data: dict) -> Optional[ModelType]:
         db_obj = self.get_by_id(id)
         if not db_obj:
             return None
@@ -99,7 +97,7 @@ class BaseRepository(Generic[ModelType]):
         self.session.refresh(db_obj)
         return db_obj
 
-    def delete(self, id: Union[uuid.UUID, int]) -> bool:
+    def delete(self, id: uuid.UUID | int) -> bool:
         db_obj = self.get_by_id(id)
         if not db_obj:
             return False
