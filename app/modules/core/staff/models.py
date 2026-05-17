@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlmodel import Field, Relationship
+from sqlmodel import Field, Index, Relationship
 
 from app.models.base_model import BaseModel
 from app.models.mixins import AuditMixin
@@ -14,6 +14,9 @@ if TYPE_CHECKING:
 
 class Staff(BaseModel, AuditMixin, table=True):
     __tablename__ = "core_staff"
+    __table_args__ = (
+        Index("ix_core_staff_pos_id", "position_id"),
+    )
 
     external_id: int = Field(index=True, unique=True, description="Orig. system ID")
     first_name: str = Field(max_length=100)
@@ -34,7 +37,7 @@ class Staff(BaseModel, AuditMixin, table=True):
     staff_type: str = Field(default="SERVIDOR PÚBLICO")
     is_active: bool = Field(default=True, index=True)
 
-    position_id: uuid.UUID = Field(foreign_key="core_staff_position.id", index=True)
+    position_id: uuid.UUID = Field(foreign_key="core_staff_position.id")
     org_unit_id: uuid.UUID = Field(foreign_key="core_org_unit.id", index=True)
 
     # Relationships

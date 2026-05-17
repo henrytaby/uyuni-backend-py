@@ -65,6 +65,13 @@ def list_assets(
 - SQLAlchemy hooks capture entity changes
 - Context variables pass request info to hooks
 
+### Dynamic Modular Catalogs Pattern
+- **Unified Registry**: A central `global_registry` stores mapping from slugs to `CatalogProvider` protocols.
+- **Self-Registration**: Done inside domain catalogs module initialization (e.g. `app/modules/core/catalogs/__init__.py`) avoiding cyclical imports and redundant database route files.
+- **Dual Endpoint Design**:
+  - `GET /api/catalogs/{name}`: Retrieve an individual list dynamically.
+  - `POST /api/catalogs/bulk`: Receive a JSON mapping of catalog requests and parameters, resolving all in a single payload to minimize network request roundtrips in frontend components.
+
 ## Key Components
 
 ### Authentication Flow

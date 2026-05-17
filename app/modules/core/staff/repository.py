@@ -10,7 +10,7 @@ from app.modules.core.staff.models import Staff
 
 
 class StaffRepository(BaseRepository[Staff]):
-    searchable_fields = ["full_name", "document_number", "email"]
+    searchable_fields = ["full_name", "document_number", "email","cellphone"]
 
     def __init__(self, session: Session):
         super().__init__(session, Staff)

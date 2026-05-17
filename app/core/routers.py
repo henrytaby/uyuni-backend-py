@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.auth import routers as Auth
+from app.core.catalogs.routers import router as Catalogs
 from app.modules.assets import routers as Assets
 from app.modules.core import routers as Core
 from app.modules.tasks import routers as Task
@@ -8,6 +9,8 @@ from app.modules.tasks import routers as Task
 router = APIRouter()
 # Core
 router.include_router(Auth.router, prefix="/auth", tags=["Auth"])
+# Global Catalogs
+router.include_router(Catalogs)
 # Modules
 router.include_router(Task.router, prefix="/tasks", tags=["Tasks"])
 

@@ -9,7 +9,12 @@ from app.core.db import get_session
 from app.core.exceptions import NotFoundException
 from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.staff.models import Staff
-from app.modules.core.staff.schemas import StaffCreate, StaffRead, StaffReadDetailed, StaffUpdate
+from app.modules.core.staff.schemas import (
+    StaffCreate,
+    StaffRead,
+    StaffReadDetailed,
+    StaffUpdate,
+)
 from app.modules.core.staff.service import StaffService
 
 router = APIRouter(prefix="/staff", tags=["Core Staff - Personal"])
