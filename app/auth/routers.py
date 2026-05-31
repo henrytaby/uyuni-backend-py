@@ -14,14 +14,7 @@ def get_auth_service(session: Session = Depends(get_session)):
     return AuthService(session)
 
 
-@router.post("/register", response_model=schemas.User)
-def create_user(
-    user: schemas.UserCreate, service: AuthService = Depends(get_auth_service)
-):
-    """
-    Register a new user
-    """
-    return service.create_user(user)
+
 
 
 @router.post("/login", response_model=schemas.Token)
