@@ -1,7 +1,6 @@
 import sys
 import os
 import uuid
-import uuid6
 from datetime import date
 from typing import Optional
 
@@ -83,7 +82,7 @@ def run_sync():
             local_pos = loc_session.exec(select(StaffPosition).where(StaffPosition.external_id == cargo.id)).first()
             if not local_pos:
                 local_pos = StaffPosition(
-                    id=uuid6.uuid7(),
+                    id=uuid.uuid7(),
                     external_id=cargo.id,
                     item_number=cargo.nro_item,
                     name=cargo.nombre,
@@ -111,7 +110,7 @@ def run_sync():
             local_uni = loc_session.exec(select(OrgUnit).where(OrgUnit.external_id == uni.id)).first()
             if not local_uni:
                 local_uni = OrgUnit(
-                    id=uuid6.uuid7(),
+                    id=uuid.uuid7(),
                     external_id=uni.id,
                     external_parent_id=uni.parent_id,
                     name=uni.nombre,
@@ -170,7 +169,7 @@ def run_sync():
             local_staff = loc_session.exec(select(Staff).where(Staff.external_id == func.id)).first()
             if not local_staff:
                 local_staff = Staff(
-                    id=uuid6.uuid7(),
+                    id=uuid.uuid7(),
                     external_id=func.id,
                     first_name=func.nombres,
                     last_name_1=func.primer_apellido or "",

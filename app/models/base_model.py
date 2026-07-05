@@ -1,6 +1,5 @@
 import uuid
 
-import uuid6
 from sqlmodel import Field, SQLModel
 
 
@@ -10,7 +9,7 @@ class BaseModel(SQLModel):
     """
 
     id: uuid.UUID = Field(
-        default_factory=uuid6.uuid7,
+        default_factory=uuid.uuid7,
         primary_key=True,
         index=True,
         description="The primary key",

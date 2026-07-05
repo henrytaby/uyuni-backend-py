@@ -14,9 +14,6 @@ def get_auth_service(session: Session = Depends(get_session)):
     return AuthService(session)
 
 
-
-
-
 @router.post("/login", response_model=schemas.Token)
 async def login_for_access_token(
     request: Request,

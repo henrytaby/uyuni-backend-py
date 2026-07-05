@@ -14,9 +14,7 @@ if TYPE_CHECKING:
 
 class Staff(BaseModel, AuditMixin, table=True):
     __tablename__ = "core_staff"
-    __table_args__ = (
-        Index("ix_core_staff_pos_id", "position_id"),
-    )
+    __table_args__ = (Index("ix_core_staff_pos_id", "position_id"),)
 
     external_id: int = Field(index=True, unique=True, description="Orig. system ID")
     first_name: str = Field(max_length=100)

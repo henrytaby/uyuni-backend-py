@@ -89,7 +89,6 @@ class UserService:
         # Perform delete matching repository implementation
         return self.repository.delete(id)
 
-
     def count(
         self,
         search: str | None = None,

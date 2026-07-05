@@ -4,14 +4,13 @@
 Uyuni Backend is a Python/FastAPI enterprise backend with JWT auth, RBAC, audit logging, and modular domain architecture (assets, core, tasks).
 
 ## Tech Stack
-- **Framework**: FastAPI (Python 3.12) with Pydantic v2
-- **ORM**: SQLModel (SQLAlchemy + Pydantic), async
+- **Framework**: FastAPI (Python 3.14) with Pydantic v2
+- **ORM**: SQLModel (SQLAlchemy + Pydantic)
 - **Database**: PostgreSQL (prod) / SQLite (dev/test)
 - **Auth**: JWT with access/refresh token rotation, bcrypt
 - **Migrations**: Alembic
 - **Logging**: structlog
 - **Quality**: Ruff (lint), Mypy (types), pytest
-- **Deployment**: Vercel Serverless
 
 ## Architecture
 ```

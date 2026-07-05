@@ -10,7 +10,7 @@ from app.modules.core.staff.models import Staff
 
 
 class StaffRepository(BaseRepository[Staff]):
-    searchable_fields = ["full_name", "document_number", "email","cellphone"]
+    searchable_fields = ["full_name", "document_number", "email", "cellphone"]
 
     def __init__(self, session: Session):
         super().__init__(session, Staff)
@@ -25,8 +25,8 @@ class StaffRepository(BaseRepository[Staff]):
         extra_filters: Optional[list[Any]] = None,
     ) -> Sequence[Staff]:
         statement = select(self.model).options(
-            selectinload(Staff.position),
-            selectinload(Staff.org_unit).selectinload(OrgUnit.parent),
+            selectinload(Staff.position),  # type: ignore[arg-type]
+            selectinload(Staff.org_unit).selectinload(OrgUnit.parent),  # type: ignore[arg-type]
         )
         statement = self._apply_search(statement, search)
 
@@ -44,8 +44,12 @@ class StaffRepository(BaseRepository[Staff]):
         return self.session.exec(statement).all()  # type: ignore[no-any-return]
 
     def get_by_id(self, id: uuid.UUID | int) -> Optional[Staff]:
-        statement = select(Staff).where(Staff.id == id).options(
-            selectinload(Staff.position),
-            selectinload(Staff.org_unit).selectinload(OrgUnit.parent),
+        statement = (
+            select(Staff)
+            .where(Staff.id == id)
+            .options(
+                selectinload(Staff.position),  # type: ignore[arg-type]
+                selectinload(Staff.org_unit).selectinload(OrgUnit.parent),  # type: ignore[arg-type]
+            )
         )
         return self.session.exec(statement).first()

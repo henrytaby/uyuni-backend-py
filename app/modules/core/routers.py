@@ -19,4 +19,3 @@ router.include_router(org_units_router.router)
 router.include_router(positions_router.router)
 router.include_router(staff_personnel_router.router)
 router.include_router(users_router.router)
-

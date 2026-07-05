@@ -59,4 +59,3 @@ class UserReadDetailed(UserRead):
     updated_by_id: uuid.UUID | None = None
 
     model_config = ConfigDict(from_attributes=True)  # type: ignore
-

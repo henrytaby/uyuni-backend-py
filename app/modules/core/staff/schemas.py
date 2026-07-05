@@ -83,10 +83,14 @@ class StaffRead(StaffBase):
 
 class StaffReadDetailed(StaffRead):
     # Usamos alias internos para la lógica pero exponemos lo que pidió el usuario
-    position_detail: StaffPositionRead | None = Field(None, alias="position", exclude=True)
-    org_unit_detail: OrgUnitReadWithParent | None = Field(None, alias="org_unit", exclude=True)
+    position_detail: StaffPositionRead | None = Field(
+        None, alias="position", exclude=True
+    )
+    org_unit_detail: OrgUnitReadWithParent | None = Field(
+        None, alias="org_unit", exclude=True
+    )
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def management_name(self) -> str | None:
         if not self.org_unit_detail:
@@ -97,19 +101,19 @@ class StaffReadDetailed(StaffRead):
             else self.org_unit_detail.name
         )
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def department_name(self) -> str | None:
         if not self.org_unit_detail or not self.org_unit_detail.parent:
             return None
         return self.org_unit_detail.name
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def position_name(self) -> str | None:
         return self.position_detail.name if self.position_detail else None
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def position(self) -> StaffPositionSimple | None:
         if not self.position_detail:
@@ -120,7 +124,7 @@ class StaffReadDetailed(StaffRead):
             level=self.position_detail.level,
         )
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def org_unit(self) -> OrgUnitSimple | None:
         if not self.org_unit_detail:
@@ -138,4 +142,3 @@ class StaffReadDetailed(StaffRead):
             )
 
         return to_simple(self.org_unit_detail)
-

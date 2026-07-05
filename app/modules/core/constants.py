@@ -8,4 +8,3 @@ class CoreModuleSlug:
     ORG_UNIT = "core_org_unit"
     POSITIONS = "core_positions"
     USERS = "core_users"
-

@@ -2,9 +2,9 @@ import uuid
 from datetime import timedelta
 from typing import NoReturn
 
+import jwt
 from fastapi import Request
 from fastapi.security import OAuth2PasswordRequestForm
-from jose import JWTError
 from sqlmodel import select
 
 from app.auth import schemas, utils
@@ -203,7 +203,7 @@ class AuthService:
             username = payload.get("sub")
             if username is None:
                 raise UnauthorizedException(detail="Invalid refresh token")
-        except JWTError:
+        except jwt.InvalidTokenError:
             raise UnauthorizedException(detail="Invalid refresh token") from None
 
         user = utils.get_user(self.session, username)
@@ -239,7 +239,7 @@ class AuthService:
             user_id = payload.get("id")
             if user_id is None:
                 raise UnauthorizedException(detail="Invalid token")
-        except JWTError:
+        except jwt.InvalidTokenError:
             raise UnauthorizedException(detail="Invalid token") from None
 
         # Check if the access token is already revoked
@@ -274,7 +274,7 @@ class AuthService:
                     )
                     self.session.add(revoked_rf)
 
-            except JWTError:
+            except jwt.InvalidTokenError:
                 # If refresh token is garbage or invalid signature, we can choose to:
                 # 1. Ignore it (Log out successfully anyway)
                 # 2. Raise Error (Strict)
