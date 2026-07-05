@@ -24,20 +24,20 @@ Las herramientas principales son **Ruff** (Linting y Formateo) y **MyPy** (Tipad
 La configuración se encuentra en el archivo `ruff.toml`.
 
 *   **Longitud de línea**: `88` caracteres (Estándar de la industria).
-*   **Versión Python**: `3.12`.
+*   **Versión Python**: `3.14`.
 *   **Exclusiones**: La carpeta `alembic/` (migraciones autogeneradas) está excluida.
 
 ### 2.3. Uso para Desarrolladores
 
 ```bash
 # Verificar errores (solo lectura)
-ruff check .
+venv/bin/ruff check .
 
 # Verificar y corregir automáticamente lo que sea posible (Recomendado)
-ruff check --fix .
+venv/bin/ruff check --fix .
 
 # Formatear código (Reescribir archivos)
-ruff format .
+venv/bin/ruff format .
 ```
 
 ---
@@ -52,7 +52,7 @@ Para asegurar que si una función espera un `int`, no le pases un `str`. Esto pr
 ### 3.2. Uso para Desarrolladores
 
 ```bash
-mypy .
+venv/bin/mypy app/ --ignore-missing-imports
 ```
 
 ---
@@ -63,13 +63,13 @@ Antes de hacer `git commit`, ejecuta siempre:
 
 ```bash
 # 1. Corrige imports y errores simples
-ruff check --fix .
+venv/bin/ruff check --fix .
 
 # 2. Formatea el código bonito
-ruff format .
+venv/bin/ruff format .
 
 # 3. Verifica tipos estrictos
-mypy .
+venv/bin/mypy app/ --ignore-missing-imports
 ```
 
 ---

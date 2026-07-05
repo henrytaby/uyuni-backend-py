@@ -19,7 +19,7 @@ El módulo de autenticación ha sido diseñado siguiendo principios de **Arquite
 ### Tecnologías Core
 *   **FastAPI + Pydantic**: Validación de datos y esquemas.
 *   **OAuth2 + JWT (Bearer)**: Estándar para APIs REST stateless.
-*   **Passlib (Bcrypt)**: Hassing seguro de contraseñas.
+*   **Bcrypt (nativo)**: Hashing seguro de contraseñas.
 *   **PostgreSQL**: Persistencia de usuarios y logs.
 
 ---

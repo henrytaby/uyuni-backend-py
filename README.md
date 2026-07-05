@@ -54,7 +54,7 @@ Uso de `pydantic-settings` para cargar y validar variables de entorno desde `.en
 
 ## Tecnologías
 
-*   **Python 3.12**
+*   **Python 3.14.6**
 *   **FastAPI**: Framework web moderno y rápido.
 *   **SQLModel**: ORM que combina SQLAlchemy y Pydantic.
 *   **PostgreSQL**: Base de datos relacional.
@@ -63,7 +63,7 @@ Uso de `pydantic-settings` para cargar y validar variables de entorno desde `.en
 ## Instalación y Configuración
 
 ### 1. Requisitos Previos
-*   Python 3.12
+*   Python 3.14.6
 *   PostgreSQL
 *   Git
 
@@ -75,7 +75,7 @@ cd fastapi-product
 
 ### 3. Crear entorno virtual
 ```bash
-python3 -m venv venv
+python3.14 -m venv venv
 source venv/bin/activate
 ```
 
@@ -108,7 +108,7 @@ SECURITY_LOCKOUT_MINUTES=15
 ### 6. Inicializar Base de Datos (Crear Tablas)
 Una vez configurada la conexión en el `.env`, ejecuta las migraciones para crear todas las tablas:
 ```bash
-alembic upgrade head
+venv/bin/alembic upgrade head
 ```
 
 ### 7. Inicializar Datos (Seeds)
@@ -117,16 +117,16 @@ Para poblar la base de datos con módulos, roles y el usuario administrador.
 **Opción A: Ejecutar como módulo (Recomendado)**
 Más limpio y multiplataforma.
 ```bash
-python -m seeds.seed_create_modules
-python -m seeds.seed_users
+venv/bin/python -m seeds.seed_create_modules
+venv/bin/python -m seeds.seed_users
 ```
 
 **Opción B: Usando PYTHONPATH**
 Útil si prefieres ejecutar el archivo directamente.
 ```bash
 export PYTHONPATH=$PYTHONPATH:.
-python seeds/seed_create_modules.py
-python seeds/seed_users.py
+venv/bin/python seeds/seed_create_modules.py
+venv/bin/python seeds/seed_users.py
 ```
 
 *Usuario creado: `admin` / Password: `admin123`*
@@ -140,7 +140,7 @@ El proyecto incluye tests de integración usando `pytest`. Las pruebas utilizan 
 
 Ejecutar tests:
 ```bash
-pytest
+venv/bin/pytest
 ```
 
 ### 9. Calidad de Código
@@ -148,8 +148,8 @@ El proyecto utiliza herramientas estándar para asegurar la consistencia y calid
 
 Linting y Formateo (Ruff):
 ```bash
-ruff check .
-ruff format .
+venv/bin/ruff check .
+venv/bin/ruff format .
 ```
 
 ### 10. Logging Estructurado
@@ -297,7 +297,7 @@ Script idempotente (Upsert + Soft-Delete) para sincronizar masivamente Unidades 
 
 Modo desarrollo (con hot-reload):
 ```bash
-fastapi dev app/main.py
+venv/bin/fastapi dev app/main.py
 ```
 
 La API estará disponible en: `http://localhost:8000`

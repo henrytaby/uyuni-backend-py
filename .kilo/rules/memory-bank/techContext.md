@@ -4,7 +4,7 @@
 
 ### Core Framework
 - **FastAPI**: Modern async Python web framework with automatic OpenAPI documentation
-- **Python 3.12**: Using modern type hints, pattern matching, and performance improvements
+- **Python 3.14.6**: Using modern type hints, pattern matching, and performance improvements
 - **Pydantic v2**: Data validation and settings management
 
 ### Database Layer
@@ -16,7 +16,7 @@
 ### Authentication
 - **JWT**: JSON Web Tokens for stateless authentication
 - **bcrypt**: Password hashing algorithm
-- **python-jose**: JWT encoding/decoding library
+- **PyJWT**: JWT encoding/decoding library
 
 ### Code Quality
 - **Ruff**: Fast Python linter (replaces flake8, isort)
@@ -32,14 +32,14 @@
 
 ### Prerequisites
 ```bash
-Python 3.12
+Python 3.14.6
 PostgreSQL 14+ (or SQLite for development)
 ```
 
 ### Installation
 ```bash
 # Create virtual environment
-python3.12 -m venv venv
+python3.14 -m venv venv
 source venv/bin/activate
 
 # Install dependencies

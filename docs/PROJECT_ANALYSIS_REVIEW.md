@@ -32,15 +32,15 @@ The project uses **Domain-Driven Design (DDD-lite)** with nested routing:
 ### 1.3 Technology Stack ✅
 | Component | Technology | Version |
 |-----------|------------|---------|
-| Framework | FastAPI | 0.115.8 |
-| ORM | SQLModel (SQLAlchemy) | 0.0.22 |
+| Framework | FastAPI | 0.139.0 |
+| ORM | SQLModel (SQLAlchemy) | 0.0.39 |
 | Database | PostgreSQL | 14+ |
-| Auth | JWT (python-jose) | 3.4.0 |
-| Password | bcrypt | 4.0.1 |
-| Logging | structlog | 25.5.0 |
-| Testing | pytest | 9.0.2 |
-| Linting | ruff | 0.14.11 |
-| Type Check | mypy | 1.19.1 |
+| Auth | JWT (PyJWT) | 2.10.1 |
+| Password | bcrypt | 5.0.0 |
+| Logging | structlog | 26.1.0 |
+| Testing | pytest | 9.1.1 |
+| Linting | ruff | 0.15.20 |
+| Type Check | mypy | 2.1.0 |
 
 ---
 
@@ -114,16 +114,9 @@ REST conventions are **properly followed**:
 
 ### 3.1 Database Layer
 
-#### Issue 1: Mixed Sync/Async
-The application uses **synchronous SQLAlchemy** (`create_engine`, `Session`) but the dependencies include `asyncpg` (async PostgreSQL driver):
+#### Issue 1: Mixed Sync/Async (Resolved)
+The application originally included `asyncpg` (async PostgreSQL driver) in its dependencies while using **synchronous SQLAlchemy** (`create_engine`, `Session`). This has been resolved by removing `asyncpg` and standardizing on the synchronous driver (`psycopg2-binary`).
 
-```python
-# Current (sync)
-from sqlmodel import Session, SQLModel, create_engine
-
-# Consider for high concurrency
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-```
 
 #### Issue 2: Connection Pooling Not Explicitly Configured
 The database engine lacks connection pool settings for production:

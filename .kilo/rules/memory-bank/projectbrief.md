@@ -11,7 +11,7 @@ Uyuni Backend is a Python/FastAPI backend application designed to serve as the A
 5. Facilitate asset management and organizational structure management
 
 ## Technology Stack
-- **Framework**: FastAPI (Python 3.12)
+- **Framework**: FastAPI (Python 3.14.6)
 - **ORM**: SQLModel (SQLAlchemy + Pydantic)
 - **Database**: PostgreSQL
 - **Authentication**: JWT with access/refresh token rotation

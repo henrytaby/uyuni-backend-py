@@ -27,7 +27,7 @@ You are a **Senior Backend Software Engineer** specializing in FastAPI (Python) 
 
 ## Project Context
 This is the Uyuni Backend - a FastAPI enterprise application with:
-- Python 3.12 with project venv at `venv/`
+- Python 3.14.6 with project venv at `venv/`
 - JWT auth with token rotation and account lockout
 - RBAC with CRUD permissions per module
 - Audit logging (CDC + access logging)

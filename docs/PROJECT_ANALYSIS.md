@@ -57,7 +57,7 @@ El sistema aprovecha al máximo el sistema de DI de FastAPI.
     *   `AuditMixin` evita repetir campos de auditoría.
     *   `BaseRepository` evita repetir código CRUD básico.
     *   Manejadores de excepciones centralizados (`app/core/handlers.py`).
-4.  **Modernidad**: Uso de `UUIDv7` (via `uuid6`) para rendimiento y modernidad en Bases de Datos.
+4.  **Modernidad**: Uso de `UUIDv7` (via standard library `uuid`) para rendimiento y modernidad en Bases de Datos.
 
 ### Diagrama de Flujo de Auditoría (AuditMixin)
 
