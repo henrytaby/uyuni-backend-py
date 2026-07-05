@@ -1,11 +1,10 @@
 import uuid
 
 from fastapi import APIRouter, Depends, status
-from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.modules.tasks.constants import TasksModuleSlug
 
 from .models import Task
@@ -16,7 +15,7 @@ from .service import TaskService
 router = APIRouter()
 
 
-def get_service(session: Session = Depends(get_session)):
+def get_service(session: SessionDep):
     repository = TaskRepository(session)
     return TaskService(repository)
 

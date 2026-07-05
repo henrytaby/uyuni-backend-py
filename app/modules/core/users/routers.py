@@ -1,11 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.exceptions import NotFoundException
 from app.models.user import User
 from app.modules.core.constants import CoreModuleSlug
@@ -22,8 +21,8 @@ router = APIRouter(prefix="/users", tags=["Core Staff - Users"])
 
 @router.post("/", response_model=UserRead)
 def create_user(
+    session: SessionDep,
     data: UserCreate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.USERS,
@@ -40,6 +39,7 @@ def create_user(
 
 @router.get("/", response_model=list[UserReadDetailed])
 def get_users_list(
+    session: SessionDep,
     offset: int = 0,
     limit: int = 100,
     sort_by: str | None = Query(None),
@@ -47,7 +47,6 @@ def get_users_list(
     search: str | None = Query(None),
     is_active: bool | None = Query(None),
     is_superuser: bool | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.USERS,
@@ -69,10 +68,10 @@ def get_users_list(
 
 @router.get("/count")
 def count_users(
+    session: SessionDep,
     search: str | None = Query(None),
     is_active: bool | None = Query(None),
     is_superuser: bool | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.USERS,
@@ -92,8 +91,8 @@ def count_users(
 
 @router.get("/{id}", response_model=UserReadDetailed)
 def get_user(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.USERS,
@@ -110,9 +109,9 @@ def get_user(
 
 @router.patch("/{id}", response_model=UserRead)
 def update_user(
+    session: SessionDep,
     id: UUID,
     data: UserUpdate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.USERS,
@@ -131,8 +130,8 @@ def update_user(
 
 @router.delete("/{id}")
 def delete_user(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.USERS,

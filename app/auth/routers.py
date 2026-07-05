@@ -1,16 +1,15 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlmodel import Session
 
 from app.auth import schemas, utils
 from app.auth.service import AuthService
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.models.user import User as UserModel
 
 router = APIRouter()
 
 
-def get_auth_service(session: Session = Depends(get_session)):
+def get_auth_service(session: SessionDep):
     return AuthService(session)
 
 

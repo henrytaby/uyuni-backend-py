@@ -1,20 +1,19 @@
 from typing import Any
 
 from fastapi import APIRouter, Depends, Request
-from sqlmodel import Session
 
 from app.auth.utils import get_current_user
 from app.core.catalogs.registry import global_registry
 from app.core.catalogs.schemas import CatalogItemSchema
-from app.core.db import get_session
+from app.core.db import SessionDep
 
 router = APIRouter(prefix="/catalogs", tags=["Global - Catalogs"])
 
 
 @router.post("/bulk", response_model=dict[str, list[CatalogItemSchema]])
 def get_bulk_catalogs(
+    session: SessionDep,
     request_data: dict[str, dict[str, Any]],
-    session: Session = Depends(get_session),
     _=Depends(get_current_user),
 ):
     """
@@ -32,9 +31,9 @@ def get_bulk_catalogs(
 
 @router.get("/{catalog_name}", response_model=list[CatalogItemSchema])
 def get_single_catalog(
+    session: SessionDep,
     catalog_name: str,
     request: Request,
-    session: Session = Depends(get_session),
     _=Depends(get_current_user),
 ):
     """

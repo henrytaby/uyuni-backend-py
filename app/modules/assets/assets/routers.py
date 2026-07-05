@@ -1,11 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.exceptions import NotFoundException
 from app.modules.assets.assets.models import FixedAsset
 from app.modules.assets.assets.schemas import (
@@ -21,8 +20,8 @@ router = APIRouter(prefix="/assets", tags=["Assets - Fixed Assets"])
 
 @router.post("/", response_model=FixedAssetRead)
 def create_asset(
+    session: SessionDep,
     data: FixedAssetCreate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -36,12 +35,12 @@ def create_asset(
 
 @router.get("/", response_model=list[FixedAssetRead])
 def get_assets(
+    session: SessionDep,
     offset: int = 0,
     limit: int = 100,
     sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
     search: str | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -55,8 +54,8 @@ def get_assets(
 
 @router.get("/count")
 def count_assets(
+    session: SessionDep,
     search: str | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -70,8 +69,8 @@ def count_assets(
 
 @router.get("/{id}", response_model=FixedAssetRead)
 def get_asset(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -88,9 +87,9 @@ def get_asset(
 
 @router.patch("/{id}", response_model=FixedAssetRead)
 def update_asset(
+    session: SessionDep,
     id: UUID,
     data: FixedAssetUpdate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -107,8 +106,8 @@ def update_asset(
 
 @router.delete("/{id}")
 def delete_asset(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,

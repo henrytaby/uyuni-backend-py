@@ -1,11 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.exceptions import NotFoundException
 from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.org_units.models import OrgUnit
@@ -17,8 +16,8 @@ router = APIRouter(prefix="/org-units", tags=["Core Staff - Org Units"])
 
 @router.post("/", response_model=OrgUnitRead)
 def create_org_unit(
+    session: SessionDep,
     data: OrgUnitCreate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF,
@@ -32,12 +31,12 @@ def create_org_unit(
 
 @router.get("/", response_model=list[OrgUnitRead])
 def get_org_units(
+    session: SessionDep,
     offset: int = 0,
     limit: int = 100,
     sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
     search: str | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
@@ -50,8 +49,8 @@ def get_org_units(
 
 @router.get("/count")
 def count_org_units(
+    session: SessionDep,
     search: str | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
@@ -64,13 +63,13 @@ def count_org_units(
 
 @router.get("/acronym/{acronym}", response_model=list[OrgUnitRead])
 def get_org_units_by_acronym(
+    session: SessionDep,
     acronym: str,
     offset: int = 0,
     limit: int = 100,
     sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
     search: str | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
@@ -85,9 +84,9 @@ def get_org_units_by_acronym(
 
 @router.get("/acronym/{acronym}/count")
 def count_org_units_by_acronym(
+    session: SessionDep,
     acronym: str,
     search: str | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
@@ -100,8 +99,8 @@ def count_org_units_by_acronym(
 
 @router.get("/{id}", response_model=OrgUnitRead)
 def get_org_unit(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
@@ -117,9 +116,9 @@ def get_org_unit(
 
 @router.patch("/{id}", response_model=OrgUnitRead)
 def update_org_unit(
+    session: SessionDep,
     id: UUID,
     data: OrgUnitUpdate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF,
@@ -136,8 +135,8 @@ def update_org_unit(
 
 @router.delete("/{id}")
 def delete_org_unit(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF,

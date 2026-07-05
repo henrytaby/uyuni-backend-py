@@ -9,7 +9,7 @@ class BaseModel(SQLModel):
     """
 
     id: uuid.UUID = Field(
-        default_factory=uuid.uuid7,
+        default_factory=uuid.uuid7,  # type: ignore[attr-defined]
         primary_key=True,
         index=True,
         description="The primary key",

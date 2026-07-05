@@ -1,11 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.exceptions import NotFoundException
 from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.positions.models import StaffPosition
@@ -21,8 +20,8 @@ router = APIRouter(prefix="/positions", tags=["Core Staff - Positions"])
 
 @router.post("/", response_model=StaffPositionRead)
 def create_position(
+    session: SessionDep,
     data: StaffPositionCreate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF,
@@ -36,11 +35,11 @@ def create_position(
 
 @router.get("/", response_model=list[StaffPositionRead])
 def get_positions(
+    session: SessionDep,
     offset: int = 0,
     limit: int = 100,
     sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
@@ -53,7 +52,7 @@ def get_positions(
 
 @router.get("/count")
 def count_positions(
-    session: Session = Depends(get_session),
+    session: SessionDep,
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
@@ -66,8 +65,8 @@ def count_positions(
 
 @router.get("/{id}", response_model=StaffPositionRead)
 def get_position(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
@@ -83,9 +82,9 @@ def get_position(
 
 @router.patch("/{id}", response_model=StaffPositionRead)
 def update_position(
+    session: SessionDep,
     id: UUID,
     data: StaffPositionUpdate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF,
@@ -102,8 +101,8 @@ def update_position(
 
 @router.delete("/{id}")
 def delete_position(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF,

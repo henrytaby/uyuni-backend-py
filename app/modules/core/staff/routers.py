@@ -1,11 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.exceptions import NotFoundException
 from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.staff.models import Staff
@@ -22,8 +21,8 @@ router = APIRouter(prefix="/staff", tags=["Core Staff - Personal"])
 
 @router.post("/", response_model=StaffRead)
 def create_staff(
+    session: SessionDep,
     data: StaffCreate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF,
@@ -37,6 +36,7 @@ def create_staff(
 
 @router.get("/", response_model=list[StaffReadDetailed])
 def get_staff_list(
+    session: SessionDep,
     offset: int = 0,
     limit: int = 100,
     sort_by: str | None = Query(None),
@@ -44,7 +44,6 @@ def get_staff_list(
     search: str | None = Query(None),
     is_active: bool | None = Query(None),
     org_unit_id: UUID | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
@@ -65,10 +64,10 @@ def get_staff_list(
 
 @router.get("/count")
 def count_staff(
+    session: SessionDep,
     search: str | None = Query(None),
     is_active: bool | None = Query(None),
     org_unit_id: UUID | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
@@ -87,8 +86,8 @@ def count_staff(
 
 @router.get("/{id}", response_model=StaffReadDetailed)
 def get_staff(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF, required_permission=PermissionAction.READ
@@ -104,9 +103,9 @@ def get_staff(
 
 @router.patch("/{id}", response_model=StaffRead)
 def update_staff(
+    session: SessionDep,
     id: UUID,
     data: StaffUpdate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF,
@@ -123,8 +122,8 @@ def update_staff(
 
 @router.delete("/{id}")
 def delete_staff(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.STAFF,

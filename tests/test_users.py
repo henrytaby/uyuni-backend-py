@@ -36,9 +36,7 @@ def test_users_crud_as_superuser(client: TestClient, superuser_token_headers: di
     assert response.json()["total"] >= 2
 
     # 4. Get individual user
-    response = client.get(
-        f"/api/core/users/{user_id}", headers=superuser_token_headers
-    )
+    response = client.get(f"/api/core/users/{user_id}", headers=superuser_token_headers)
     assert response.status_code == 200
     detail_data = response.json()
     assert detail_data["username"] == "newuser"
@@ -65,9 +63,7 @@ def test_users_crud_as_superuser(client: TestClient, superuser_token_headers: di
     assert response.json() == {"ok": True}
 
     # Verify user is deleted
-    response = client.get(
-        f"/api/core/users/{user_id}", headers=superuser_token_headers
-    )
+    response = client.get(f"/api/core/users/{user_id}", headers=superuser_token_headers)
     assert response.status_code == 404
 
 

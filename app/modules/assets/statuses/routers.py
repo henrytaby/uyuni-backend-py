@@ -1,11 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.exceptions import NotFoundException
 from app.modules.assets.constants import AssetsModuleSlug
 from app.modules.assets.statuses.models import AssetStatus
@@ -21,8 +20,8 @@ router = APIRouter(prefix="/statuses", tags=["Assets - Asset Statuses"])
 
 @router.post("/", response_model=AssetStatusRead)
 def create_status(
+    session: SessionDep,
     data: AssetStatusCreate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -36,12 +35,12 @@ def create_status(
 
 @router.get("/", response_model=list[AssetStatusRead])
 def get_statuses(
+    session: SessionDep,
     offset: int = 0,
     limit: int = 100,
     sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
     search: str | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -55,8 +54,8 @@ def get_statuses(
 
 @router.get("/count")
 def count_statuses(
+    session: SessionDep,
     search: str | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -70,8 +69,8 @@ def count_statuses(
 
 @router.get("/{id}", response_model=AssetStatusRead)
 def get_status(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -88,9 +87,9 @@ def get_status(
 
 @router.patch("/{id}", response_model=AssetStatusRead)
 def update_status(
+    session: SessionDep,
     id: UUID,
     data: AssetStatusUpdate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -107,8 +106,8 @@ def update_status(
 
 @router.delete("/{id}")
 def delete_status(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,

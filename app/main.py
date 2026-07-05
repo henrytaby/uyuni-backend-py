@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html
 from fastapi.responses import FileResponse, HTMLResponse
+from sqlalchemy.exc import IntegrityError
 
 from app.core.audit import AuditMiddleware, register_audit_hooks
 from app.core.config import settings
@@ -24,6 +25,7 @@ from app.core.exceptions import (
 from app.core.handlers import (
     bad_request_exception_handler,
     forbidden_exception_handler,
+    integrity_error_handler,
     internal_server_error_handler,
     not_found_exception_handler,
     unauthorized_exception_handler,
@@ -171,6 +173,7 @@ app.add_exception_handler(BadRequestException, bad_request_exception_handler)  #
 app.add_exception_handler(UnauthorizedException, unauthorized_exception_handler)  # type: ignore
 app.add_exception_handler(ForbiddenException, forbidden_exception_handler)  # type: ignore
 app.add_exception_handler(InternalServerErrorException, internal_server_error_handler)  # type: ignore
+app.add_exception_handler(IntegrityError, integrity_error_handler)  # type: ignore
 
 
 @app.get("/")

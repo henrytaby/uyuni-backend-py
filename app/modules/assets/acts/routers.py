@@ -1,11 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.exceptions import NotFoundException
 from app.modules.assets.acts.models import Act
 from app.modules.assets.acts.schemas import ActCreate, ActRead, ActUpdate
@@ -17,8 +16,8 @@ router = APIRouter(prefix="/acts", tags=["Assets - Acts"])
 
 @router.post("/", response_model=ActRead)
 def create_act(
+    session: SessionDep,
     data: ActCreate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -32,12 +31,12 @@ def create_act(
 
 @router.get("/", response_model=list[ActRead])
 def get_acts(
+    session: SessionDep,
     offset: int = 0,
     limit: int = 100,
     sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
     search: str | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -51,8 +50,8 @@ def get_acts(
 
 @router.get("/count")
 def count_acts(
+    session: SessionDep,
     search: str | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -66,8 +65,8 @@ def count_acts(
 
 @router.get("/{id}", response_model=ActRead)
 def get_act(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -84,9 +83,9 @@ def get_act(
 
 @router.patch("/{id}", response_model=ActRead)
 def update_act(
+    session: SessionDep,
     id: UUID,
     data: ActUpdate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -103,8 +102,8 @@ def update_act(
 
 @router.delete("/{id}")
 def delete_act(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,

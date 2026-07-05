@@ -1,11 +1,10 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.exceptions import NotFoundException
 from app.modules.assets.areas.models import Area
 from app.modules.assets.areas.schemas import AreaCreate, AreaRead, AreaUpdate
@@ -17,8 +16,8 @@ router = APIRouter(prefix="/areas", tags=["Assets - Areas"])
 
 @router.post("/", response_model=AreaRead)
 def create_area(
+    session: SessionDep,
     data: AreaCreate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -32,12 +31,12 @@ def create_area(
 
 @router.get("/", response_model=list[AreaRead])
 def get_areas(
+    session: SessionDep,
     offset: int = 0,
     limit: int = 100,
     sort_by: str | None = Query(None),
     sort_order: str = Query("asc"),
     search: str | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -51,8 +50,8 @@ def get_areas(
 
 @router.get("/count")
 def count_areas(
+    session: SessionDep,
     search: str | None = Query(None),
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -66,8 +65,8 @@ def count_areas(
 
 @router.get("/{id}", response_model=AreaRead)
 def get_area(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -84,9 +83,9 @@ def get_area(
 
 @router.patch("/{id}", response_model=AreaRead)
 def update_area(
+    session: SessionDep,
     id: UUID,
     data: AreaUpdate,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
@@ -103,8 +102,8 @@ def update_area(
 
 @router.delete("/{id}")
 def delete_area(
+    session: SessionDep,
     id: UUID,
-    session: Session = Depends(get_session),
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=AssetsModuleSlug.GENERAL,
