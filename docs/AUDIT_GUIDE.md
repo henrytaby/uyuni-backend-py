@@ -2,7 +2,7 @@
 
 ## 1. Introducción
 
-El **Sistema de Auditoría** de `fastapi-product` es un componente crítico de nivel empresarial diseñado para proporcionar visibilidad completa sobre **quién** hizo **qué**, **cuándo** y **con qué resultado**.
+El **Sistema de Auditoría** de `uyuni-backend` es un componente crítico de nivel empresarial diseñado para proporcionar visibilidad completa sobre **quién** hizo **qué**, **cuándo** y **con qué resultado**.
 
 Este sistema cumple con estándares de seguridad y cumplimiento (compliance) al registrar tanto el acceso a los recursos (Access Logs) como los cambios en los datos (Data Audit / CDC).
 
@@ -13,22 +13,22 @@ Este sistema cumple con estándares de seguridad y cumplimiento (compliance) al 
 El sistema opera en tres niveles complementarios:
 
 ### Nivel 1: Auditoría de Acceso (Access Logging)
-*   **Componente**: `app/core/audit_middleware.py`
+*   **Componente**: `app/core/audit/middleware.py`
 *   **Responsabilidad**: Registrar cada petición HTTP que llega al servidor.
 *   **Datos Capturados**: Usuario (ID/Username), IP, Endpoint, Método HTTP (GET, POST, etc.), User Agent y Código de Estado (200, 403, 500).
 *   **Propósito**: Seguridad y Trazabilidad de uso. Detecta intentos de acceso no autorizado o patrones de uso anómalos.
-*   **Almacenamiento**: Tabla `audit_log` (Acción: `ACCESS`).
+*   **Almacenamiento**: Tabla `audit_logs` (Acción: `ACCESS`).
 
 ### Nivel 2: Auditoría de Datos (Data Audit / CDC)
-*   **Componente**: `app/core/audit_hooks.py`
+*   **Componente**: `app/core/audit/hooks.py`
 *   **Responsabilidad**: Detectar cambios en la base de datos (INSERT, UPDATE, DELETE) de manera automática.
 *   **Tecnología**: SQLAlchemy Event Hooks (`after_flush`).
 *   **Datos Capturados**:
     *   **CREATE**: Captura el snapshot inicial del objeto.
     *   **UPDATE**: Captura el "Diff" (Valor Anterior vs Valor Nuevo) solo de los campos modificados.
     *   **DELETE**: Registra qué entidad fue eliminada.
-*   **Propósito**: Integridad de datos e historial de cambios. Permite responder "¿Quién cambió el precio de este producto?" o "¿Cuál era el valor antes?".
-*   **Almacenamiento**: Tabla `audit_log` (Acción: `CREATE`, `UPDATE`, `DELETE`).
+*   **Propósito**: Integridad de datos e historial de cambios. Permite responder "¿Quién cambió el estado de este activo?" o "¿Cuál era el valor antes?".
+*   **Almacenamiento**: Tabla `audit_logs` (Acción: `CREATE`, `UPDATE`, `DELETE`).
 
 ### Nivel 3: Almacenamiento en Frío (Cold Storage)
 *   **Componente**: `scripts/archive_audit.py`
@@ -64,7 +64,7 @@ Edita `AUDIT_LOG_EXCLUDE_STATUS_CODES` en tu archivo `.env`:
 ```json
 AUDIT_LOG_EXCLUDE_STATUS_CODES='[404]'
 ```
-Esto evitará que cualquier respuesta con status 404 se guarde en la base de datos `audit_log`, aunque la petición haya llegado al servidor.
+Esto evitará que cualquier respuesta con status 404 se guarde en la base de datos `audit_logs`, aunque la petición haya llegado al servidor.
 
 #### C. Exclusión Puntual (Vía Código)
 Ideal para lógica específica dentro de un router. Usa la dependencia `skip_access_audit`.
@@ -102,7 +102,7 @@ class Task(BaseModel, AuditMixin, table=True):
 
 ---
 
-## 4. Estructura de la Base de Datos (`audit_log`)
+## 4. Estructura de la Base de Datos (`audit_logs`)
 
 | Columna | Tipo | Descripción |
 | :--- | :--- | :--- |

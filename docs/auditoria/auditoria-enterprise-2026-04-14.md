@@ -1,9 +1,9 @@
 # Auditoría Enterprise - Uyuni Backend
 
-**Fecha:** 14 de abril de 2026  
+**Fecha:** 14 de abril de 2026 (Actualizado: julio 2026)  
 **Auditor:** Qwen Code (AI Senior Backend Engineer)  
 **Versión del Proyecto:** v1  
-**Framework:** FastAPI 0.115.8 | Python 3.12 | SQLModel 0.0.22
+**Framework:** FastAPI 0.139.0 | Python 3.14.6 | SQLModel 0.0.39
 
 ---
 
@@ -255,20 +255,22 @@ uyuni-backend-py/
 │   │
 │   ├── modules/                # 📦 Domain Modules (DDD-lite)
 │   │   ├── tasks/              #   ✅ Task management
-│   │   ├── core/               #   👥 Staff, OrgUnits, Positions
-│   │   │   ├── staff/
-│   │   │   ├── org_units/
-│   │   │   └── positions/
-│   │   └── assets/             #   🏢 Fixed Assets management
-│   │       ├── assets/
-│   │       ├── areas/
-│   │       ├── groups/
-│   │       ├── statuses/
-│   │       ├── institutions/
-│   │       └── acts/
-│   │
-│   └── util/                   # 🔧 Utilities
-│       └── datetime.py         #   Timezone helpers
+    │   │   ├── core/               #   👥 Staff, OrgUnits, Positions, Users, Catalogs
+    │   │   │   ├── staff/
+    │   │   │   ├── org_units/
+    │   │   │   ├── positions/
+    │   │   │   ├── users/
+    │   │   │   └── catalogs/      #     Sistema de Catálogos Dinámicos (auto-registro)
+    │   │   └── assets/             #   🏢 Fixed Assets management
+    │   │       ├── assets/
+    │   │       ├── areas/
+    │   │       ├── groups/
+    │   │       ├── statuses/
+    │   │       ├── institutions/
+    │   │       └── acts/
+    │   │
+    │   └── util/                   # 🔧 Utilities
+    │       └── datetime.py         #   Timezone helpers
 │
 ├── alembic/                    # 🗃️ Database Migrations
 │   ├── env.py                  #   Migration configuration
@@ -601,6 +603,11 @@ graph TB
         RT[RevokedTokens]
     end
     
+    subgraph "Dynamic Catalogs"
+        CAT[CatalogRegistry]
+        PROV[CatalogProviders]
+    end
+    
     S --> OU
     S --> SP
     FA --> AR
@@ -608,6 +615,8 @@ graph TB
     FA --> AS
     FA --> OU
     FA --> S
+    CAT --> OU
+    PROV --> CAT
     
     style U fill:#e3f2fd
     style R fill:#e3f2fd
@@ -670,9 +679,9 @@ flowchart LR
 | Herramienta | Configuración | Reglas | Evaluación |
 |------------|---------------|--------|------------|
 | **Ruff** | `ruff.toml` | E, W, F, I, B (sin B008) | ✅ Bien configurado |
-| **Mypy** | `mypy.ini` | Python 3.12, pydantic plugin | ✅ Correcto |
+| **Mypy** | `mypy.ini` | Python 3.14, pydantic plugin | ✅ Correcto |
 | **Pytest** | `pytest.ini` | In-memory SQLite | ✅ Bien estructurado |
-| **Target** | Python 3.12 | Modern type hints | ✅ Moderno |
+| **Target** | Python 3.14 | Modern type hints (`X \| None`, `list[T]`) | ✅ Moderno |
 
 ### 6.3 Métricas de Calidad
 

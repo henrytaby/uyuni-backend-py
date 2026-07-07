@@ -46,12 +46,13 @@ erDiagram
         string role_slug FK
         string module_slug FK
         boolean can_create
-        boolean can_read
         boolean can_update
         boolean can_delete
         boolean scope_all "Acceso Global vs Personal"
     }
 ```
+
+> **Nota**: La lectura (`can_read`) es **implícita**: si existe un registro activo en `RoleModule` para un módulo, el permiso de lectura se asume automáticamente. No existe una columna `can_read` en la tabla `role_modules`.
 
 ---
 

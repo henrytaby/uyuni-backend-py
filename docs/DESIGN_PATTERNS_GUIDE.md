@@ -35,8 +35,8 @@ Encapsula la lógica necesaria para acceder a las fuentes de datos. Proporciona 
 
 *   **Ubicación**: `app/core/repository.py`, `app/modules/*/repository.py`.
 *   **Uso**:
-    *   `BaseRepository[T]`: Una clase genérica que provee métodos estándar (`get`, `get_all`, `create`, `update`, `delete`).
-    *   **Motor Genérico de Consultas**: El repositorio base gestiona automáticamente la paginación, el ordenamiento y la búsqueda global polimórfica.
+    *   `BaseRepository[T]`: Una clase genérica que provee métodos estándar (`get_by_id`, `get_all`, `count`, `create`, `update`, `delete`).
+    *   **Motor Genérico de Consultas**: El repositorio base gestiona automáticamente la paginación, el ordenamiento, la búsqueda global polimórfica (con casting automático a String para ILIKE) y los filtros inyectables (`extra_filters`).
 *   **Beneficio**: Centraliza las consultas, evita código SQL/ORM repetido y facilita enormemente el mantenimiento.
 
 ### 2. Service Layer Pattern (Patrón Capa de Servicio)

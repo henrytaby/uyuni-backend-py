@@ -10,6 +10,7 @@ El módulo Core implementa el patrón de **Nested Routing** y **Aplanamiento Est
 ```text
 app/modules/core/
 ├── routers.py          # Agregador raíz (Nested Router)
+├── constants.py        # CoreModuleSlug (RBAC slugs)
 ├── org_units/          # Unidades Organizacionales
 │   ├── models.py       # Modelo OrgUnit (Jerárquico)
 │   ├── repository.py
@@ -22,12 +23,18 @@ app/modules/core/
 │   ├── service.py
 │   ├── schemas.py
 │   └── routers.py      # /core/positions
-└── staff/              # Personal (Funcionarios)
-    ├── models.py       # Modelo Staff
-    ├── repository.py   # Soporte para Búsqueda Global
-    ├── service.py
-    ├── schemas.py
-    └── routers.py      # /core/staff
+├── staff/              # Personal (Funcionarios)
+│   ├── models.py       # Modelo Staff
+│   ├── repository.py   # Soporte para Búsqueda Global
+│   ├── service.py
+│   ├── schemas.py
+│   └── routers.py      # /core/staff
+└── users/              # Gestión de Usuarios (CRUD)
+    ├── models.py       # Reexporta User de app/models
+    ├── repository.py
+    ├── service.py      # UserService
+    ├── schemas.py      # UserCreate, UserRead, UserReadDetailed, UserUpdate
+    └── routers.py      # /core/users
 ```
 
 ---
@@ -114,6 +121,10 @@ Al importar routers como alias en el agregador de Core, utiliza siempre minúscu
 
 ## 5. Integración RBAC
 Los submódulos de Core utilizan constantes específicas para su protección granular:
-- **Staff**: CoreModuleSlug.STAFF (slug: core_staff).
-- **Org Units**: CoreModuleSlug.ORG_UNIT (slug: core_org_unit).
-- **Positions**: CoreModuleSlug.POSITIONS (slug: core_positions).
+- **Staff**: CoreModuleSlug.STAFF (slug: `core_staff`).
+- **Org Units**: CoreModuleSlug.ORG_UNIT (slug: `core_org_unit`).
+- **Positions**: CoreModuleSlug.POSITIONS (slug: `core_positions`).
+- **Users**: CoreModuleSlug.USERS (slug: `core_users`).
+
+> [!NOTE]
+> El módulo Core también incluye un submódulo `catalogs/` que no expone rutas HTTP propias sino que auto-registra proveedores de catálogos dinámicos (gerencias, departamentos) en el `global_registry`. Ver `docs/developer_guide/02_sistema_catalogos_dinamicos.md` para más detalles.

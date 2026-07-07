@@ -11,11 +11,22 @@ Alembic necesita "ver" tus modelos para detectar cambios. Si no los importas en 
 **Archivo:** `alembic/env.py`
 ```python
 # Importa todos los modelos para poblar SQLModel.metadata
-from app.models.user import User, UserRevokedToken, ...
+from app.models.user import User, UserRole, UserRevokedToken, UserLogLogin
 from app.models.role import Role, RoleModule
 from app.models.module import Module, ModuleGroup
-# [NUEVO] Agrega tu modelo aquí:
+from app.models.audit import AuditLog
+# Domain models
 from app.modules.core.staff.models import Staff
+from app.modules.core.org_units.models import OrgUnit
+from app.modules.core.positions.models import StaffPosition
+from app.modules.assets.assets.models import FixedAsset
+from app.modules.assets.areas.models import Area
+from app.modules.assets.groups.models import AssetGroup
+from app.modules.assets.statuses.models import AssetStatus
+from app.modules.assets.institutions.models import Institution
+from app.modules.assets.acts.models import Act, AssetActLink
+from app.modules.tasks.models import Task
+# [NUEVO] Agrega tu modelo aquí:
 ```
 
 ---

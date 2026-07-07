@@ -19,7 +19,7 @@ Este documento detalla el análisis del flujo de autenticación actual (`app/aut
 *   **Antes**: Se guardaba `password` en fallos de login.
 *   **Ahora**:
     *   Código modificado para no escribir password.
-    *   **Columna eliminada** físicamente de la base de datos (`user_log_login`).
+    *   **Columna eliminada** físicamente de la tabla (actualmente `user_log_logins`, en plural).
     *   **Riesgo Eliminado**: Imposible filtrar credenciales vía logs.
 
 ### ✅ B. Estandarización de API (RESTful)
@@ -28,9 +28,10 @@ Se renombraron los endpoints para seguir el estándar de la industria (Auth0/OID
 | Acción | Endpoint Anterior | **Endpoint Nuevo** |
 | :--- | :--- | :--- |
 | Login | `/api/auth/token` | **`/api/auth/login`** |
-| Register | `/api/auth/users/` | **`/api/auth/register`** |
 | Profile | `/api/auth/users/me/` | **`/api/auth/me`** |
 | Refresh | `/api/auth/token/refresh` | **`/api/auth/refresh`** |
+
+> **Nota**: No existe un endpoint público `POST /api/auth/register`. La creación de usuarios se realiza a través del submódulo `core/users/` expuesto en `POST /api/core/users/` (protegido con `PermissionChecker(module_slug=CoreModuleSlug.USERS)`), accesible solo a usuarios con el permiso `CREATE` en el módulo `core_users`.
 
 ### ✅ C. Protección de Bases de Datos
 *   Se agregaron campos a la tabla `User` (`failed_login_attempts`, `locked_until`, `last_login_at`).

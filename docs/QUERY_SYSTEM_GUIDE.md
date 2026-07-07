@@ -26,7 +26,7 @@ En tu repositorio, simplemente define cuáles campos son "buscables":
 ```python
 class FixedAssetRepository(BaseRepository[FixedAsset]):
     # Define qué campos se verán afectados por el parámetro ?search=
-    searchable_fields = ["name", "code_saf", "serial_number", "external_id"]
+    searchable_fields = ["description", "old_code", "new_code", "serial_number"]
 ```
 
 ### ¿Por qué "Polimórfica"? (Smart Casting)

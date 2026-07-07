@@ -23,12 +23,12 @@ Each domain module contains: `routers.py`, `service.py`, `repository.py`, `model
 - **Nested Routing**: Root module routers act as unified aggregators
 
 ## Key Patterns
-- **Repository Pattern**: Generic `BaseRepository[T]` with CRUD interface
+- **Repository Pattern**: Generic `BaseRepository[T]` with CRUD interface (`get_by_id`, `get_all`, `count`, `create`, `update`, `delete`)
 - **Dependency Injection**: FastAPI `Depends()` throughout
-- **RBAC**: User → Role → RoleModule → Module + Permissions (CRUD)
+- **RBAC**: User → Role → RoleModule → Module + Permissions (`can_create`, `can_update`, `can_delete`, `scope_all`; read is implicit)
 - **Audit**: Middleware captures request context + SQLAlchemy hooks for CDC
 - **ETL Synchronization**: Python scripts (e.g. `sync_siger.py`) using Upsert and Soft-Delete (`is_active=False`) mapping sequential external IDs to internal `UUIDv7` keys (`external_id`).
-- **Dynamic Modular Catalogs**: A decoupled, zero-boilerplate registration mechanism (`CatalogProvider` interface) mapping catalog slugs to queries inside domain modules (`app/modules/core/catalogs/__init__.py`). It registers providers into the central `global_registry` and exposes a dynamic individual selector (`GET /api/catalogs/{name}`) alongside an efficient high-performance batch loader (**`POST /api/catalogs/bulk`**) that gathers multiple datasets in a single HTTP request to minimize selectbox-population overhead on the frontend.
+- **Dynamic Modular Catalogs**: A decoupled, zero-boilerplate registration mechanism (`CatalogProvider` protocol) mapping catalog slugs to queries inside domain modules (`app/modules/core/catalogs/__init__.py`). It registers providers into the central `global_registry` and exposes a dynamic individual selector (`GET /api/catalogs/{name}`) alongside an efficient high-performance batch loader (**`POST /api/catalogs/bulk`**) that gathers multiple datasets in a single HTTP request to minimize selectbox-population overhead on the frontend.
 
 ## Code Conventions
 - Strict Clean Code principles (SOLID, DRY, KISS)

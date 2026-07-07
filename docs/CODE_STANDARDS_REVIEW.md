@@ -28,29 +28,29 @@ Es casi obligatorio en proyectos modernos (FastAPI lo exige).
 
 ## 2. Auditoría del Proyecto (`app/modules/`)
 
-He revisado los módulos actuales (`customers`, `products`, `tasks`) y este es el reporte:
+He revisado los módulos actuales (`assets`, `core`, `tasks`) y este es el reporte:
 
 ### ✅ Puntos Positivos (Cumplimiento)
 1.  **Estructura Modular**: Se respeta estrictamente `routers.py`, `service.py`, `repository.py`, `models.py`, `schemas.py`. Esto es excelente y cumple con estándares enterprise.
 2.  **Type Hinting**: El uso de Pydantic y SQLModel fuerza tipos estrictos en casi todo el código.
 3.  **Naming Conventions**:
-    *   Variables y funciones usan `snake_case` correctamente (`create_product`, `user_id`).
-    *   Clases usan `PascalCase` (`ProductService`, `CustomerRepository`).
+    *   Variables y funciones usan `snake_case` correctamente (`create_staff`, `user_id`).
+    *   Clases usan `PascalCase` (`StaffService`, `AssetService`).
 4.  **Patrón Repositorio**: Se implementa correctamente la separación de la capa de datos.
 
 ### ⚠️ Hallazgos y Correcciones (Deuda Técnica)
-Durante la revisión encontré pequeños detalles de "Copy-Paste" que ya he corregido:
+Durante la revisión histórica del proyecto se encontraron detalles de "Copy-Paste" típicos cuando se usa un módulo como plantilla para otro. Estos ya han sido corregidos:
 
 1.  **Comentarios "Residuales"**:
-    *   En `products/routers.py`, los comentarios decían `# GET ALL TASK` en lugar de `# GET ALL PRODUCTS`. Esto es común cuando se usa un módulo como plantilla para otro.
+    *   Al crear routers por copia, los comentarios a veces conservaban el nombre del módulo origen (ej. `# GET ALL TASK` en un router de otro dominio). Esto es común cuando se usa un módulo como plantilla.
     *   *Estado*: **Corregido**.
 
 2.  **Typos en Mensajes**:
-    *   En `customers/service.py`, el mensaje de error decía `Customer doesn't exits` (salir) en vez de `exists` (existir).
+    *   Mensajes de error con typos como `doesn't exits` (salir) en vez de `exists` (existir). Corregidos en sus respectivos servicios.
     *   *Estado*: **Corregido**.
 
-3.  **Variable `no_task`**:
-    *   En `CustomerService`, la variable de error se llama `no_task`. Probablemente copiado de `TaskService`.
+3.  **Nombres de variables residuales**:
+    *   Al copiar servicios, se conservaban nombres como `no_task` en servicios de otros dominios.
     *   *Recomendación*: Renombrar a `not_found_msg` o `resource_name` para ser más genérico, aunque funcionalmente no afecta.
 
 ---

@@ -1,6 +1,6 @@
 # Análisis de Cumplimiento de Principios SOLID
 
-Este documento detalla cómo el proyecto `fastapi-product` implementa y respeta los principios SOLID, asegurando una arquitectura robusta, mantenible y escalable.
+Este documento detalla cómo el proyecto `uyuni-backend` implementa y respeta los principios SOLID, asegurando una arquitectura robusta, mantenible y escalable.
 
 ## 1. SRP - Single Responsibility Principle (Principio de Responsabilidad Única)
 **"Un módulo debe tener una sola razón para cambiar."**
@@ -21,29 +21,30 @@ En `app/auth/routers.py`, la función `create_user` no contiene lógica de encri
 
 *   **Implementación Clave**: `BaseRepository` (`app/core/repository.py`).
 *   **Análisis**: La clase genérica `BaseRepository` implementa operaciones CRUD estándar para cualquier modelo.
-*   **Cumplimiento**: Si necesitamos funcionalidades específicas para Productos (ej. `get_all_with_relations`), no modificamos `BaseRepository`. En su lugar, extendemos su funcionalidad creando `ProductRepository(BaseRepository[Product])` y agregamos los nuevos métodos allí. Esto permite añadir nuevas capacidades sin riesgo de romper el código base existente.
+*   **Cumplimiento**: Si necesitamos funcionalidades específicas para Staff (ej. `get_all_with_relations`), no modificamos `BaseRepository`. En su lugar, extendemos su funcionalidad creando `StaffRepository(BaseRepository[Staff])` y agregamos los nuevos métodos allí. Esto permite añadir nuevas capacidades sin riesgo de romper el código base existente.
 
 ```mermaid
 classDiagram
     class BaseRepository~T~ {
-        +get(id)
+        +get_by_id(id)
+        +get_all(offset, limit, sort_by, sort_order, search, extra_filters)
+        +count(search, extra_filters)
         +create(obj)
-        +update(id, data)
+        +update(id, obj_data)
         +delete(id)
     }
-    class ProductRepository {
-        +get_by_id_with_relations(id)
-        +check_category_exists(id)
+    class StaffRepository {
+        +searchable_fields
     }
-    BaseRepository <|-- ProductRepository : Inherits
+    BaseRepository <|-- StaffRepository : Inherits
 ```
 
 ## 3. LSP - Liskov Substitution Principle (Principio de Sustitución de Liskov)
 **"Las clases hijas deben poder sustituir a las clases padres sin alterar el correcto funcionamiento del programa."**
 
 *   **Implementación**: Herencia de Repositorios.
-*   **Análisis**: `ProductRepository` hereda de `BaseRepository`.
-*   **Cumplimiento**: Cualquier parte del sistema que espere un `BaseRepository` puede trabajar con un `ProductRepository` sin problemas, ya que este último respeta el contrato de la clase base (métodos `create`, `get`, etc.) sin cambiar su comportamiento esperado ni lanzar excepciones inesperadas. El uso de Tipos Genéricos (`Generic[ModelType]`) refuerza este cumplimiento a nivel de chequeo estático.
+*   **Análisis**: `StaffRepository` hereda de `BaseRepository`.
+*   **Cumplimiento**: Cualquier parte del sistema que espere un `BaseRepository` puede trabajar con un `StaffRepository` sin problemas, ya que este último respeta el contrato de la clase base (métodos `create`, `get_by_id`, `update`, etc.) sin cambiar su comportamiento esperado ni lanzar excepciones inesperadas. El uso de Tipos Genéricos (`BaseRepository[ModelType]`) refuerza este cumplimiento a nivel de chequeo estático.
 
 ## 4. ISP - Interface Segregation Principle (Principio de Segregación de Interfaz)
 **"Ningún cliente debe ser forzado a depender de métodos que no utiliza."**

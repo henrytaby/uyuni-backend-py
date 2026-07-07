@@ -63,22 +63,23 @@ Desde la raíz del proyecto (asegúrate de tener el entorno virtual activado):
 
 ## ✍️ Cómo escribir un Test
 
-Crea un archivo nuevo en `tests/` o `tests/modules/` (ej: `test_products.py`). El nombre del archivo debe empezar con `test_`.
+Crea un archivo nuevo en `tests/` o `tests/modules/` (ej: `test_tasks.py`). El nombre del archivo debe empezar con `test_`.
 
 ### 1. Test Básico (Create)
 
 Inyecta el fixture `client` para hacer peticiones.
 
 ```python
-def test_create_product(client):
+def test_create_task(client, superuser_token_headers):
     response = client.post(
-        "/api/products/",
-        json={"name": "Laptop Gamer", "price": 1500.0, "stock": 10}
+        "/api/tasks/",
+        json={"title": "Revisar inventario", "description": "Verificar stock"},
+        headers=superuser_token_headers,
     )
     data = response.json()
 
-    assert response.status_code == 200
-    assert data["name"] == "Laptop Gamer"
+    assert response.status_code == 201
+    assert data["title"] == "Revisar inventario"
     assert "id" in data
 ```
 
@@ -88,24 +89,24 @@ Inyecta `session` si necesitas consultar la BD directamente para verificar el es
 
 ```python
 from sqlmodel import select
-from app.modules.products.models import Product
+from app.modules.tasks.models import Task
 
-def test_delete_product(client, session):
+def test_delete_task(client, session, superuser_token_headers):
     # 1. Crear dato previo (Seed)
-    product = Product(name="Borrar", price=10)
-    session.add(product)
+    task = Task(title="Borrar", description="Para eliminar")
+    session.add(task)
     session.commit()
-    session.refresh(product)
+    session.refresh(task)
 
     # 2. Ejecutar acción
-    response = client.delete(f"/api/products/{product.id}")
+    response = client.delete(f"/api/tasks/{task.id}", headers=superuser_token_headers)
 
     # 3. Verificar respuesta
     assert response.status_code == 200
 
     # 4. Verificar en BD (debería no existir)
-    deleted_product = session.get(Product, product.id)
-    assert deleted_product is None
+    deleted_task = session.get(Task, task.id)
+    assert deleted_task is None
 ```
 
 ---

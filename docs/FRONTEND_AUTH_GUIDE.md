@@ -1,6 +1,8 @@
-# Guía de Integración de Autenticación (Frontend / Angular)
+# Guía de Integración de Autenticación (Frontend / Angular 21)
 
 Esta guía detalla el consumo de los servicios de autenticación definidos en `app/auth/routers.py`. El sistema utiliza **JWT (JSON Web Tokens)** con tokens de acceso (corto plazo) y tokens de refresco (largo plazo con rotación).
+
+> **Nota**: El frontend de Uyuni está construido con **Angular 21**, utilizando `HttpClient` (con `provideHttpClient`) y signals/standalone components.
 
 ## Base URL
 Todas las rutas son relativas a `/api/auth`.
@@ -84,10 +86,10 @@ La respuesta incluye cabeceras y cuerpo estructurado.
 
 Usa el token de refresco para obtener un nuevo token de acceso.
 
-- **Endpoint**: `POST /api/auth/refresh?refresh_token=...`
-- **Query Param**: `refresh_token` (string)
+- **Endpoint**: `POST /api/auth/refresh`
+- **Body Parameter**: `refresh_token` (string, como string plano en el body)
 
-**Nota**: Aunque se envía como query param en la implementación actual, se recomienda revisar si su cliente prefiere enviarlo en el body. Actualmente el backend lo espera como **Query Parameter**.
+**Nota**: El backend espera el `refresh_token` como **body parameter** (un string plano, no JSON ni query param). Confirma con la firma actual del endpoint en `app/auth/routers.py` antes de integrar.
 
 ### Respuesta Exitosa (200 OK)
 Devuelve un nuevo par de tokens. **El refresh token anterior queda invalidado (rotación).**
@@ -144,6 +146,8 @@ Obtiene datos del usuario actual.
   "is_verified": true
 }
 ```
+
+> **Nota**: El esquema `UserResponse` (en `app/auth/schemas.py`) expone `id`, `username`, `email`, `first_name`, `last_name` e `is_verified`. Los campos `is_active` e `is_superuser` existen en el modelo pero NO se exponen en la respuesta pública de `/me`.
 
 ---
 
@@ -212,7 +216,7 @@ Obtiene la estructura del menú basada en un rol específico.
 
 ---
 
-## Implementación en Angular (Ejemplo)
+## Implementación en Angular 21 (Ejemplo)
 
 ### Interfaces TypeScript
 
@@ -246,17 +250,16 @@ export interface LockoutError {
 // Ejemplo de manejo de error en servicio o interceptor
 ```
 
-### AuthService (Snippet)
+### AuthService (Snippet - Angular 21 standalone)
 
 ```typescript
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private apiUrl = '/api/auth';
-
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
 
   login(username: string, password: string) {
     // IMPORTANTE: OAuth2 usa form-urlencoded, no JSON
@@ -268,15 +271,36 @@ export class AuthService {
       `${this.apiUrl}/login`,
       body.toString(),
       {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      }
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      },
     );
   }
 
   refreshToken(token: string) {
-    // El backend espera query param
-    const params = new HttpParams().set('refresh_token', token);
-    return this.http.post<TokenResponse>(`${this.apiUrl}/refresh`, {}, { params });
+    // El backend espera el refresh_token como body parameter (string plano)
+    return this.http.post<TokenResponse>(`${this.apiUrl}/refresh`, token);
+  }
+
+  logout(refreshToken: string | null, accessToken: string) {
+    return this.http.post<{ msg: string }>(
+      `${this.apiUrl}/logout`,
+      refreshToken ? { refresh_token: refreshToken } : null,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+    );
+  }
+
+  profile() {
+    return this.http.get<User>(`${this.apiUrl}/me`);
+  }
+
+  roles() {
+    return this.http.get<RoleInfo[]>(`${this.apiUrl}/me/roles`);
+  }
+
+  menuForRole(roleSlug: string) {
+    return this.http.get<ModuleGroupMenu[]>(`${this.apiUrl}/me/menu/${roleSlug}`);
   }
 }
 ```

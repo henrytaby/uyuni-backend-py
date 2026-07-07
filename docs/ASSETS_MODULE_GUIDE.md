@@ -41,8 +41,8 @@ erDiagram
 
     FixedAsset {
         uuid id PK
-        string old_code
-        string new_code UK
+        string old_code "Código anterior (index)"
+        string new_code "Código nuevo (index)"
         string description
         string serial_number
         boolean is_saf "Sistema de Activos Fijos"

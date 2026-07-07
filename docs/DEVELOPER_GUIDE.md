@@ -60,11 +60,11 @@ class NuevoRecurso(BaseModel, AuditMixin, table=True):
 Registra tu modelo en `alembic/env.py` (importándolo con su ruta absoluta) y genera el script.
 
 ```bash
-# 1. Crear la migración
-alembic revision --autogenerate -m "add_nuevo_recurso"
+# 1. Crear la migración (siempre con venv/bin/)
+venv/bin/alembic revision --autogenerate -m "add_nuevo_recurso"
 
 # 2. Aplicar cambios a la BD
-alembic upgrade head
+venv/bin/alembic upgrade head
 ```
 
 ---
@@ -214,17 +214,17 @@ def test_create_nuevo_recurso_ok(client, superuser_token_headers):
 
 ### Checklist de Calidad Final
 
-Antes de `git push`, ejecuta:
+Antes de `git push`, ejecuta (siempre con `venv/bin/`):
 
 ```bash
 # 1. Formatear y Linting
-ruff check --fix .
-ruff format .
+venv/bin/ruff check --fix .
+venv/bin/ruff format .
 
 # 2. Tipado Estático
-mypy .
+venv/bin/mypy app/ --ignore-missing-imports
 
 # 3. Tests
-pytest
+venv/bin/pytest
 ```
 

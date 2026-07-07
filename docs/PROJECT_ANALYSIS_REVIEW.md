@@ -26,8 +26,13 @@ The application follows a **layered architecture** with clear separation of conc
 ### 1.2 Module Organization
 The project uses **Domain-Driven Design (DDD-lite)** with nested routing:
 - **Assets Module**: Fixed assets, areas, groups, statuses, institutions, acts
-- **Core Module**: Organizational units, positions, staff
+- **Core Module**: Organizational units, positions, staff, users, dynamic catalogs
 - **Tasks Module**: Task management
+
+Additionally, the project implements a **Dynamic Modular Catalogs** system
+(`app/core/catalogs/` + domain providers in `app/modules/core/catalogs/`) that
+exposes `GET /api/catalogs/{name}` and `POST /api/catalogs/bulk` for efficient
+frontend selectbox population.
 
 ### 1.3 Technology Stack ✅
 | Component | Technology | Version |
@@ -140,14 +145,17 @@ engine = create_engine(
 ```
 
 #### Issue 3: Development-Only Schema Creation
-The application uses `create_all()` in production (lifespan):
+The application uses `create_all()` in the lifespan startup (intended for
+development/testing only):
 
 ```python
-# main.py:47
-create_db_and_tables()  # ⚠️ Should use Alembic in production
+# main.py (inside lifespan)
+create_db_and_tables()  # ⚠️ For production, use Alembic migrations instead
 ```
 
-**Risk**: Schema drift between environments. Alembic is set up but not enforced.
+**Risk**: Schema drift between environments. Alembic is set up and a clear
+warning comment is present in `app/core/db.py`, but it is not enforced via
+environment guard. Use Alembic migrations for production deployments.
 
 ---
 
@@ -355,5 +363,5 @@ Overall rating: **8.5/10** - A strong foundation that can scale with the recomme
 
 ---
 
-*Analysis performed on: 2026-03-12*
+*Analysis performed on: 2026-03-12 (updated: July 2026)*
 *Analyzer: Senior Backend Architect (FastAPI Expert)*

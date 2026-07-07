@@ -81,11 +81,18 @@ Usamos pares de **Access Token** (corto plazo) y **Refresh Token** (largo plazo)
 *   **Access Token**: 15 minutos. Stateless. Se usa para cada request.
 *   **Refresh Token**: 7 días. Stateful (se valida en BD). Se usa SOLO para obtener nuevos access tokens.
 *   **Logout Hardening**:
-    *   El endpoint `/api/auth/logout` **requiere autenticación**.
-    *   Valida que el `refresh_token` enviado pertenezca al usuario del `access_token`.
-    *   Si es válido, revoca AMBOS tokens añadiéndolos a `UserRevokedToken` (Blacklist).
+    *   El endpoint `POST /api/auth/logout` **requiere autenticación** (envía el `access_token` en el header `Authorization`).
+    *   Valida que el `refresh_token` enviado (opcional, en el body JSON) pertenezca al usuario del `access_token`.
+    *   Si es válido, revoca AMBOS tokens añadiéndolos a la tabla `user_revoked_tokens` (Blacklist), almacenando el **token completo** (no solo el JTI).
+    *   Registra el `logged_out_at` en el `user_log_logins` correspondiente.
 
-C. Personificación de Roles (Context Switching)
+### C. Endpoints de Identidad y Menú Dinámico
+El módulo expone endpoints adicionales para que el frontend construya la UI basada en roles:
+
+*   `GET /api/auth/me/roles`: Lista los roles activos asignados al usuario (o todos si es superuser).
+*   `GET /api/auth/me/menu/{role_slug}`: Devuelve el menú jerárquico (MóduloGrupos -> Módulos) con los permisos CRUD del rol especificado, validando que el usuario tenga ese rol asignado.
+
+### D. Personificación de Roles (Context Switching)
 Para soportar interfaces complejas donde el usuario puede "cambiar de rol", el backend acepta un header opcional `X-Active-Role`.
 
 *   **Sin Header**: Se aplican **todos** los permisos de todos los roles activos del usuario (Unión).
@@ -133,16 +140,17 @@ sequenceDiagram
     participant Service
     participant DB
     
-    User->>Router: POST /api/auth/logout(access_token, refresh_token)
-    Router->>Service: Valida access_token (Dependency)
+    User->>Router: POST /api/auth/logout(access_token en header, refresh_token en body)
+    Router->>Service: Valida access_token (Dependency get_current_user)
     Service->>Service: Decodifica refresh_token
     Service->>Service: Verifica ownership (refresh.user_id == access.user_id)
     alt Invalid Refresh Token
         Service-->>User: 401 Unauthorized (Security Alert)
     else Valid Refresh Token
-        Service->>DB: Insert UserRevokedToken (access_jti)
-        Service->>DB: Insert UserRevokedToken (refresh_jti)
-        Service-->>User: 200 OK "Logged out successfully"
+        Service->>DB: Insert UserRevokedToken (access_token completo)
+        Service->>DB: Insert UserRevokedToken (refresh_token completo)
+        Service->>DB: Update user_log_logins.logged_out_at
+        Service-->>User: 200 OK "Successfully logged out"
     end
 ```
 

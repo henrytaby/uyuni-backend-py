@@ -13,6 +13,7 @@ Este proyecto es una API profesional diseñada con una **Arquitectura Modular (D
 *   **Seguridad**: Autenticación JWT robusta con **Rotación de Tokens**, Logout seguro y **RBAC (Control de Acceso Basado en Roles)**.
 *   **Búsqueda Inteligente**: Motor de búsqueda global polimórfico y sistema de filtros avanzados (AND/OR) inyectables.
 *   **Auditoría**: Registro transversal de accesos y cambios de datos (CDC) mediante Hooks de SQLAlchemy.
+*   **Catálogos Dinámicos**: Sistema modular de proveedores auto-registrados que expone selectores individuales (`GET /api/catalogs/{name}`) y carga masiva (`POST /api/catalogs/bulk`) para poblar dropdowns del frontend en una sola petición.
 ## Arquitectura
 
 El proyecto implementa una **Arquitectura Modular** apoyada en el **Patrón Repositorio**.
@@ -28,17 +29,19 @@ graph LR
 ### Componentes Principales
 
 #### 1. Estructura Modular (`app/modules/`)
-El código se organiza por dominios de negocio en lugar de capas técnicas. Cada módulo (`tasks`, `products`, etc.) contiene todo lo necesario para su funcionamiento:
+El código se organiza por dominios de negocio en lugar de capas técnicas. Cada dominio (`tasks`, `core`, `assets`) y sus submódulos contienen lo necesario para su funcionamiento:
 *   `routers.py`: Definición de endpoints.
 *   `service.py`: Lógica de negocio.
 *   `repository.py`: Acceso a datos.
 *   `models.py`: Definición de tablas.
 *   `schemas.py`: Validación de entrada/salida (Pydantic).
 
+> **Submódulos actuales**: `tasks/`, `core/{staff, org_units, positions, users, catalogs}`, `assets/{assets, areas, groups, statuses, institutions, acts}`.
+
 #### 2. Patrón Repositorio (`app/core/repository.py`)
 Se utiliza para desacoplar la lógica de negocio de la capa de acceso a datos.
-*   **`BaseRepository`**: Clase genérica que provee métodos CRUD estándar (`create`, `get_by_id`, `update`, `delete`) para cualquier modelo.
-*   **Repositorios Específicos**: (Ej: `ProductRepository`) Extienden el base para consultas complejas, como carga de relaciones o validaciones específicas.
+*   **`BaseRepository[T]`**: Clase genérica que provee operaciones estándar (`get_by_id`, `get_all`, `count`, `create`, `update`, `delete`) con soporte integrado para **paginación**, **ordenamiento**, **búsqueda global polimórfica** y **filtros inyectables** (`extra_filters`).
+*   **Repositorios Específicos**: (Ej: `StaffRepository`, `FixedAssetRepository`) Extienden el base para consultas complejas, definiendo `searchable_fields` para búsqueda global o cargando relaciones específicas.
 
 #### 3. Inyección de Dependencias
 FastAPI `Depends` se utiliza para gestionar el ciclo de vida de los componentes:
@@ -69,8 +72,8 @@ Uso de `pydantic-settings` para cargar y validar variables de entorno desde `.en
 
 ### 2. Clonar el repositorio
 ```bash
-git clone git@github.com:henrytaby/fastapi-product.git
-cd fastapi-product
+git clone git@github.com:henrytaby/uyuni-backend-py.git
+cd uyuni-backend-py
 ```
 
 ### 3. Crear entorno virtual
@@ -163,7 +166,7 @@ fastapi dev app/main.py
 ### 11. Seguridad y RBAC (Control de Acceso)
 El sistema implementa un modelo de seguridad granular basado en **Roles** y **Módulos**:
 
-*   **Permisos por Módulo**: El acceso se define a nivel de módulo usando **Slugs** (ej: `tasks`, `products`).
+*   **Permisos por Módulo**: El acceso se define a nivel de módulo usando **Slugs** (ej: `tasks`, `core_staff`, `core_users`, `assets`).
 *   **Permisos Agregados vs Personificación**:
     *   Por defecto, se suman los permisos de todos los roles activos (Agregación).
     *   Si se envía el header `X-Active-Role`, se restringen los permisos exclusivamente a ese rol (Personificación).
@@ -191,8 +194,8 @@ El proyecto utiliza **Alembic** para versionar la estructura de la base de datos
 Flujo de Trabajo:
 1.  **Crear Modelo**: Definir clase SQLModel en `models.py`.
 2.  **Registrar**: Importar el modelo en `alembic/env.py`.
-3.  **Generar Migración**: `alembic revision --autogenerate -m "nombre_cambio"`.
-4.  **Aplicar**: `alembic upgrade head`.
+3.  **Generar Migración**: `venv/bin/alembic revision --autogenerate -m "nombre_cambio"`.
+4.  **Aplicar**: `venv/bin/alembic upgrade head`.
 
 Si encuentras el error `UndefinedTable`, es porque el modelo no se registró antes de migrar. Ver **[Guía de Alembic Migraciones](docs/ALEMBIC_GUIDE.md)**.
 
@@ -226,8 +229,8 @@ class TaskService:
     def __init__(self, repository: TaskRepository):
         self.repository = repository
 
-    def get(self, id: int):
-        return self.repository.get_by_id(id)
+    def get_task(self, task_id: uuid.UUID):
+        return self.repository.get_by_id(task_id)
 
 # Router
 @router.post("/")
@@ -247,21 +250,24 @@ if not user:
     raise NotFoundException(detail="Usuario no encontrado")
 ```
 
-### 11. Documentación para Desarrolladores
+### 4. Documentación para Desarrolladores
 ¿Quieres profundizar en el desarrollo? Consulta nuestras guías detalladas:
 
-2.  **[Guía del Sistema de Consultas (Búsqueda y Filtros)](docs/QUERY_SYSTEM_GUIDE.md)**
 1.  **[Manual del Desarrollador (Creación de Módulos)](docs/DEVELOPER_GUIDE.md)**
-2.  **[Guía de Autenticación y Seguridad](docs/AUTHENTICATION_GUIDE.md)**
-3.  **[Guía de Testing Automatizado](docs/TESTING_GUIDE.md)**
-4.  **[Guía de Manejo de Excepciones](docs/EXCEPTION_HANDLING_GUIDE.md)**
-5.  **[Guía de RBAC (Permisos)](docs/RBAC_GUIDE.md)**
-6.  **[Guía de Auditoría](docs/AUDIT_GUIDE.md)**
-7.  **[Guía de Alembic Migraciones](docs/ALEMBIC_GUIDE.md)**
-8.  **[Guía de Calidad de Código (Linting & Typing)](docs/QUALITY_GUIDE.md)**
-9.  **[Guía de Principios SOLID](docs/SOLID_GUIDE.md)**
-10. **[Guía de Patrones de Diseño](docs/DESIGN_PATTERNS_GUIDE.md)**
-11. **[Guía de Auditoría](docs/AUDIT_GUIDE.md)**
+2.  **[Guía del Sistema de Consultas (Búsqueda y Filtros)](docs/QUERY_SYSTEM_GUIDE.md)**
+3.  **[Guía de Autenticación y Seguridad](docs/AUTHENTICATION_GUIDE.md)**
+4.  **[Guía de Testing Automatizado](docs/TESTING_GUIDE.md)**
+5.  **[Guía de Manejo de Excepciones](docs/EXCEPTION_HANDLING_GUIDE.md)**
+6.  **[Guía de RBAC (Permisos)](docs/RBAC_GUIDE.md)**
+7.  **[Guía de Auditoría](docs/AUDIT_GUIDE.md)**
+8.  **[Guía de Alembic Migraciones](docs/ALEMBIC_GUIDE.md)**
+9.  **[Guía de Calidad de Código (Linting & Typing)](docs/QUALITY_GUIDE.md)**
+10. **[Guía de Principios SOLID](docs/SOLID_GUIDE.md)**
+11. **[Guía de Patrones de Diseño](docs/DESIGN_PATTERNS_GUIDE.md)**
+12. **[Guía de Observabilidad y Logging](docs/OBSERVABILITY_GUIDE.md)**
+13. **[Módulo de Activos (Assets)](docs/ASSETS_MODULE_GUIDE.md)**
+14. **[Módulo Core (Staff & Org)](docs/CORE_MODULE_GUIDE.md)**
+15. **[Guía de Integración Frontend (Angular)](docs/FRONTEND_AUTH_GUIDE.md)**
 
 ## Scripts y Utilidades
 
@@ -287,7 +293,7 @@ Script interactivo que realiza operaciones (Login, Create, Update) y muestra los
 ```
 
 ### 4. Sincronización de Datos ETL (SIGER)
-Script idempotente (Upsert + Soft-Delete) para sincronizar masivamente Unidades Organizacionales, Cargos y Funcionarios desde la base de datos externa `an_core` hacia `fastapi_product` preservando llaves foráneas UUID locales.
+Script idempotente (Upsert + Soft-Delete) para sincronizar masivamente Unidades Organizacionales, Cargos y Funcionarios desde la base de datos externa `an_core` hacia la base de datos de Uyuni, preservando llaves foráneas UUID locales.
 ```bash
 # Requiere configurar SYNC_DATABASE_URL en .env
 ./venv/bin/python scripts/sync_siger.py
