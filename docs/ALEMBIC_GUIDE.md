@@ -83,12 +83,12 @@ Si ves un error como `psycopg2.errors.UndefinedTable: relation "product" does no
 1.  Definiste la clase en Python.
 2.  **PERO** olvidaste ejecutar la migración (u olvidaste registrarla en `env.py` antes de generarla).
     
-**Solución:** Revisa `alembic/env.py`, regenera la migración si es necesario, y ejecuta `alembic upgrade head`.
+**Solución:** Revisa `alembic/env.py`, regenera la migración si es necesario, y ejecuta `./venv/bin/alembic upgrade head`.
 ### Error Común: `NameError: name 'sqlmodel' is not defined`
 Al generar una revisión (`autogenerate`), Alembic a veces crea código que utiliza `sqlmodel` (por ejemplo, para definir tipos de columnas) pero no añade la importación automáticamente.
 
 **Síntoma:**
-Al ejecutar `alembic upgrade head`, falla con `NameError`.
+Al ejecutar `./venv/bin/alembic upgrade head`, falla con `NameError`.
 
 **Solución Automatizada (Implementada):**
 Hemos modificado la plantilla `alembic/script.py.mako` para que incluya `import sqlmodel` por defecto en todas las nuevas migraciones.

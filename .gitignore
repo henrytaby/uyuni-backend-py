@@ -188,12 +188,14 @@ pip-selfcheck.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,venv
 
-### Kilo Code ###
-.kilo/node_modules/
-.kilo/package.json
-.kilo/bun.lock
+### AI Agents Caches & Logs ###
+.agents/cache/
+.agents/tmp/
+.agents/*.log
+.agents/**/__pycache__/
 
-### Legacy (deprecated) ###
+### Legacy AI Tool Folders (Deprecated) ###
+.kilo/
 .kilocode/
 
 ### End of .gitignore ###

@@ -4,7 +4,7 @@
 Uyuni Backend is a Python/FastAPI enterprise backend with JWT auth, RBAC, audit logging, and modular domain architecture (assets, core, tasks).
 
 ## Tech Stack
-- **Framework**: FastAPI (Python 3.14) with Pydantic v2
+- **Framework**: FastAPI (Python 3.14.6) with Pydantic v2
 - **ORM**: SQLModel (SQLAlchemy + Pydantic)
 - **Database**: PostgreSQL (prod) / SQLite (dev/test)
 - **Auth**: JWT with access/refresh token rotation, bcrypt
@@ -54,29 +54,50 @@ Each domain module contains: `routers.py`, `service.py`, `repository.py`, `model
 
 **Note**: All commands automatically use the project venv (`venv/bin/`).
 
-## AI Agent Configuration (`.kilo/`)
+## AI Agent Configuration (`.agents/`)
 
-This project uses a `.kilo/` configuration directory for AI agent tooling.
-Other AI tools (Cursor, Gemini, Qwen, Kimi, Cline, etc.) can reference these files for full project context.
+This project uses an open, vendor-agnostic `.agents/` configuration directory for AI agent tooling and skills.
+All AI tools (Cursor, Gemini CLI, Claude Code, Antigravity, Copilot, Qwen, Cline, Roo Code, etc.) can reference these files for full project context and execution workflows.
 
-### Root Config
-- `kilo.json` - Points to all instruction files and sets `code` as default agent
+### Directory Overview
+- `.agents/README.md` - Documentation of the agent standard and directory structure
 
-### Agents (`.kilo/agent/`)
+### Skills (`.agents/skills/`)
+Standardized agent skills with YAML frontmatter and execution steps:
+- `test/SKILL.md` - Runs `venv/bin/pytest $ARGUMENTS` with optional file/directory targeting
+- `lint/SKILL.md` - Runs `venv/bin/ruff check --fix` + `venv/bin/ruff format` on `app/` and `tests/`
+- `typecheck/SKILL.md` - Runs `venv/bin/mypy app/ --ignore-missing-imports`
+- `migrate/SKILL.md` - Runs `venv/bin/alembic upgrade head` or `venv/bin/alembic revision --autogenerate` with a message
+
+### Personas (`.agents/personas/`)
 - `code.md` - **Primary agent**: Senior Backend Developer with full edit/bash permissions. Handles coding, testing, migrations, and linting.
-- `architect.md` - **Sub-agent**: Architecture and database design specialist. Read-heavy with restricted edits. Invoked internally by `code` for strategic decisions.
+- `architect.md` - **Sub-agent**: Architecture and database design specialist. Read-heavy with restricted edits. Invoked for strategic and structural decisions.
 
-### Commands (`.kilo/command/`)
-- `test.md` - Defines `/test` command: runs `pytest $ARGUMENTS` with optional file/directory targeting
-- `lint.md` - Defines `/lint` command: runs `ruff check --fix` + `ruff format` on `app/` and `tests/`
-- `typecheck.md` - Defines `/typecheck` command: runs `mypy app/ --ignore-missing-imports`
-- `migrate.md` - Defines `/migrate` command: runs `alembic upgrade head` or `alembic revision --autogenerate` with a message
-
-### Memory Bank (`.kilo/rules/memory-bank/`)
-Detailed project context maintained across sessions:
+### Memory Bank (`.agents/memory/`)
+Detailed architectural context maintained across sessions:
 - `projectbrief.md` - Project objectives, features, structure, target users, and success metrics
 - `productContext.md` - User personas (Admin, Asset Manager, Staff Manager, Auditor), workflows, and technical constraints
 - `systemPatterns.md` - Architecture layers, design patterns (Repository, DI, RBAC, Audit), data models, error handling, and testing strategy
 - `techContext.md` - Tech stack details, dev setup, environment variables, project structure, API endpoints, database schema, and deployment
 - `progress.md` - Completed milestones (5 phases), in-progress items, pending features, known issues, and technical debt
 - `developerPersona.md` - Developer role definition: Senior Backend Architect with 10 core competencies and response style guidelines
+
+### Plans (`.agents/plans/`)
+- Architecture, roadmap, and transition analysis plans (e.g. SaaS multi-tenant specification).
+
+---
+
+## 🌐 Dominio Específico: Módulo Commerce (Nova Box Bolivia)
+
+Este backend actúa como motor transaccional y ERP para el ecosistema comercial de **Nova Box Bolivia**:
+- **Documento Maestro de Arquitectura**: Consultar `/opt/nova/nova-home-tech/docs/arquitectura/RFC-001-integracion-uyuni-novabox.md`.
+- **Repositorio Comercial Origen**: `/opt/nova/nova-home-tech` (inventario histórico, fotos WebP, márgenes y manifests `NOV-XXX`).
+- **Frontend de Gestión**: `/opt/uyuni/uyuni-frontend-ng` (Angular 21 + PrimeNG 21).
+- **Frontend Público de Clientes**: `/opt/nova/nova-home-tech/apps/catalog-pwa` (React + Vite).
+- **Módulo de Negocio (`app/modules/commerce/`)**:
+  - `products`: Catálogo de SKUs (`NOV-XXX`), estados (`disponible`, `reservado`, `vendido`, `merma`), precio oficial y mínimo (`minimum_price`).
+  - `batches`: Cajas y lotes importados (Ataúd 1, Ataúd 2, Amazon Next) con control de costos y punto de equilibrio.
+  - `sales`: Registro atómico de ventas con métodos de pago bolivianos (QR, efectivo, flota), cliente y cálculo de ganancia neta.
+  - `api/public/catalog`: Endpoint público cacheado para alimentar la PWA de clientes en tiempo real sin rebuilds.
+- **Regla de Negocio Crítica**: En el servicio de ventas, nunca permitir transacciones por debajo del `minimum_price` sin confirmación explícita, y asegurar que el producto se marque como `vendido` en la misma transacción atómica.
+

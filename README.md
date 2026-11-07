@@ -160,7 +160,7 @@ El sistema utiliza `structlog` para generar logs en formato JSON (en producción
 
 ```bash
 # Los logs se mostrarán en la salida estándar (stdout)
-fastapi dev app/main.py
+venv/bin/fastapi dev app/main.py
 ```
 
 ### 11. Seguridad y RBAC (Control de Acceso)
@@ -251,23 +251,27 @@ if not user:
 ```
 
 ### 4. Documentación para Desarrolladores
-¿Quieres profundizar en el desarrollo? Consulta nuestras guías detalladas:
+¿Quieres profundizar en el desarrollo? Consulta el **[Índice General de Documentación](docs/README.md)** o nuestras guías detalladas:
 
 1.  **[Manual del Desarrollador (Creación de Módulos)](docs/DEVELOPER_GUIDE.md)**
-2.  **[Guía del Sistema de Consultas (Búsqueda y Filtros)](docs/QUERY_SYSTEM_GUIDE.md)**
-3.  **[Guía de Autenticación y Seguridad](docs/AUTHENTICATION_GUIDE.md)**
-4.  **[Guía de Testing Automatizado](docs/TESTING_GUIDE.md)**
-5.  **[Guía de Manejo de Excepciones](docs/EXCEPTION_HANDLING_GUIDE.md)**
-6.  **[Guía de RBAC (Permisos)](docs/RBAC_GUIDE.md)**
-7.  **[Guía de Auditoría](docs/AUDIT_GUIDE.md)**
-8.  **[Guía de Alembic Migraciones](docs/ALEMBIC_GUIDE.md)**
-9.  **[Guía de Calidad de Código (Linting & Typing)](docs/QUALITY_GUIDE.md)**
-10. **[Guía de Principios SOLID](docs/SOLID_GUIDE.md)**
-11. **[Guía de Patrones de Diseño](docs/DESIGN_PATTERNS_GUIDE.md)**
-12. **[Guía de Observabilidad y Logging](docs/OBSERVABILITY_GUIDE.md)**
-13. **[Módulo de Activos (Assets)](docs/ASSETS_MODULE_GUIDE.md)**
-14. **[Módulo Core (Staff & Org)](docs/CORE_MODULE_GUIDE.md)**
-15. **[Guía de Integración Frontend (Angular)](docs/FRONTEND_AUTH_GUIDE.md)**
+2.  **[Guía de Gestión de Módulos y Permisos](docs/developer_guide/01_gestion_modulos_y_permisos.md)**
+3.  **[Guía del Sistema de Catálogos Dinámicos](docs/developer_guide/02_sistema_catalogos_dinamicos.md)**
+4.  **[Guía del Sistema de Consultas (Búsqueda y Filtros)](docs/QUERY_SYSTEM_GUIDE.md)**
+5.  **[Guía de Autenticación y Seguridad](docs/AUTHENTICATION_GUIDE.md)**
+6.  **[Guía de Testing Automatizado](docs/TESTING_GUIDE.md)**
+7.  **[Guía de Manejo de Excepciones](docs/EXCEPTION_HANDLING_GUIDE.md)**
+8.  **[Guía de RBAC (Permisos)](docs/RBAC_GUIDE.md)**
+9.  **[Guía de Auditoría](docs/AUDIT_GUIDE.md)**
+10. **[Guía de Alembic Migraciones](docs/ALEMBIC_GUIDE.md)**
+11. **[Guía de Calidad de Código (Linting & Typing)](docs/QUALITY_GUIDE.md)**
+12. **[Guía de Principios SOLID](docs/SOLID_GUIDE.md)**
+13. **[Guía de Patrones de Diseño](docs/DESIGN_PATTERNS_GUIDE.md)**
+14. **[Guía de Observabilidad y Logging](docs/OBSERVABILITY_GUIDE.md)**
+15. **[Módulo de Activos (Assets)](docs/ASSETS_MODULE_GUIDE.md)**
+16. **[Módulo Core (Staff, Org & Users)](docs/CORE_MODULE_GUIDE.md)**
+17. **[Guía de Integración Frontend (Angular)](docs/FRONTEND_AUTH_GUIDE.md)**
+18. **[Estándar de AI Agents y Skills (.agents/)](.agents/README.md)**
+19. **[Especificaciones SDD de Migración NestJS](docs/nestjs-migration/00-SDD-OVERVIEW.md)**
 
 ## Scripts y Utilidades
 
