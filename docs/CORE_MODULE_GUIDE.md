@@ -2,6 +2,14 @@
 
 Este documento describe la arquitectura, el modelo de datos y la implementación del módulo **Core** del sistema, encargado de la gestión de usuarios, seguridad, control de acceso y manifiestos de dominio para emprendimientos y plataformas comerciales.
 
+> [!TIP]
+> **Documentación Completa y Guía Frontend en `docs/core/`**:
+> Para una referencia detallada campo por campo, contratos TypeScript y guía visual para Angular/PrimeNG, consulta:
+> - **[Guía Maestra Core](./core/README.md)**
+> - **[01. Arquitectura y Reglas de Negocio](./core/01_ARCHITECTURE.md)**
+> - **[02. Diccionario de Base de Datos](./core/02_DATABASE_DICTIONARY.md)**
+> - **[03. Guía de Integración Frontend (Pestañas, Roles y Logins)](./core/03_FRONTEND_INTEGRATION_GUIDE.md)**
+
 ---
 
 ## 1. Arquitectura Modular

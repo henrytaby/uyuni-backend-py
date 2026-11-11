@@ -37,6 +37,21 @@ class User(BaseModel, AuditMixin, table=True):
         sa_relationship_kwargs={"foreign_keys": "UserRole.user_id"},
     )
 
+    @property
+    def roles(self) -> List["Role"]:
+        if not self.user_roles:
+            return []
+        active_roles: list["Role"] = []
+        for ur in self.user_roles:
+            if ur.is_active and ur.role and ur.role.is_active:
+                active_roles.append(ur.role)
+        active_roles.sort(key=lambda r: r.sort_order if r.sort_order is not None else 0)
+        return active_roles
+
+    @property
+    def role_slugs(self) -> List[str]:
+        return [r.slug for r in self.roles if r.slug]
+
 
 class UserRole(BaseModel, AuditMixin, table=True):
     __tablename__ = "user_role"

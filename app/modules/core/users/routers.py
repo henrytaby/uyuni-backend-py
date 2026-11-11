@@ -10,7 +10,7 @@ from app.models.user import User
 from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.users.schemas import (
     UserCreate,
-    UserRead,
+    UserLogLoginRead,
     UserReadDetailed,
     UserUpdate,
 )
@@ -19,7 +19,7 @@ from app.modules.core.users.service import UserService
 router = APIRouter(prefix="/users", tags=["Core - Users"])
 
 
-@router.post("/", response_model=UserRead)
+@router.post("/", response_model=UserReadDetailed)
 def create_user(
     session: SessionDep,
     data: UserCreate,
@@ -31,10 +31,10 @@ def create_user(
     ),
 ):
     service = UserService(session)
-    # Extract password to pass separately to service
-    user_dict = data.model_dump(exclude={"password"})
+    # Extract password and role_slugs to pass separately to service
+    user_dict = data.model_dump(exclude={"password", "role_slugs"})
     user_obj = User(**user_dict)
-    return service.create(user_obj, data.password)
+    return service.create(user_obj, data.password, role_slugs=data.role_slugs)
 
 
 @router.get("/", response_model=list[UserReadDetailed])
@@ -107,7 +107,7 @@ def get_user(
     return user
 
 
-@router.patch("/{id}", response_model=UserRead)
+@router.patch("/{id}", response_model=UserReadDetailed)
 def update_user(
     session: SessionDep,
     id: UUID,
@@ -128,6 +128,44 @@ def update_user(
     return user
 
 
+@router.post("/{id}/roles/{role_slug}", response_model=UserReadDetailed)
+def assign_role_to_user(
+    session: SessionDep,
+    id: UUID,
+    role_slug: str,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CoreModuleSlug.USERS,
+            required_permission=PermissionAction.UPDATE,
+        )
+    ),
+):
+    service = UserService(session)
+    user = service.assign_role(id, role_slug)
+    if not user:
+        raise NotFoundException(detail="User not found")
+    return user
+
+
+@router.delete("/{id}/roles/{role_slug}", response_model=UserReadDetailed)
+def remove_role_from_user(
+    session: SessionDep,
+    id: UUID,
+    role_slug: str,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CoreModuleSlug.USERS,
+            required_permission=PermissionAction.UPDATE,
+        )
+    ),
+):
+    service = UserService(session)
+    user = service.remove_role(id, role_slug)
+    if not user:
+        raise NotFoundException(detail="User not found")
+    return user
+
+
 @router.delete("/{id}")
 def delete_user(
     session: SessionDep,
@@ -143,3 +181,47 @@ def delete_user(
     if not service.delete(id):
         raise NotFoundException(detail="User not found")
     return {"ok": True}
+
+
+@router.get("/{id}/logins", response_model=list[UserLogLoginRead])
+def get_user_login_history(
+    session: SessionDep,
+    id: UUID,
+    offset: int = 0,
+    limit: int = 50,
+    is_successful: bool | None = Query(None),
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CoreModuleSlug.USERS,
+            required_permission=PermissionAction.READ,
+        )
+    ),
+):
+    service = UserService(session)
+    return service.get_login_history(
+        user_id=id,
+        offset=offset,
+        limit=limit,
+        is_successful=is_successful,
+    )
+
+
+@router.get("/{id}/logins/count")
+def count_user_login_history(
+    session: SessionDep,
+    id: UUID,
+    is_successful: bool | None = Query(None),
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CoreModuleSlug.USERS,
+            required_permission=PermissionAction.READ,
+        )
+    ),
+):
+    service = UserService(session)
+    return {
+        "total": service.count_login_history(
+            user_id=id,
+            is_successful=is_successful,
+        )
+    }

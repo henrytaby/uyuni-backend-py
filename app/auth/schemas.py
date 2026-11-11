@@ -1,18 +1,41 @@
 import uuid
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, EmailStr, field_validator
 from sqlmodel import Field, SQLModel
+
+from app.modules.core.users.schemas import _validate_username_format
 
 
 class UserCreate(SQLModel):
     username: str = Field(
         index=True, unique=True, description="Unique username for login"
     )
-    email: str = Field(index=True, unique=True, description="Valid email address")
+    email: EmailStr = Field(index=True, unique=True, description="Valid email address")
     first_name: str | None = Field(default=None, description="User's first name")
     last_name: str | None = Field(default=None, description="User's last name")
-    password: str = Field(description="Strong password (will be hashed)")
+    password: str = Field(min_length=6, description="Strong password (will be hashed)")
     model_config = ConfigDict(extra="forbid")  # type: ignore
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v: str) -> str:
+        res = _validate_username_format(v)
+        if res is None:
+            raise ValueError("El nombre de usuario es obligatorio")
+        return res
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: EmailStr) -> str:
+        return str(v).strip().lower()
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def clean_names(cls, v: str | None) -> str | None:
+        if v is not None:
+            cleaned = v.strip()
+            return cleaned if cleaned else None
+        return None
 
 
 class User(SQLModel):
