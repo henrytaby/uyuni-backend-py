@@ -1,0 +1,22 @@
+# ==========================================
+# Render.com Blueprint Specification
+# ==========================================
+services:
+  - type: web
+    name: uyuni-backend
+    runtime: docker
+    plan: free
+    region: ohio
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: PROJECT_NAME
+        value: "Uyuni ERP - Nova Box Bolivia"
+      - key: BACKEND_CORS_ORIGINS
+        value: '["*"]'
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+

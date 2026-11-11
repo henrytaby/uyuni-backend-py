@@ -12,40 +12,33 @@ flowchart TB
     %% TOPOLOGÍA SERVERLESS UYUNI
     %% ==========================================
     
-    subgraph ClientsLayer ["🌐 1. Clientes & Frontends (Cloudflare Pages / Vercel)"]
+    subgraph ClientsLayer ["🌐 1. Clientes & Frontends (Cloudflare Pages)"]
         SPA["Frontend de Gestión (Angular 21)<br/>admin.tudominio.com"]
         PWA["PWA Clientes (React + Vite)<br/>catalogo.tudominio.com"]
     end
 
-    subgraph MonitoringLayer ["⏱️ 2. Keep-Alive 24/7 (UptimeRobot)"]
-        PING["Monitor Ping (Cada 5 min)<br/>GET /health (Evita modo reposo)"]
+    subgraph BackendCompute ["⚡ 2. Cómputo Backend Serverless (Vercel)"]
+        FASTAPI["FastAPI Engine (Python Serverless Functions)<br/>Red Anycast Edge Global (+300 ciudades)<br/>https://uyuni-api.vercel.app"]
     end
 
-    subgraph BackendCompute ["⚡ 3. Cómputo Backend (Koyeb / Vercel)"]
-        FASTAPI["FastAPI Engine (Python 3.14 MicroVM o Vercel Serverless)<br/>Koyeb o Vercel"]
-    end
-
-    subgraph ManagedData ["🛡️ 4. Datos & Almacenamiento Seguro"]
+    subgraph ManagedData ["🛡️ 3. Datos & Almacenamiento Seguro"]
         NEON[("Neon.tech PostgreSQL 16<br/>1 GB SSD NVMe (Inmortal & Auto-Backup)")]
         CLOUDINARY["Cloudinary Media<br/>Fotos de Productos (Auto WebP / Miniaturas)"]
         R2["Cloudflare R2 (10 GB Gratis)<br/>Facturas PDF, Excel, Word y Videos MP4"]
     end
 
     ClientsLayer -->|Peticiones REST / JWT| FASTAPI
-    PING -.->|Mantiene despierto 24/7| FASTAPI
-    FASTAPI <-->|Consultas ACID / UUIDv7| NEON
+    FASTAPI <-->|Consultas ACID / UUIDv7 (Pooled)| NEON
     FASTAPI -->|Sube fotos de catálogo| CLOUDINARY
     FASTAPI -->|Sube facturas privadas & videos| R2
 
     %% Estilos Corporativos Uyuni
     classDef clientNode fill:#f0f9ff,stroke:#00b4d8,stroke-width:1.5px,color:#003865,font-weight:bold;
-    classDef pingNode fill:#fef3c7,stroke:#f59e0b,stroke-width:1.5px,color:#78350f,font-weight:bold;
     classDef backendNode fill:#002b49,stroke:#00b4d8,stroke-width:2px,color:#ffffff,font-weight:bold;
     classDef dbNode fill:#003865,stroke:#00c2cb,stroke-width:2.5px,color:#ffffff,font-weight:bold;
     classDef mediaNode fill:#004889,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
 
     class SPA,PWA clientNode;
-    class PING pingNode;
     class FASTAPI backendNode;
     class NEON dbNode;
     class CLOUDINARY,R2 mediaNode;
@@ -58,8 +51,7 @@ flowchart TB
 | Servicio | Rol | Plan Gratuito | ¿Pide Tarjeta? |
 | :--- | :--- | :--- | :--- |
 | **[Neon.tech](https://neon.tech)** | Base de datos PostgreSQL 16 | 1 GB de almacenamiento SSD | **NO** |
-| **[Koyeb.com](https://www.koyeb.com)** / **[Vercel.com](https://vercel.com)** | Alojamiento del Backend FastAPI | MicroVM 512 MB (Koyeb) o Serverless Anycast (Vercel) | **NO** |
-| **[UptimeRobot.com](https://uptimerobot.com)** | Mantener el backend despierto 24/7 | 50 monitores con pings cada 5 min | **NO** |
+| **[Vercel.com](https://vercel.com)** | Backend FastAPI Serverless | Ejecuciones serverless en Edge global | **NO** |
 | **[Cloudinary.com](https://cloudinary.com)** | Fotos de productos optimizadas | 25 créditos mensuales (~25 GB) | **NO** |
 | **[Cloudflare.com](https://dash.cloudflare.com)** | R2 (Archivos privados/videos) y Pages (Angular) | 10 GB R2 ($0 egress) + Pages ilimitado | Requiere verificación |
 
@@ -129,103 +121,62 @@ Antes de levantar el backend en la nube, inicializaremos la estructura en la bas
 
 ---
 
-## 🚀 PASO 3: Desplegar el Backend (Elige entre Koyeb o Vercel)
+## 🚀 PASO 3: Desplegar el Backend en Vercel (100% Serverless)
 
-El proyecto soporta tanto contenedores Docker tradicionales (Koyeb/Render) como ejecución 100% Serverless en el Edge (Vercel).
-
----
-
-### 🟢 Opción 3.A: Desplegar en Koyeb (Contenedor Docker MicroVM)
-Ideal si quieres un contenedor completo siempre activo ejecutando Python 3.14 nativo:
-
-El repositorio ya cuenta con un archivo [`Dockerfile`](file:///opt/uyuni/uyuni-backend-py/Dockerfile) optimizado para Python 3.14.
-
-1. Asegúrate de haber subido los cambios a tu repositorio de GitHub:
-   ```bash
-   git add .
-   git commit -m "feat: add Dockerfile and serverless configuration"
-   git push origin main
-   ```
-2. Entra a **[https://www.koyeb.com](https://www.koyeb.com)** y crea tu cuenta con GitHub.
-3. En el panel de Koyeb, haz clic en **"Create App"** o **"Create Service"**.
-4. Selecciona **"GitHub"** como fuente de despliegue y elige tu repositorio `uyuni-backend-py`.
-5. En la configuración del servicio:
-   * **Builder**: Selecciona **Dockerfile** (lo detectará automáticamente).
-   * **Instance type**: Selecciona **Free** (Nano / 512 MB RAM).
-   * **Regions**: Selecciona **Washington, D.C. (US)** (para que esté al lado de tu base de datos de Neon).
-6. En la sección **"Environment variables"**, agrega las siguientes variables:
-   * `DATABASE_URL` = La URL de conexión de Neon (ej: `postgresql://uyuni_owner:...@ep-xyz.neon.tech/uyuni-production?sslmode=require`)
-   * `SECRET_KEY` = Tu clave secreta aleatoria (puedes generarla con `openssl rand -hex 32`)
-   * `ENVIRONMENT` = `production`
-   * `PORT` = `8000`
-   * `BACKEND_CORS_ORIGINS` = `["*"]` *(luego podrás restringirlo a tu dominio de frontend)*
-7. En la sección **"Ports"**, asegúrate de que el puerto interno sea **`8000`** con protocolo **HTTP**.
-8. Haz clic en **"Deploy"**.
-
-En aproximadamente 90 segundos, Koyeb compilará la imagen de Docker y te proporcionará tu URL pública segura:
-👉 **`https://uyuni-backend-tu-usuario.koyeb.app`**
-
-Puedes probar inmediatamente en tu navegador:
-`https://uyuni-backend-tu-usuario.koyeb.app/health`
-
----
-
-### ▲ Opción 3.B: Desplegar en Vercel (Serverless Python Functions)
-Ideal si quieres máxima velocidad de respuesta a través de CDN global y **no tener que usar UptimeRobot** (despierta instantáneamente bajo demanda):
+El backend de FastAPI se ejecuta de forma nativa en la infraestructura Serverless de Vercel. **No requiere servidores, no necesita UptimeRobot (no se suspende por inactividad) y cuenta con CDN global Anycast**.
 
 El repositorio ya incluye los archivos de configuración nativos:
-* [`vercel.json`](file:///opt/uyuni/uyuni-backend-py/vercel.json): Reglas de rewrite hacia el handler.
+* [`vercel.json`](file:///opt/uyuni/uyuni-backend-py/vercel.json): Reglas de reescritura que redirigen todas las peticiones al handler de Python.
 * [`api/index.py`](file:///opt/uyuni/uyuni-backend-py/api/index.py): Punto de entrada Serverless (*handler = app*).
-* [`requirements.txt`](file:///opt/uyuni/uyuni-backend-py/requirements.txt): Empaquetado automático por `@vercel/python`.
+* [`requirements.txt`](file:///opt/uyuni/uyuni-backend-py/requirements.txt): Detectado automáticamente por `@vercel/python`.
 
-#### Método con Vercel Web Dashboard:
-1. Entra a **[https://vercel.com](https://vercel.com)** con tu GitHub.
+---
+
+### Opción 3.A: Despliegue desde la Interfaz Web (Vercel Dashboard)
+*Recomendado:*
+
+1. Entra a **[https://vercel.com](https://vercel.com)** con tu cuenta de GitHub.
 2. Haz clic en **"Add New..." > "Project"** e importa `uyuni-backend-py`.
-3. **Configuración:**
-   * **Framework Preset**: `Other`
-   * **Root Directory**: `./`
-4. **Environment Variables:**
+3. **Configuración del Proyecto:**
+   * **Framework Preset**: `Other` (Vercel detecta automáticamente `vercel.json` y la carpeta `api/`).
+   * **Root Directory**: `./` (la raíz del proyecto).
+4. **Environment Variables (Variables de Entorno):**
    * `DATABASE_URL` = Cadena de Neon (⚠️ **Obligatorio usar endpoint con `-pooler`** para no agotar conexiones en serverless).
-   * `SECRET_KEY` = Tu clave aleatoria (`openssl rand -hex 32`).
+   * `SECRET_KEY` = Tu clave secreta aleatoria (`openssl rand -hex 32`).
    * `PROJECT_NAME` = `"Uyuni ERP"`
    * `ENVIRONMENT` = `production`
-   * `BACKEND_CORS_ORIGINS` = `["*"]`
-5. Haz clic en **"Deploy"**. En 60 segundos obtendrás:
+   * `BACKEND_CORS_ORIGINS` = `["*"]` *(o el dominio de tu frontend)*
+5. Haz clic en **"Deploy"**. En 60 segundos obtendrás tu URL global:
    👉 **`https://uyuni-backend-tu-usuario.vercel.app`**
 
-#### Método rápido con Vercel CLI:
+Puedes probar inmediatamente en tu navegador:
+`https://uyuni-backend-tu-usuario.vercel.app/health`
+
+---
+
+### Opción 3.B: Despliegue Rápido desde la Terminal (Vercel CLI)
 ```bash
+# 1. Instalar CLI
 npm install -g vercel
+
+# 2. Iniciar sesión y vincular
 vercel login
 vercel link
+
+# 3. Configurar variables de entorno
 vercel env add DATABASE_URL production
 vercel env add SECRET_KEY production
+vercel env add PROJECT_NAME production
+vercel env add ENVIRONMENT production
+vercel env add BACKEND_CORS_ORIGINS production
+
+# 4. Desplegar a producción
 vercel --prod
 ```
 
 ---
 
-## 🚀 PASO 4: Activar el Keep-Alive 24/7 en UptimeRobot (Solo para Koyeb o Render)
-
-> [!NOTE]
-> **Si desplegaste en Vercel (Opción 3.B):** Puedes saltarte este paso por completo. Las funciones serverless de Vercel no se suspenden por inactividad.
-
-Para garantizar que el servicio de Koyeb (o Render) nunca entre en modo de reposo y responda siempre en menos de 50 milisegundos:
-
-1. Entra a **[https://uptimerobot.com](https://uptimerobot.com)** y crea una cuenta gratuita.
-2. Haz clic en **"+ Add New Monitor"**:
-   * **Monitor Type**: `HTTP(s)`
-   * **Friendly Name**: `Uyuni Backend Live`
-   * **URL (or IP)**: `https://uyuni-backend-tu-usuario.koyeb.app/health`
-   * **Monitoring Interval**: `Every 5 minutes`
-3. Haz clic en **"Create Monitor"**.
-
-> [!TIP]
-> Al recibir una petición HTTP cada 5 minutos al endpoint `/health`, la plataforma detecta actividad continua y **mantiene el contenedor caliente y despierto 24 horas al día, 365 días al año**, sin ningún costo.
-
----
-
-## 🚀 PASO 5: Desplegar el Frontend (Angular 21) en Cloudflare Pages
+## 🚀 PASO 4: Desplegar el Frontend (Angular 21) en Cloudflare Pages
 
 Para tu frontend de administración (`uyuni-frontend-ng`):
 
@@ -237,8 +188,8 @@ Para tu frontend de administración (`uyuni-frontend-ng`):
    * **Framework preset**: `Angular`
    * **Build command**: `npm run build`
    * **Build output directory**: `dist/uyuni-frontend-ng/browser` (o la ruta donde tu Angular emite la carpeta compilada).
-6. En **Environment variables**, agrega la URL de tu backend:
-   * `API_URL` = `https://uyuni-backend-tu-usuario.koyeb.app/api`
+6. En **Environment variables**, agrega la URL de tu backend en Vercel:
+   * `API_URL` = `https://uyuni-backend-tu-usuario.vercel.app/api`
 7. Haz clic en **"Save and Deploy"**.
 
 En 1 minuto tendrás tu frontend publicado en una URL global de alta velocidad:
@@ -246,7 +197,7 @@ En 1 minuto tendrás tu frontend publicado en una URL global de alta velocidad:
 
 ---
 
-## 🚀 PASO 6: Multimedia (Cloudinary para Fotos y Cloudflare R2 para Documentos)
+## 🚀 PASO 5: Multimedia (Cloudinary para Fotos y Cloudflare R2 para Documentos)
 
 ### 1. Fotos de Productos (Cloudinary)
 1. Crea tu cuenta en **[Cloudinary.com](https://cloudinary.com)**.
@@ -254,7 +205,7 @@ En 1 minuto tendrás tu frontend publicado en una URL global de alta velocidad:
    * `CLOUDINARY_CLOUD_NAME`
    * `CLOUDINARY_API_KEY`
    * `CLOUDINARY_API_SECRET`
-3. Agrégalas como variables de entorno en tu servicio de Koyeb.
+3. Agrégalas como variables de entorno en Vercel (Project Settings > Environment Variables).
 
 ### 2. Documentos Privados y Videos (Cloudflare R2)
 1. En tu panel de Cloudflare, ve a **R2 Object Storage**.
@@ -264,7 +215,7 @@ En 1 minuto tendrás tu frontend publicado en una URL global de alta velocidad:
    * `R2_ACCESS_KEY_ID`
    * `R2_SECRET_ACCESS_KEY`
    * `R2_ENDPOINT_URL` (ej: `https://<account_id>.r2.cloudflarestorage.com`)
-5. Agrégalas en las variables de entorno de Koyeb.
+5. Agrégalas en las variables de entorno de Vercel.
 
 ---
 
@@ -272,7 +223,11 @@ En 1 minuto tendrás tu frontend publicado en una URL global de alta velocidad:
 
 | Operación | ¿Cómo se hace ahora? |
 | :--- | :--- |
-| **Actualizar el backend** | Solo haces `git push origin main` en tu computadora. Koyeb lo detecta y lo actualiza en la nube automáticamente en 60 segundos. |
+| **Actualizar el backend** | Solo haces `git push origin main` en tu computadora. Vercel lo detecta y lo actualiza en el Edge automáticamente en 45 segundos. |
+| **Actualizar el frontend** | Solo haces `git push` en tu repositorio de Angular. Cloudflare Pages lo compila y lo despliega solo. |
+| **Hacer backup de tu base de datos** | Neon realiza copias automáticas continuas (*Point-in-Time Restore*). O puedes correr `pg_dump` directo a tu PC cuando quieras. |
+| **Descargar todas las fotos y facturas a tu PC** | Conectas **Cyberduck** o **FileZilla** a Cloudflare R2 y descargas todo a tu disco duro con un clic sin costo. |
+| **Costo total de operación** | **$0.00 / mes**. |
 | **Actualizar el frontend** | Solo haces `git push` en tu repositorio de Angular. Cloudflare Pages lo compila y lo despliega solo. |
 | **Hacer backup de tu base de datos** | Neon realiza copias automáticas continuas (*Point-in-Time Restore*). O puedes correr `pg_dump` directo a tu PC cuando quieras. |
 | **Descargar todas las fotos y facturas a tu PC** | Conectas **Cyberduck** o **FileZilla** a Cloudflare R2 y descargas todo a tu disco duro con un clic sin costo. |
