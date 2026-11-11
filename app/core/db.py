@@ -28,10 +28,24 @@ def json_serializer(obj: Any) -> str:
     return json.dumps(obj, ensure_ascii=False)
 
 
+# Configuración de Engine optimizada para Cloud / Serverless (Neon, PostgreSQL)
+engine_kwargs: dict[str, Any] = {
+    "echo": False,
+    "json_serializer": json_serializer,
+    # pool_pre_ping prueba la conexión antes de usarla; si Neon cerró el SSL por
+    # inactividad, reconecta transparentemente sin lanzar OperationalError.
+    "pool_pre_ping": True,
+}
+
+if not settings.DATABASE_URL.startswith("sqlite"):
+    # Recicla conexiones cada 5 min para evitar timeouts de SSL/PgBouncer
+    engine_kwargs["pool_recycle"] = 300
+    engine_kwargs["pool_size"] = 10
+    engine_kwargs["max_overflow"] = 20
+
 engine: Engine = create_engine(
     settings.DATABASE_URL,
-    echo=False,
-    json_serializer=json_serializer,
+    **engine_kwargs,
 )
 
 

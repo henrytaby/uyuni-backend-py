@@ -21,7 +21,7 @@ flowchart TD
     subgraph Client1 ["🏢 Empresa 1: Nova Labs (novabo.app@gmail.com)"]
         GH1["GitHub: novalabs-bo (Solo Lectura)"]
         NEON1[("Neon Postgres (1 GB Dedicado)")]
-        SERVER1["Vercel Serverless (Backend API)"]
+        SERVER1["Backend API<br/>Render.com o Vercel"]
         CLD1["Cloudinary (Fotos Nova Box)"]
         R2_1["Cloudflare R2 (Facturas Nova Labs)"]
         PAGES1["Cloudflare Pages (Frontend Admin)"]
@@ -30,7 +30,7 @@ flowchart TD
     subgraph Client2 ["🏭 Empresa 2: Futuro Cliente (cliente2@empresa.com)"]
         GH2["GitHub: cliente2-app (Solo Lectura)"]
         NEON2[("Neon Postgres (1 GB Dedicado)")]
-        SERVER2["Vercel Serverless (Backend API)"]
+        SERVER2["Backend API<br/>Render.com o Vercel"]
         CLD2["Cloudinary (Fotos Cliente 2)"]
         R2_2["Cloudflare R2 (Facturas Cliente 2)"]
         PAGES2["Cloudflare Pages (Frontend Admin)"]
@@ -61,7 +61,7 @@ flowchart TD
 
 ### 🌟 Beneficios Estratégicos:
 1. **Seguridad y Confidencialidad Absoluta**: Los datos, clientes, ventas y facturas de una empresa jamás se mezclan con los de otra.
-2. **Multiplicación de la Capa Gratuita ($0.00 / mes)**: Cada empresa abre sus propias cuentas gratuitas (1 GB en Neon + 10 GB en R2 + 25 créditos en Cloudinary + Vercel Serverless). Tú como desarrollador no pagas un servidor gigante para alojar a todos juntos.
+2. **Multiplicación de la Capa Gratuita ($0.00 / mes)**: Cada empresa abre sus propias cuentas gratuitas (1 GB en Neon + 10 GB en R2 + 25 créditos en Cloudinary + Render / Vercel). Tú como desarrollador no pagas un servidor gigante para alojar a todos juntos.
 3. **Propiedad Intelectual Protegida**: El código fuente reside en tu repositorio privado. La empresa cliente solo recibe permisos de lectura para que su infraestructura compile y despliegue la aplicación.
 4. **Soberanía del Cliente**: Si la empresa crece o un día quiere transferir sus sistemas a su propio equipo de TI, ellos ya son dueños de sus cuentas, datos y activos.
 
@@ -75,9 +75,11 @@ Para cada empresa se utiliza un correo corporativo dedicado (ej: `novabo.app@gma
 | :---: | :--- | :--- | :--- | :---: |
 | **1** | **GitHub** | `novalabs-bo` (o `empresa-app`) | Acceso de lectura al código para despliegues | $0.00 |
 | **2** | **Neon.tech** | `uyuni-novalabs-prod` | Base de datos PostgreSQL 16 dedicada (1 GB SSD) | $0.00 |
-| **3** | **Vercel** | `uyuni-backend-novalabs` | Servidor FastAPI Serverless (Edge Anycast Global) | $0.00 |
-| **4** | **Cloudinary** | Cloud Name: `novabox-bo` | Almacenamiento y optimización de fotos de catálogo | $0.00 |
-| **5** | **Cloudflare** | Cuenta `novabo.app@gmail.com` | R2 (Facturas/Videos) y Pages (Frontend Angular) | $0.00 |
+| **3** | **Render.com** | `novalabs-bo-api` | Servidor FastAPI en Docker MicroVM (Recomendado) | $0.00 |
+| **4** | **UptimeRobot** | Monitor `novalabs-bo-api` | Ping cada 5 min (Keep-Alive 24/7 en Render) | $0.00 |
+| **5** | **Vercel** *(Opcional)* | `uyuni-backend-novalabs` | Alternativa Serverless en el Edge | $0.00 |
+| **6** | **Cloudinary** | Cloud Name: `novabox-bo` | Almacenamiento y optimización de fotos de catálogo | $0.00 |
+| **7** | **Cloudflare** | Cuenta `novabo.app@gmail.com` | R2 (Facturas/Videos) y Pages (Frontend Angular) | $0.00 |
 
 ---
 
@@ -294,7 +296,7 @@ En aproximadamente 2 minutos, Render compilará el contenedor Docker y te entreg
 1. Entra a Cloudflare con el correo de la empresa.
 2. Conecta el repositorio del frontend (`uyuni-frontend-ng`) en **Workers & Pages > Pages**.
 3. En variables de entorno configura:
-   * `API_URL` = `https://uyuni-backend-novalabs.vercel.app/api`
+   * `API_URL` = `https://novalabs-bo-api.onrender.com/api` *(o tu URL de Vercel)*
 4. Despliega la aplicación. El frontend quedará publicado en `https://uyuni-admin.pages.dev` o vinculado a su propio dominio (`admin.novabox.bo`).
 
 ---
@@ -305,7 +307,7 @@ Al tener el repositorio maestro centralizado en tu cuenta personal:
 
 1. Tú programas mejoras, corriges errores o agregas funciones en tu máquina.
 2. Haces `git push origin main` a tu repositorio principal.
-3. **Magia de la nube**: Las plataformas de todas las empresas conectadas (Vercel para Nova Labs, etc.) detectan el nuevo commit y **re-despliegan automáticamente en 60 segundos**, sin que tengas que entrar a cada servidor manualmente.
+3. **Magia de la nube**: Las plataformas de todas las empresas conectadas (Render o Vercel para Nova Labs, etc.) detectan el nuevo commit y **re-despliegan automáticamente en 60 segundos**, sin que tengas que entrar a cada servidor manualmente.
 4. Si hay migraciones de base de datos nuevas (`alembic upgrade head`), ejecutas el comando apuntando a la `DATABASE_URL` de cada cliente y listo.
 
 ---
@@ -322,7 +324,7 @@ Correo Corporativo:      [cliente@gmail.com]
 Usuario GitHub:          [cliente-app]
 Proyecto Neon:           [uyuni-cliente-prod]
 Neon DATABASE_URL:       [postgresql://...]
-URL Backend (Vercel):    [https://api-cliente.vercel.app]
+URL Backend (Render/Vercel): [https://api-cliente.onrender.com o .vercel.app]
 URL Frontend (Pages):    [https://admin.cliente.bo]
 Cloudinary Cloud Name:   [cliente-media]
 Cloudflare R2 Bucket:    [cliente-documentos]
