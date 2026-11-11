@@ -21,7 +21,7 @@ flowchart TD
     subgraph Client1 ["🏢 Empresa 1: Nova Labs (novabo.app@gmail.com)"]
         GH1["GitHub: novalabs-bo (Solo Lectura)"]
         NEON1[("Neon Postgres (1 GB Dedicado)")]
-        KOYEB1["Koyeb Backend (Instancia 1)"]
+        SERVER1["Koyeb o Vercel (Backend API)"]
         CLD1["Cloudinary (Fotos Nova Box)"]
         R2_1["Cloudflare R2 (Facturas Nova Labs)"]
         PAGES1["Cloudflare Pages (Frontend Admin)"]
@@ -30,7 +30,7 @@ flowchart TD
     subgraph Client2 ["🏭 Empresa 2: Futuro Cliente (cliente2@empresa.com)"]
         GH2["GitHub: cliente2-app (Solo Lectura)"]
         NEON2[("Neon Postgres (1 GB Dedicado)")]
-        KOYEB2["Koyeb Backend (Instancia 2)"]
+        SERVER2["Koyeb o Vercel (Backend API)"]
         CLD2["Cloudinary (Fotos Cliente 2)"]
         R2_2["Cloudflare R2 (Facturas Cliente 2)"]
         PAGES2["Cloudflare Pages (Frontend Admin)"]
@@ -39,15 +39,15 @@ flowchart TD
     REPO -->|Acceso Colaborador Read| GH1
     REPO -->|Acceso Colaborador Read| GH2
 
-    GH1 --> KOYEB1 <--> NEON1
-    KOYEB1 --> CLD1
-    KOYEB1 --> R2_1
-    PAGES1 --> KOYEB1
+    GH1 --> SERVER1 <--> NEON1
+    SERVER1 --> CLD1
+    SERVER1 --> R2_1
+    PAGES1 --> SERVER1
 
-    GH2 --> KOYEB2 <--> NEON2
-    KOYEB2 --> CLD2
-    KOYEB2 --> R2_2
-    PAGES2 --> KOYEB2
+    GH2 --> SERVER2 <--> NEON2
+    SERVER2 --> CLD2
+    SERVER2 --> R2_2
+    PAGES2 --> SERVER2
 
     %% Estilos Corporativos Uyuni
     classDef devNode fill:#002b49,stroke:#00b4d8,stroke-width:2px,color:#ffffff,font-weight:bold;
@@ -55,8 +55,8 @@ flowchart TD
     classDef c2Node fill:#fdf4ff,stroke:#c084fc,stroke-width:1.5px,color:#581c87;
 
     class REPO devNode;
-    class GH1,NEON1,KOYEB1,CLD1,R2_1,PAGES1 c1Node;
-    class GH2,NEON2,KOYEB2,CLD2,R2_2,PAGES2 c2Node;
+    class GH1,NEON1,SERVER1,CLD1,R2_1,PAGES1 c1Node;
+    class GH2,NEON2,SERVER2,CLD2,R2_2,PAGES2 c2Node;
 ```
 
 ### 🌟 Beneficios Estratégicos:
@@ -75,8 +75,8 @@ Para cada empresa se utiliza un correo corporativo dedicado (ej: `novabo.app@gma
 | :---: | :--- | :--- | :--- | :---: |
 | **1** | **GitHub** | `novalabs-bo` (o `empresa-app`) | Acceso de lectura al código para despliegues | $0.00 |
 | **2** | **Neon.tech** | `uyuni-novalabs-prod` | Base de datos PostgreSQL 16 dedicada (1 GB SSD) | $0.00 |
-| **3** | **Koyeb** | `uyuni-backend-novalabs` | Servidor FastAPI serverless en contenedor | $0.00 |
-| **4** | **UptimeRobot** | Monitor `NovaBox API Live` | Ping cada 5 min a `/health` para mantenerlo 24/7 | $0.00 |
+| **3** | **Koyeb / Vercel** | `uyuni-backend-novalabs` | Servidor FastAPI serverless (Koyeb o Vercel) | $0.00 |
+| **4** | **UptimeRobot** | Monitor `NovaBox API Live` | Ping cada 5 min a `/health` (necesario si usas Koyeb/Render) | $0.00 |
 | **5** | **Cloudinary** | Cloud Name: `novabox-bo` | Almacenamiento y optimización de fotos de catálogo | $0.00 |
 | **6** | **Cloudflare** | Cuenta `novabo.app@gmail.com` | R2 (Facturas/Videos) y Pages (Frontend Angular) | $0.00 |
 
@@ -150,31 +150,156 @@ with Session(engine) as s:
 
 ---
 
-### Paso 5: Desplegar el Backend en Koyeb
-1. Ingresa a **[Koyeb.com](https://www.koyeb.com)** con la cuenta de GitHub de la empresa (`novalabs-bo`).
+### Paso 5: Desplegar el Backend (Elige entre Koyeb o Vercel)
+
+Puedes elegir cualquiera de las dos plataformas según tus preferencias:
+
+#### 🟢 Opción A: Desplegar en Koyeb (Contenedor Docker MicroVM)
+Ideal si quieres un contenedor completo siempre activo ejecutando Python 3.14 nativo:
+
+1. Ingresa a **[Koyeb.com](https://www.koyeb.com)** e inicia sesión con el GitHub de la empresa (`novalabs-bo`).
 2. Haz clic en **"Create Service"** > **"GitHub"**.
 3. Selecciona el repositorio compartido `henrytaby/uyuni-backend-py`.
 4. **Configuración del Servicio:**
    * **Builder**: `Dockerfile` (lo toma automáticamente del repo).
    * **Instance type**: `Free` (512 MB RAM).
-   * **Region**: `Washington, D.C. (US)`.
+   * **Region**: `Washington, D.C. (US)` (misma región que la base de datos de Neon).
 5. **Variables de Entorno (Environment Variables):**
-   * `DATABASE_URL` = La cadena de conexión de Neon del cliente.
-   * `SECRET_KEY` = Clave aleatoria (ej: `openssl rand -hex 32`).
-   * `PROJECT_NAME` = `"Uyuni ERP - Nova Box Bolivia"` (personalizado con el nombre de la empresa).
+   * `DATABASE_URL` = Cadena de conexión de Neon del cliente.
+   * `SECRET_KEY` = Clave secreta (ej: `openssl rand -hex 32`).
+   * `PROJECT_NAME` = `"Uyuni ERP - Nova Box Bolivia"` (o el nombre de la empresa).
    * `ENVIRONMENT` = `production`
    * `PORT` = `8000`
-   * `BACKEND_CORS_ORIGINS` = `["*"]` *(luego puedes poner el dominio del cliente)*.
-6. Haz clic en **Deploy**.
-7. En 90 segundos tendrás la URL viva de la empresa:
+   * `BACKEND_CORS_ORIGINS` = `["*"]` *(o el dominio frontend del cliente)*.
+6. Haz clic en **Deploy**. En 90 segundos obtendrás la URL pública:
    👉 `https://uyuni-backend-novalabs.koyeb.app`
 
 ---
 
-### Paso 6: Activar el Monitor Keep-Alive 24/7 en UptimeRobot
+#### ▲ Opción B: Desplegar en Vercel (Serverless Python Functions)
+Ideal si buscas máxima velocidad de respuesta global a través de CDN Anycast, cero mantenimiento de infraestructura y no tener que preocuparte por mantener contenedores despiertos.
+
+##### 🧩 Arquitectura Serverless de Uyuni en Vercel:
+El repositorio ya está 100% preparado y optimizado para Vercel con los siguientes archivos nativos:
+* [`vercel.json`](file:///opt/uyuni/uyuni-backend-py/vercel.json): Configura el enrutamiento inteligente redirigiendo todas las peticiones entrantes (`/(.*)`) al handler ASGI de Python.
+* [`api/index.py`](file:///opt/uyuni/uyuni-backend-py/api/index.py): Punto de entrada Serverless (*handler* de FastAPI) que inyecta la ruta raíz del backend a `sys.path` y expone `handler = app`.
+* [`requirements.txt`](file:///opt/uyuni/uyuni-backend-py/requirements.txt): Detectado automáticamente por el runtime `@vercel/python` para empaquetar e instalar las dependencias en la nube.
+
+Puedes desplegar en Vercel utilizando cualquiera de los dos métodos siguientes:
+
+---
+
+##### 🖥️ Método 1: Despliegue Visual desde la Interfaz Web (Vercel Dashboard)
+*Recomendado para una configuración rápida o para entregar al cliente:*
+
+1. Ingresa a **[Vercel.com](https://vercel.com)** e inicia sesión con el GitHub de la empresa (`novalabs-bo` o la cuenta corporativa creada).
+2. En el Dashboard principal, haz clic en **"Add New..." > "Project"**.
+3. En la lista de repositorios importables, selecciona el repositorio compartido `henrytaby/uyuni-backend-py`.
+4. **Configuración del Proyecto:**
+   * **Framework Preset**: Selecciona **Other** (Vercel detecta automáticamente el archivo `vercel.json` y la carpeta `api/`).
+   * **Root Directory**: `./` (la raíz del proyecto).
+   * **Build and Output Settings**: Déjalos por defecto (no necesitas definir build command, Vercel gestiona Python automáticamente).
+5. **Variables de Entorno (Environment Variables):**
+   Despliega el acordeón de *Environment Variables* y agrega:
+
+   | Variable | Valor | Nota Crítica |
+   | :--- | :--- | :--- |
+   | `DATABASE_URL` | `postgresql://usuario:pass@ep-xyz-pooler.us-east-2.aws.neon.tech/novabox-production?sslmode=require` | ⚠️ **Obligatorio usar `-pooler`**: En arquitecturas Serverless, múltiples funciones concurrentes se levantan efímeramente. El endpoint Pooled de Neon (PgBouncer) evita saturar el límite de conexiones de PostgreSQL. |
+   | `SECRET_KEY` | `openssl rand -hex 32` | Tu clave criptográfica para los JWT. |
+   | `PROJECT_NAME` | `"Uyuni ERP - Nova Box Bolivia"` | Nombre comercial de la empresa. |
+   | `ENVIRONMENT` | `production` | Modo producción. |
+   | `BACKEND_CORS_ORIGINS` | `["*"]` | O especifica `["https://admin.novabox.bo", "https://catalogo.novabox.bo"]`. |
+   | `CLOUDINARY_*` | *(Opcionales si usa fotos)* | `CLOUDINARY_CLOUD_NAME`, `API_KEY`, etc. |
+   | `R2_*` | *(Opcionales si usa docs/videos)* | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, etc. |
+
+6. Haz clic en **"Deploy"**.
+7. En 45 a 60 segundos, Vercel compilará las dependencias y generará tu URL pública con SSL automático y CDN mundial:
+   👉 `https://uyuni-backend-novalabs.vercel.app`
+
+---
+
+##### 💻 Método 2: Despliegue desde la Terminal con Vercel CLI
+*Ideal para desarrolladores, integración continua (CI) o despliegues automatizados en segundos:*
+
+1. **Instalar Vercel CLI globalmente:**
+   ```bash
+   npm install -g vercel
+   # O si prefieres no instalar globalmente: npx vercel
+   ```
+
+2. **Iniciar sesión en la cuenta del cliente:**
+   ```bash
+   vercel login
+   ```
+   *(Selecciona continuar con GitHub o ingresa el correo corporativo novabo.app@gmail.com).*
+
+3. **Vincular el proyecto local con Vercel:**
+   Desde la raíz de `/opt/uyuni/uyuni-backend-py`:
+   ```bash
+   vercel link
+   ```
+   * Responde `Y` para configurar el proyecto.
+   * Selecciona el scope/cuenta del cliente (ej: `novalabs-bo`).
+   * Link to existing project? `N`.
+   * Project name: `uyuni-backend-novalabs`.
+   * Directory: `./`.
+
+4. **Configurar las variables de entorno en producción vía CLI:**
+   ```bash
+   # Base de datos con Pooling activado
+   echo "postgresql://usuario:password@ep-xyz-pooler.us-east-2.aws.neon.tech/novabox-prod?sslmode=require" | vercel env add DATABASE_URL production
+
+   # Clave secreta JWT
+   echo "$(openssl rand -hex 32)" | vercel env add SECRET_KEY production
+
+   # Metadatos del sistema
+   echo "Uyuni ERP - Nova Box Bolivia" | vercel env add PROJECT_NAME production
+   echo "production" | vercel env add ENVIRONMENT production
+   echo '["*"]' | vercel env add BACKEND_CORS_ORIGINS production
+   ```
+
+5. **Desplegar directamente a producción:**
+   ```bash
+   vercel --prod
+   ```
+   *Vercel compilará y publicará la función Serverless, entregando en consola la URL productiva.*
+
+---
+
+##### 🧪 Cómo Probar Localmente el Entorno Vercel (`vercel dev`):
+Si deseas probar cómo se comporta FastAPI bajo el emulador de funciones serverless de Vercel antes de desplegar:
+```bash
+vercel dev
+```
+La API estará disponible en `http://localhost:3000` con recarga en caliente y emulando las reglas de `vercel.json`.
+
+---
+
+##### ⚖️ Comparativa: ¿Cuándo elegir Koyeb y cuándo Vercel?
+
+| Característica | 🟢 Koyeb (MicroVM Docker) | ▲ Vercel (Serverless Functions) |
+| :--- | :--- | :--- |
+| **Tipo de Arquitectura** | Contenedor Linux completo siempre activo | Funciones Serverless efímeras bajo demanda |
+| **Versión de Python** | Python 3.14 nativo (definido en Dockerfile) | Python 3.12 (runtime oficial `@vercel/python`) |
+| **Requiere Keep-Alive (UptimeRobot)** | **Sí** (en plan Free se suspende tras inactividad) | **NO** (despierta al instante bajo demanda) |
+| **Tiempo de respuesta inicial (Cold Start)** | Constante < 50ms (con UptimeRobot activo) | ~1.5s en frío, < 30ms en caliente |
+| **Límite de tiempo por petición (Timeout)** | Ilimitado (ideal para reportes pesados) | 15 seg (Plan Hobby) / 60 seg (Plan Pro) |
+| **Soporte de WebSockets** | Nativo y persistente | Requiere servicio externo (Pusher / Ably) |
+| **Red de Distribución (CDN)** | 3 Regiones globales | Red Anycast Edge global (+300 ciudades) |
+
+> [!TIP]
+> **Recomendación Uyuni:**
+> - Usa **Vercel** si deseas **cero mantenimiento**, cero configuraciones de UptimeRobot y máxima velocidad de carga para clientes y aplicaciones móviles.
+> - Usa **Koyeb** si realizas sincronizaciones o reportes batch pesados que toman más de 15 segundos en responder.
+
+---
+
+### Paso 6: Activar el Monitor Keep-Alive 24/7 en UptimeRobot (Solo si usas Koyeb o Render)
+*(Si elegiste Vercel en el Paso 5, puedes omitir este paso).*
+
 1. Entra a **[UptimeRobot.com](https://uptimerobot.com)** con el correo de la empresa.
 2. Agrega un monitor tipo HTTP apuntando a `https://uyuni-backend-novalabs.koyeb.app/health` cada 5 minutos.
-3. *Resultado:* La instancia nunca entra en suspensión y responde de inmediato a clientes y empleados.
+3. *Resultado:* La instancia de Koyeb nunca entra en suspensión y responde de inmediato a clientes y empleados.
 
 ---
 
@@ -182,7 +307,7 @@ with Session(engine) as s:
 1. Entra a Cloudflare con el correo de la empresa.
 2. Conecta el repositorio del frontend (`uyuni-frontend-ng`) en **Workers & Pages > Pages**.
 3. En variables de entorno configura:
-   * `API_URL` = `https://uyuni-backend-novalabs.koyeb.app/api`
+   * `API_URL` = `https://uyuni-backend-novalabs.koyeb.app/api` *(o `https://uyuni-backend-novalabs.vercel.app/api` si usas Vercel)*
 4. Despliega la aplicación. El frontend quedará publicado en `https://uyuni-admin.pages.dev` o vinculado a su propio dominio (`admin.novabox.bo`).
 
 ---
@@ -193,7 +318,7 @@ Al tener el repositorio maestro centralizado en tu cuenta personal:
 
 1. Tú programas mejoras, corriges errores o agregas funciones en tu máquina.
 2. Haces `git push origin main` a tu repositorio principal.
-3. **Magia de la nube**: Las plataformas de todas las empresas conectadas (Koyeb para Nova Labs, Koyeb para el Cliente 2, etc.) detectan el nuevo commit y **re-despliegan automáticamente en 60 segundos**, sin que tengas que entrar a cada servidor manualmente.
+3. **Magia de la nube**: Las plataformas de todas las empresas conectadas (Koyeb o Vercel para Nova Labs, etc.) detectan el nuevo commit y **re-despliegan automáticamente en 60 segundos**, sin que tengas que entrar a cada servidor manualmente.
 4. Si hay migraciones de base de datos nuevas (`alembic upgrade head`), ejecutas el comando apuntando a la `DATABASE_URL` de cada cliente y listo.
 
 ---
@@ -210,7 +335,7 @@ Correo Corporativo:      [cliente@gmail.com]
 Usuario GitHub:          [cliente-app]
 Proyecto Neon:           [uyuni-cliente-prod]
 Neon DATABASE_URL:       [postgresql://...]
-URL Backend (Koyeb):     [https://api-cliente.koyeb.app]
+URL Backend (Koyeb/Vercel): [https://api-cliente.koyeb.app o .vercel.app]
 URL Frontend (Pages):    [https://admin.cliente.bo]
 Cloudinary Cloud Name:   [cliente-media]
 Cloudflare R2 Bucket:    [cliente-documentos]

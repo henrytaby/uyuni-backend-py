@@ -21,8 +21,8 @@ flowchart TB
         PING["Monitor Ping (Cada 5 min)<br/>GET /health (Evita modo reposo)"]
     end
 
-    subgraph BackendCompute ["⚡ 3. Cómputo Backend (Koyeb / Render)"]
-        FASTAPI["FastAPI Engine (Python 3.14 Container)<br/>https://uyuni-api.koyeb.app"]
+    subgraph BackendCompute ["⚡ 3. Cómputo Backend (Koyeb / Vercel)"]
+        FASTAPI["FastAPI Engine (Python 3.14 MicroVM o Vercel Serverless)<br/>Koyeb o Vercel"]
     end
 
     subgraph ManagedData ["🛡️ 4. Datos & Almacenamiento Seguro"]
@@ -58,7 +58,7 @@ flowchart TB
 | Servicio | Rol | Plan Gratuito | ¿Pide Tarjeta? |
 | :--- | :--- | :--- | :--- |
 | **[Neon.tech](https://neon.tech)** | Base de datos PostgreSQL 16 | 1 GB de almacenamiento SSD | **NO** |
-| **[Koyeb.com](https://www.koyeb.com)** (o Render) | Alojamiento del Backend FastAPI | 1 instancia MicroVM (512 MB RAM) | **NO** |
+| **[Koyeb.com](https://www.koyeb.com)** / **[Vercel.com](https://vercel.com)** | Alojamiento del Backend FastAPI | MicroVM 512 MB (Koyeb) o Serverless Anycast (Vercel) | **NO** |
 | **[UptimeRobot.com](https://uptimerobot.com)** | Mantener el backend despierto 24/7 | 50 monitores con pings cada 5 min | **NO** |
 | **[Cloudinary.com](https://cloudinary.com)** | Fotos de productos optimizadas | 25 créditos mensuales (~25 GB) | **NO** |
 | **[Cloudflare.com](https://dash.cloudflare.com)** | R2 (Archivos privados/videos) y Pages (Angular) | 10 GB R2 ($0 egress) + Pages ilimitado | Requiere verificación |
@@ -129,7 +129,14 @@ Antes de levantar el backend en la nube, inicializaremos la estructura en la bas
 
 ---
 
-## 🚀 PASO 3: Desplegar el Backend en Koyeb (Sin servidores)
+## 🚀 PASO 3: Desplegar el Backend (Elige entre Koyeb o Vercel)
+
+El proyecto soporta tanto contenedores Docker tradicionales (Koyeb/Render) como ejecución 100% Serverless en el Edge (Vercel).
+
+---
+
+### 🟢 Opción 3.A: Desplegar en Koyeb (Contenedor Docker MicroVM)
+Ideal si quieres un contenedor completo siempre activo ejecutando Python 3.14 nativo:
 
 El repositorio ya cuenta con un archivo [`Dockerfile`](file:///opt/uyuni/uyuni-backend-py/Dockerfile) optimizado para Python 3.14.
 
@@ -163,7 +170,45 @@ Puedes probar inmediatamente en tu navegador:
 
 ---
 
-## 🚀 PASO 4: Activar el Keep-Alive 24/7 (Cero latencia de arranque)
+### ▲ Opción 3.B: Desplegar en Vercel (Serverless Python Functions)
+Ideal si quieres máxima velocidad de respuesta a través de CDN global y **no tener que usar UptimeRobot** (despierta instantáneamente bajo demanda):
+
+El repositorio ya incluye los archivos de configuración nativos:
+* [`vercel.json`](file:///opt/uyuni/uyuni-backend-py/vercel.json): Reglas de rewrite hacia el handler.
+* [`api/index.py`](file:///opt/uyuni/uyuni-backend-py/api/index.py): Punto de entrada Serverless (*handler = app*).
+* [`requirements.txt`](file:///opt/uyuni/uyuni-backend-py/requirements.txt): Empaquetado automático por `@vercel/python`.
+
+#### Método con Vercel Web Dashboard:
+1. Entra a **[https://vercel.com](https://vercel.com)** con tu GitHub.
+2. Haz clic en **"Add New..." > "Project"** e importa `uyuni-backend-py`.
+3. **Configuración:**
+   * **Framework Preset**: `Other`
+   * **Root Directory**: `./`
+4. **Environment Variables:**
+   * `DATABASE_URL` = Cadena de Neon (⚠️ **Obligatorio usar endpoint con `-pooler`** para no agotar conexiones en serverless).
+   * `SECRET_KEY` = Tu clave aleatoria (`openssl rand -hex 32`).
+   * `PROJECT_NAME` = `"Uyuni ERP"`
+   * `ENVIRONMENT` = `production`
+   * `BACKEND_CORS_ORIGINS` = `["*"]`
+5. Haz clic en **"Deploy"**. En 60 segundos obtendrás:
+   👉 **`https://uyuni-backend-tu-usuario.vercel.app`**
+
+#### Método rápido con Vercel CLI:
+```bash
+npm install -g vercel
+vercel login
+vercel link
+vercel env add DATABASE_URL production
+vercel env add SECRET_KEY production
+vercel --prod
+```
+
+---
+
+## 🚀 PASO 4: Activar el Keep-Alive 24/7 en UptimeRobot (Solo para Koyeb o Render)
+
+> [!NOTE]
+> **Si desplegaste en Vercel (Opción 3.B):** Puedes saltarte este paso por completo. Las funciones serverless de Vercel no se suspenden por inactividad.
 
 Para garantizar que el servicio de Koyeb (o Render) nunca entre en modo de reposo y responda siempre en menos de 50 milisegundos:
 
