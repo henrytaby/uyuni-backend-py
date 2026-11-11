@@ -99,6 +99,11 @@ Features:
 - **PermissionChecker**: Dependency verifies aggregated permissions from all user roles
 - **Implicit Read**: Assigning a module to a role grants read access
 - **Superuser**: Bypasses all RBAC key checks
+- **Scope All (`scope_all`)**: In `RoleModule` and `UserModulePermission`, indicates whether the role grants access to all system records (`True`, e.g., Admin/Supervisor) or is restricted to records authored by/assigned to the user (`False`, Self/Own scope). Handled in `AuthService.get_role_menu` (`scope_all=rm.scope_all`).
+
+### Unified Catalog Hub Pattern (Cejas / Tabs per Data Group)
+- **MANDATORY UI/UX STANDARD**: Low-frequency reference data / lookups (e.g. Categories, Sales Channels, Live Baskets, Investment Rounds) must NEVER clutter the sidebar as separate menu buttons ("menú sábana").
+- Instead, consolidate them into a single `Catálogos` module route (e.g., `/commerce/catalogs`) rendered with PrimeNG tabs ("cejas" via `p-tabs`), leaving the sidebar strictly focused on daily high-frequency transactional workflows (Sales, Products, Batches, Product Masters). All AI agents must replicate this pattern across future modules.
 
 ### Audit System
 ```
@@ -196,6 +201,14 @@ class Settings(BaseSettings):
     AUDIT_LOG_EXCLUDE_STATUS_CODES: list[int] = [404]
     AUDIT_LOG_INCLUDED_METHODS: list[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 ```
+
+### Database Naming Convention (MANDATORY STANDARD)
+- **Singular Table Names**: All database tables across all modules (core, commerce, and future domains) are strictly in **singular**.
+  - Base / Core: `user`, `role`, `user_role`, `role_module`, `module`, `module_group`, `task`, `audit_log`, `user_revoked_token`, `user_log_login`
+  - Commerce: `commerce_batch`, `commerce_category`, `commerce_channel`, `commerce_investment_round`, `commerce_live_basket`, `commerce_product`, `commerce_product_master`, `commerce_sale`, `commerce_sale_item`
+- **Foreign Keys**: Foreign key targets must reference singular table names (`user.id`, `role.slug`, `module.slug`, `module_group.slug`, etc.).
+- **SQL Keyword Quoting**: SQL keywords like `user` are safely escaped/quoted by SQLAlchemy and SQLModel as `"user"`.
+- **Alembic Migrations**: All migration DDL statements (`create_table`, `create_index`, `ForeignKeyConstraint`) must strictly use singular table and index names.
 
 ### Database Connection
 - Async engine for queries

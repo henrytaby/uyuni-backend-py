@@ -31,7 +31,7 @@ This is the Uyuni Backend - a FastAPI enterprise application with:
 - JWT auth with token rotation and account lockout
 - RBAC with CRUD permissions per module
 - Audit logging (CDC + access logging)
-- Modular domain structure (assets, core, tasks)
+- Modular domain structure (commerce, core)
 - Repository pattern with generic BaseRepository[T]
 
 ## Development Rules

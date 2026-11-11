@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class ModuleGroup(BaseModel, AuditMixin, table=True):
-    __tablename__ = "module_groups"
+    __tablename__ = "module_group"
     name: str = Field(index=True, unique=True)
     slug: str = Field(index=True, unique=True)
     description: str | None = Field(default=None)
@@ -22,7 +22,7 @@ class ModuleGroup(BaseModel, AuditMixin, table=True):
 
 
 class Module(BaseModel, AuditMixin, table=True):
-    __tablename__ = "modules"
+    __tablename__ = "module"
     name: str = Field(index=True, unique=True)
     slug: str = Field(index=True, unique=True)
     description: str | None = Field(default=None)
@@ -31,7 +31,7 @@ class Module(BaseModel, AuditMixin, table=True):
     route: str | None = Field(default=None)
     sort_order: int | None = Field(default=None)
     # Relationship
-    group_slug: str | None = Field(default=None, foreign_key="module_groups.slug")
+    group_slug: str | None = Field(default=None, foreign_key="module_group.slug")
     group: Optional["ModuleGroup"] = Relationship(back_populates="modules")
 
     role_modules: List["RoleModule"] = Relationship(back_populates="module")

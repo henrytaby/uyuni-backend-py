@@ -1,7 +1,7 @@
 # Uyuni Backend - Project Instructions
 
 ## Project Overview
-Uyuni Backend is a Python/FastAPI enterprise backend with JWT auth, RBAC, audit logging, and modular domain architecture (assets, core, tasks).
+Uyuni Backend is a Python/FastAPI enterprise backend with JWT auth, RBAC, audit logging, and modular domain architecture (commerce, core).
 
 ## Tech Stack
 - **Framework**: FastAPI (Python 3.14.6) with Pydantic v2
@@ -29,6 +29,9 @@ Each domain module contains: `routers.py`, `service.py`, `repository.py`, `model
 - **Audit**: Middleware captures request context + SQLAlchemy hooks for CDC
 - **ETL Synchronization**: Python scripts (e.g. `sync_siger.py`) using Upsert and Soft-Delete (`is_active=False`) mapping sequential external IDs to internal `UUIDv7` keys (`external_id`).
 - **Dynamic Modular Catalogs**: A decoupled, zero-boilerplate registration mechanism (`CatalogProvider` protocol) mapping catalog slugs to queries inside domain modules (`app/modules/core/catalogs/__init__.py`). It registers providers into the central `global_registry` and exposes a dynamic individual selector (`GET /api/catalogs/{name}`) alongside an efficient high-performance batch loader (**`POST /api/catalogs/bulk`**) that gathers multiple datasets in a single HTTP request to minimize selectbox-population overhead on the frontend.
+- **Decentralized Domain Manifests**: Each domain module defines its groups, modules, routes, icons, and permissions in a `manifest.py` (e.g. `app/modules/commerce/manifest.py`). The central `ManifestRegistry` (`app/core/manifests/`) synchronizes them idempotently on server startup with automatic soft-deactivation (`is_active=False`) of removed items.
+- **Unified Catalog Hub Pattern (Cejas / Tabs per Data Group)**: **MANDATORY UI/UX STANDARD FOR ALL MODULES**: Low-frequency reference data (lookups / catalogs like categories, sales channels, payment modalities) must NEVER clutter the sidebar as separate menu buttons. Instead, consolidate them into a single `Catálogos` module route (e.g., `/commerce/catalogs`) rendered with PrimeNG tabs ("cejas" via `p-tabs`), leaving the sidebar strictly focused on daily high-frequency transactional workflows (Sales, Products, Batches). All AI agents must replicate this pattern across future modules.
+- **Singular Table Naming Convention (MANDATORY DATABASE STANDARD)**: Every database table across all domains (core, commerce, and future modules) MUST be strictly in **singular** (`__tablename__ = "user"`, `"role"`, `"user_role"`, `"role_module"`, `"module"`, `"module_group"`, `"task"`, `"audit_log"`, `"user_revoked_token"`, `"user_log_login"`, `"commerce_product"`, `"commerce_sale"`, etc.). Foreign keys and Alembic migrations must also use singular references (`user.id`, `role.slug`, `module.slug`, `module_group.slug`). Never use plural table names. SQL keywords like `user` are safely quoted by SQLAlchemy/SQLModel as `"user"`.
 
 ## Code Conventions
 - Strict Clean Code principles (SOLID, DRY, KISS)

@@ -8,17 +8,8 @@ from app.core.manifests.models import (
     DomainManifest,
     GroupDefinition,
     ModuleDefinition,
-    RolePermission,
 )
 from app.core.manifests.registry import global_manifest_registry
-
-manager_commerce_perm = RolePermission(
-    can_create=True,
-    can_update=True,
-    can_delete=False,
-    scope_all=True,
-    is_active=True,
-)
 
 commerce_manifest = DomainManifest(
     domain_name="commerce",
@@ -40,7 +31,6 @@ commerce_manifest = DomainManifest(
                     icon="pi pi-tags",
                     route="commerce/products",
                     is_active=True,
-                    permissions={"manager": manager_commerce_perm},
                 ),
                 ModuleDefinition(
                     name="Lotes y Cajas",
@@ -51,7 +41,6 @@ commerce_manifest = DomainManifest(
                     icon="pi pi-box",
                     route="commerce/batches",
                     is_active=True,
-                    permissions={"manager": manager_commerce_perm},
                 ),
                 ModuleDefinition(
                     name="Ventas",
@@ -62,29 +51,29 @@ commerce_manifest = DomainManifest(
                     icon="pi pi-shopping-cart",
                     route="commerce/sales",
                     is_active=True,
-                    permissions={"manager": manager_commerce_perm},
-                ),
-                ModuleDefinition(
-                    name="Canastas Live",
-                    slug="live-baskets",
-                    description="Canastas dinámicas para transmisiones en vivo",
-                    group_slug="commerce",
-                    sort_order=4,
-                    icon="pi pi-video",
-                    route="commerce/live-baskets",
-                    is_active=True,
-                    permissions={"manager": manager_commerce_perm},
                 ),
                 ModuleDefinition(
                     name="Catálogo Maestro",
                     slug="product-masters",
                     description="Plantillas maestras de especificaciones de productos",
                     group_slug="commerce",
-                    sort_order=5,
+                    sort_order=4,
                     icon="pi pi-database",
                     route="commerce/product-masters",
                     is_active=True,
-                    permissions={"manager": manager_commerce_perm},
+                ),
+                ModuleDefinition(
+                    name="Catálogos",
+                    slug="commerce-catalogs",
+                    description=(
+                        "Catálogos de soporte: categorías, canales de venta, "
+                        "canastas live y rondas"
+                    ),
+                    group_slug="commerce",
+                    sort_order=5,
+                    icon="pi pi-sliders-h",
+                    route="commerce/catalogs",
+                    is_active=True,
                 ),
             ],
         ),

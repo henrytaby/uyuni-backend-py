@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class RoleModule(BaseModel, AuditMixin, table=True):
-    __tablename__ = "role_modules"
+    __tablename__ = "role_module"
     __table_args__ = (
         UniqueConstraint("role_slug", "module_slug", name="uq_role_module_slugs"),
     )
@@ -28,15 +28,15 @@ class RoleModule(BaseModel, AuditMixin, table=True):
     )
 
     # Relationship
-    role_slug: str | None = Field(default=None, foreign_key="roles.slug")
+    role_slug: str | None = Field(default=None, foreign_key="role.slug")
     role: Optional["Role"] = Relationship(back_populates="role_modules")
 
-    module_slug: str | None = Field(default=None, foreign_key="modules.slug")
+    module_slug: str | None = Field(default=None, foreign_key="module.slug")
     module: Optional["Module"] = Relationship(back_populates="role_modules")
 
 
 class Role(BaseModel, AuditMixin, table=True):
-    __tablename__ = "roles"
+    __tablename__ = "role"
     name: str = Field(index=True, unique=True)
     slug: str = Field(index=True, unique=True)
     description: str | None = Field(default=None)

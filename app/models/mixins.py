@@ -26,11 +26,11 @@ class AuditMixin(SQLModel):
 
     created_by_id: uuid.UUID | None = Field(
         default=None,
-        foreign_key="users.id",
+        foreign_key="user.id",
         description="The user who created this record",
     )
     updated_by_id: uuid.UUID | None = Field(
         default=None,
-        foreign_key="users.id",
+        foreign_key="user.id",
         description="The user who last updated this record",
     )

@@ -9,33 +9,20 @@ from alembic import context
 from app.core.config import settings
 
 # Import all models so SQLModel.metadata is populated
-from app.models.user import User, UserRevokedToken, UserLogLogin, UserRole
-from app.models.role import Role, RoleModule
-from app.models.module import Module, ModuleGroup
-from app.modules.tasks.models import Task
-from app.models.audit import AuditLog
+import app.models.audit  # noqa: F401
+import app.models.module  # noqa: F401
+import app.models.role  # noqa: F401
+import app.models.user  # noqa: F401
+import app.modules.commerce.batches.models  # noqa: F401
+import app.modules.commerce.categories.models  # noqa: F401
+import app.modules.commerce.channels.models  # noqa: F401
+import app.modules.commerce.live_baskets.models  # noqa: F401
+import app.modules.commerce.product_masters.models  # noqa: F401
+import app.modules.commerce.products.models  # noqa: F401
+import app.modules.commerce.rounds.models  # noqa: F401
+import app.modules.commerce.sales.models  # noqa: F401
+import app.modules.tasks.models  # noqa: F401
 
-# Fixed Assets & Core Staff
-from app.modules.core.org_units.models import OrgUnit
-from app.modules.core.positions.models import StaffPosition
-from app.modules.core.staff.models import Staff
-# Assets Domain
-from app.modules.assets.institutions.models import Institution
-from app.modules.assets.areas.models import Area
-from app.modules.assets.groups.models import AssetGroup
-from app.modules.assets.statuses.models import AssetStatus
-from app.modules.assets.acts.models import Act, AssetActLink
-from app.modules.assets.assets.models import FixedAsset
-
-# Commerce Domain (Nova Box Bolivia)
-from app.modules.commerce.rounds.models import InvestmentRound
-from app.modules.commerce.batches.models import Batch
-from app.modules.commerce.categories.models import Category
-from app.modules.commerce.channels.models import SalesChannel
-from app.modules.commerce.live_baskets.models import LiveBasket
-from app.modules.commerce.product_masters.models import ProductMaster
-from app.modules.commerce.products.models import Product
-from app.modules.commerce.sales.models import Sale, SaleItem
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

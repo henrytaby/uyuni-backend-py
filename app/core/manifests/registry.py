@@ -10,6 +10,7 @@ from app.core.manifests.models import (
 )
 from app.models.module import Module, ModuleGroup
 from app.models.role import Role, RoleModule
+from app.models.user import User, UserRole
 
 logger = structlog.get_logger("core.manifests")
 
@@ -55,25 +56,13 @@ class ManifestRegistry:
                 sort_order=1,
                 icon="pi pi-user",
             ),
-            RoleDefinition(
-                name="Persona de Institución",
-                slug="administration",
-                description="Usuarios de la Administración",
-                sort_order=2,
-                icon="pi pi-building",
-            ),
-            RoleDefinition(
-                name="Gestor Admin",
-                slug="manager",
-                description="Administrador de la información",
-                sort_order=3,
-                icon="pi pi-database",
-            ),
         ]
 
         # Agregar roles adicionales declarados en dominios
         for manifest in self._manifests.values():
             system_roles.extend(manifest.roles)
+
+        active_role_slugs = {r.slug for r in system_roles if r.is_active}
 
         for r_def in system_roles:
             role_obj = session.exec(select(Role).where(Role.slug == r_def.slug)).first()
@@ -95,6 +84,19 @@ class ManifestRegistry:
                     )
                 )
             stats["roles_upserted"] += 1
+
+        if soft_delete_missing:
+            all_roles = session.exec(select(Role)).all()
+            for r in all_roles:
+                if r.slug not in active_role_slugs and r.is_active:
+                    r.is_active = False
+                    rms = session.exec(
+                        select(RoleModule).where(RoleModule.role_slug == r.slug)
+                    ).all()
+                    for rm in rms:
+                        rm.is_active = False
+                    logger.info("role_deactivated", slug=r.slug)
+
         session.flush()
 
         # 2. Module Groups
@@ -224,6 +226,37 @@ class ManifestRegistry:
                     for rm in rms:
                         rm.is_active = False
                     logger.info("module_deactivated", slug=m.slug)
+
+            # Desactivar RoleModules pertenecientes a roles no activos
+            all_role_modules = session.exec(select(RoleModule)).all()
+            for rm in all_role_modules:
+                if (
+                    rm.role_slug is not None
+                    and rm.role_slug not in active_role_slugs
+                    and rm.is_active
+                ):
+                    rm.is_active = False
+
+        # 4. Asignación formal de rol en user_roles para superusuarios/admin
+        admin_user = session.exec(select(User).where(User.username == "admin")).first()
+        if admin_user:
+            admin_ur = session.exec(
+                select(UserRole).where(
+                    UserRole.user_id == admin_user.id,
+                    UserRole.role_slug == "admin",
+                )
+            ).first()
+            if not admin_ur:
+                session.add(
+                    UserRole(
+                        user_id=admin_user.id,
+                        role_slug="admin",
+                        is_active=True,
+                    )
+                )
+                logger.info("admin_user_role_linked", user="admin", role="admin")
+            elif not admin_ur.is_active:
+                admin_ur.is_active = True
 
         session.commit()
         logger.info("modules_sync_completed", **stats)

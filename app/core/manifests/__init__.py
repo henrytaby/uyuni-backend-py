@@ -18,7 +18,6 @@ def load_domain_manifests() -> None:
     Importa todos los manifiestos de dominio para asegurar
     su registro en el Registry global.
     """
-    import app.modules.assets.manifest  # noqa: F401
     import app.modules.commerce.manifest  # noqa: F401
     import app.modules.core.manifest  # noqa: F401
 

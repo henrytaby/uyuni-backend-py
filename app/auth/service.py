@@ -376,6 +376,7 @@ class AuthService:
                 can_update=rm.can_update,
                 can_delete=rm.can_delete,
                 can_read=True,  # Implied
+                scope_all=rm.scope_all,
             )
 
             mod_menu = ModuleMenu(

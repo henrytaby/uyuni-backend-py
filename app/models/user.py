@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class User(BaseModel, AuditMixin, table=True):
-    __tablename__ = "users"
+    __tablename__ = "user"
     username: str = Field(index=True, unique=True)
     email: str = Field(index=True, unique=True)
     first_name: str | None = Field(default=None)
@@ -39,22 +39,22 @@ class User(BaseModel, AuditMixin, table=True):
 
 
 class UserRole(BaseModel, AuditMixin, table=True):
-    __tablename__ = "user_roles"
+    __tablename__ = "user_role"
     is_active: bool = Field(default=True)
 
     # Relationship
-    user_id: uuid.UUID | None = Field(default=None, foreign_key="users.id")
+    user_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
     user: Optional["User"] = Relationship(
         back_populates="user_roles",
         sa_relationship_kwargs={"foreign_keys": "[UserRole.user_id]"},
     )
 
-    role_slug: str | None = Field(default=None, foreign_key="roles.slug")
+    role_slug: str | None = Field(default=None, foreign_key="role.slug")
     role: Optional["Role"] = Relationship(back_populates="user_roles")
 
 
 class UserRevokedToken(BaseModel, table=True):
-    __tablename__ = "user_revoked_tokens"
+    __tablename__ = "user_revoked_token"
     token: str = Field(index=True, unique=True)
     user_id: uuid.UUID = Field(index=True)
     revoked_at: datetime | None = Field(
@@ -65,7 +65,7 @@ class UserRevokedToken(BaseModel, table=True):
 
 
 class UserLogLogin(BaseModel, table=True):
-    __tablename__ = "user_log_logins"
+    __tablename__ = "user_log_login"
     created_at: datetime | None = Field(
         default_factory=get_current_time,
         sa_column=Column(DateTime(timezone=False), nullable=True),
@@ -78,7 +78,7 @@ class UserLogLogin(BaseModel, table=True):
         ),
         description="The timestamp when the log was last updated",
     )
-    user_id: uuid.UUID | None = Field(default=None, foreign_key="users.id")
+    user_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
     username: str | None = Field(
         description="The username used in the login attempt", default=None
     )

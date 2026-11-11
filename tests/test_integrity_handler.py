@@ -16,7 +16,7 @@ def test_integrity_error_handler_unique():
         raise IntegrityError(
             statement="INSERT INTO table...",
             params={},
-            orig=Exception("UNIQUE constraint failed: core_staff.email"),
+            orig=Exception("UNIQUE constraint failed: users.email"),
         )
 
     client = TestClient(test_app)
@@ -58,7 +58,7 @@ def test_integrity_error_handler_not_null():
         raise IntegrityError(
             statement="INSERT INTO table...",
             params={},
-            orig=Exception("NOT NULL constraint failed: core_staff.first_name"),
+            orig=Exception("NOT NULL constraint failed: users.first_name"),
         )
 
     client = TestClient(test_app)
@@ -105,10 +105,7 @@ def test_integrity_error_handler_postgres_fk():
     @test_app.get("/trigger-pg-fk")
     def trigger_pg_fk():
         class MockDiag:
-            message_detail = (
-                "Key (org_unit_id)=(3fa85f64-5717-4562-b3fc-2c963f66afa6) "
-                'is not present in table "core_org_unit".'
-            )
+            message_detail = 'Key (role_slug)=(admin) is not present in table "roles".'
 
         class MockOrigException(Exception):
             pgcode = "23503"
@@ -123,8 +120,8 @@ def test_integrity_error_handler_postgres_fk():
     assert response.status_code == 400
     assert response.json() == {
         "detail": (
-            "El valor '3fa85f64-5717-4562-b3fc-2c963f66afa6' especificado para el "
-            "campo 'org_unit_id' no existe en la tabla de referencia 'core_org_unit'."
+            "El valor 'admin' especificado para el "
+            "campo 'role_slug' no existe en la tabla de referencia 'roles'."
         )
     }
 

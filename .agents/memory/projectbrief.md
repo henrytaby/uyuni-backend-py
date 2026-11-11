@@ -25,7 +25,7 @@ Uyuni Backend is a Python/FastAPI backend application designed to serve as the A
 - Account lockout mechanism for security
 - Granular RBAC with CRUD permissions per module
 - Audit trail system with SQLAlchemy hooks
-- Modular domain structure (assets, core, tasks)
+- Modular domain structure (commerce, core)
 - Generic repository pattern for data access
 - Custom exception handling
 

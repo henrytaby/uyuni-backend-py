@@ -11,7 +11,7 @@ from app.core.manifests import (
 from app.core.manifests.registry import ManifestRegistry
 from app.models.module import Module, ModuleGroup
 from app.models.role import RoleModule
-from app.models.user import User
+from app.models.user import User, UserRole
 
 
 def test_manifest_sync_populates_database(session: Session):
@@ -19,7 +19,7 @@ def test_manifest_sync_populates_database(session: Session):
 
     assert stats["groups_upserted"] > 0
     assert stats["modules_upserted"] > 0
-    assert stats["roles_upserted"] >= 3
+    assert stats["roles_upserted"] >= 1
     assert stats["role_modules_synced"] > 0
 
     # Verificar grupo Comercio
@@ -31,7 +31,13 @@ def test_manifest_sync_populates_database(session: Session):
     assert commerce_group.is_active is True
 
     # Verificar módulos de Comercio
-    for slug in ["products", "batches", "sales", "live-baskets", "product-masters"]:
+    for slug in [
+        "products",
+        "batches",
+        "sales",
+        "product-masters",
+        "commerce-catalogs",
+    ]:
         mod = session.exec(select(Module).where(Module.slug == slug)).first()
         assert mod is not None, f"Module {slug} should exist in DB"
         assert mod.group_slug == "commerce"
@@ -72,8 +78,8 @@ def test_admin_menu_includes_commerce(session: Session):
     group_slugs = [g.slug for g in menu]
     assert "commerce" in group_slugs
     assert "configuration" in group_slugs
-    assert "institution" in group_slugs
-    assert "fixed-assets" in group_slugs
+    assert "institution" not in group_slugs
+    assert "fixed-assets" not in group_slugs
 
     commerce_menu = next(g for g in menu if g.slug == "commerce")
     assert commerce_menu.group_name == "Comercio"
@@ -148,3 +154,32 @@ def test_manifest_soft_deactivation(session: Session):
     mod1_after = session.exec(select(Module).where(Module.slug == "mod-1")).first()
     assert mod1_after is not None
     assert mod1_after.is_active is True
+
+
+def test_admin_user_role_auto_linked(session: Session):
+    admin_user = User(
+        username="admin",
+        email="admin@uyuni.bo",
+        password_hash="fakehash",
+        is_superuser=True,
+    )
+    session.add(admin_user)
+    session.commit()
+    session.refresh(admin_user)
+
+    # Before sync, admin has no UserRole
+    ur_before = session.exec(
+        select(UserRole).where(UserRole.user_id == admin_user.id)
+    ).first()
+    assert ur_before is None
+
+    # Sync manifests
+    global_manifest_registry.sync(session)
+
+    # After sync, UserRole is linked
+    ur_after = session.exec(
+        select(UserRole).where(UserRole.user_id == admin_user.id)
+    ).first()
+    assert ur_after is not None
+    assert ur_after.role_slug == "admin"
+    assert ur_after.is_active is True

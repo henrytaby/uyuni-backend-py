@@ -4,127 +4,62 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from app.modules.core.org_units.models import OrgUnit
+from app.modules.commerce.categories.models import Category
 
 
 @pytest.fixture(name="catalog_data")
 def catalog_data_fixture(session: Session):
-    # 1. Crear Gerencias (parent_id is None)
-    gerencia1 = OrgUnit(
+    cat1 = Category(
         id=uuid.uuid4(),
-        external_id=101,
-        name="Gerencia de TI",
-        type="MANAGEMENT",
+        code="CAT-01",
+        name="Electrónica",
+        description="Dispositivos y gadgets",
+        icon="pi pi-bolt",
         is_active=True,
     )
-    gerencia2 = OrgUnit(
+    cat2 = Category(
         id=uuid.uuid4(),
-        external_id=102,
-        name="Gerencia de RRHH",
-        type="MANAGEMENT",
+        code="CAT-02",
+        name="Herramientas",
+        description="Herramientas eléctricas y manuales",
+        icon="pi pi-wrench",
         is_active=True,
-    )
-    gerencia_inactive = OrgUnit(
-        id=uuid.uuid4(),
-        external_id=103,
-        name="Gerencia Obsoleta",
-        type="MANAGEMENT",
-        is_active=False,
     )
 
-    # 2. Crear Departamentos (parent_id points to Gerencia)
-    dept1 = OrgUnit(
-        id=uuid.uuid4(),
-        external_id=201,
-        name="Departamento de Desarrollo",
-        type="DEPARTMENT",
-        parent_id=gerencia1.id,
-        is_active=True,
-    )
-    dept2 = OrgUnit(
-        id=uuid.uuid4(),
-        external_id=202,
-        name="Departamento de Sistemas",
-        type="DEPARTMENT",
-        parent_id=gerencia1.id,
-        is_active=True,
-    )
-    dept_inactive = OrgUnit(
-        id=uuid.uuid4(),
-        external_id=203,
-        name="Departamento Inactivo",
-        type="DEPARTMENT",
-        parent_id=gerencia1.id,
-        is_active=False,
-    )
-
-    session.add(gerencia1)
-    session.add(gerencia2)
-    session.add(gerencia_inactive)
-    session.add(dept1)
-    session.add(dept2)
-    session.add(dept_inactive)
+    session.add(cat1)
+    session.add(cat2)
     session.commit()
 
     return {
-        "gerencia1": gerencia1,
-        "gerencia2": gerencia2,
-        "dept1": dept1,
-        "dept2": dept2,
+        "cat1": cat1,
+        "cat2": cat2,
     }
 
 
-def test_get_gerencias_success(
-    client: TestClient, superuser_token_headers: dict, catalog_data: dict
-):
-    response = client.get("/api/catalogs/gerencias", headers=superuser_token_headers)
-    assert response.status_code == 200
-    data = response.json()
-
-    # Deben ser únicamente las gerencias activas y ordenadas alfabéticamente
-    assert len(data) == 2
-    assert data[0]["label"] == "Gerencia de RRHH"
-    assert data[0]["value"] == str(catalog_data["gerencia2"].id)
-    assert data[1]["label"] == "Gerencia de TI"
-    assert data[1]["value"] == str(catalog_data["gerencia1"].id)
-
-
-def test_get_departamentos_success(
-    client: TestClient, superuser_token_headers: dict, catalog_data: dict
-):
-    gerencia_id = str(catalog_data["gerencia1"].id)
+def test_get_static_catalog_success(client: TestClient, superuser_token_headers: dict):
     response = client.get(
-        f"/api/catalogs/departamentos?gerencia_id={gerencia_id}",
-        headers=superuser_token_headers,
+        "/api/catalogs/commerce_physical_conditions", headers=superuser_token_headers
     )
     assert response.status_code == 200
     data = response.json()
-
-    # Deben ser los departamentos activos dependientes de la gerencia1
-    assert len(data) == 2
-    assert data[0]["label"] == "Departamento de Desarrollo"
-    assert data[0]["value"] == str(catalog_data["dept1"].id)
-    assert data[1]["label"] == "Departamento de Sistemas"
-    assert data[1]["value"] == str(catalog_data["dept2"].id)
+    assert len(data) == 5
+    values = [item["value"] for item in data]
+    assert "OPERATIONAL" in values
+    assert "DAMAGED_SCRAP" in values
 
 
-def test_get_departamentos_empty_or_invalid_id(
-    client: TestClient, superuser_token_headers: dict
+def test_get_dynamic_categories_catalog_success(
+    client: TestClient, superuser_token_headers: dict, catalog_data: dict
 ):
-    # Sin gerencia_id query param
     response = client.get(
-        "/api/catalogs/departamentos", headers=superuser_token_headers
+        "/api/catalogs/commerce_categories", headers=superuser_token_headers
     )
     assert response.status_code == 200
-    assert response.json() == []
-
-    # Con gerencia_id inválido (no es UUID)
-    response = client.get(
-        "/api/catalogs/departamentos?gerencia_id=invalido-uuid",
-        headers=superuser_token_headers,
-    )
-    assert response.status_code == 200
-    assert response.json() == []
+    data = response.json()
+    assert len(data) >= 2
+    labels = [item["label"] for item in data]
+    assert any("Electrónica" in label for label in labels)
+    assert any("Herramientas" in label for label in labels)
 
 
 def test_get_catalog_not_found(client: TestClient, superuser_token_headers: dict):
@@ -134,7 +69,7 @@ def test_get_catalog_not_found(client: TestClient, superuser_token_headers: dict
 
 
 def test_get_catalog_unauthorized(client: TestClient):
-    response = client.get("/api/catalogs/gerencias")
+    response = client.get("/api/catalogs/commerce_physical_conditions")
     assert response.status_code == 401
 
 
@@ -145,8 +80,9 @@ def test_post_bulk_catalogs_success(
     client: TestClient, superuser_token_headers: dict, catalog_data: dict
 ):
     payload = {
-        "gerencias": {},
-        "departamentos": {"gerencia_id": str(catalog_data["gerencia1"].id)},
+        "commerce_physical_conditions": {},
+        "commerce_payment_methods": {},
+        "commerce_categories": {},
     }
     response = client.post(
         "/api/catalogs/bulk", json=payload, headers=superuser_token_headers
@@ -154,23 +90,20 @@ def test_post_bulk_catalogs_success(
     assert response.status_code == 200
     data = response.json()
 
-    # Verificación de Gerencias
-    assert "gerencias" in data
-    assert len(data["gerencias"]) == 2
-    assert data["gerencias"][0]["label"] == "Gerencia de RRHH"
-    assert data["gerencias"][1]["label"] == "Gerencia de TI"
+    assert "commerce_physical_conditions" in data
+    assert len(data["commerce_physical_conditions"]) == 5
 
-    # Verificación de Departamentos
-    assert "departamentos" in data
-    assert len(data["departamentos"]) == 2
-    assert data["departamentos"][0]["label"] == "Departamento de Desarrollo"
-    assert data["departamentos"][1]["label"] == "Departamento de Sistemas"
+    assert "commerce_payment_methods" in data
+    assert len(data["commerce_payment_methods"]) == 4
+
+    assert "commerce_categories" in data
+    assert len(data["commerce_categories"]) >= 2
 
 
 def test_post_bulk_catalogs_not_found(
     client: TestClient, superuser_token_headers: dict
 ):
-    payload = {"gerencias": {}, "no_existe": {}}
+    payload = {"commerce_physical_conditions": {}, "no_existe": {}}
     response = client.post(
         "/api/catalogs/bulk", json=payload, headers=superuser_token_headers
     )
@@ -179,6 +112,6 @@ def test_post_bulk_catalogs_not_found(
 
 
 def test_post_bulk_catalogs_unauthorized(client: TestClient):
-    payload = {"gerencias": {}}
+    payload = {"commerce_physical_conditions": {}}
     response = client.post("/api/catalogs/bulk", json=payload)
     assert response.status_code == 401

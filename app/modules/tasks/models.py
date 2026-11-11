@@ -9,7 +9,7 @@ class Task(BaseModel, AuditMixin, table=True):
     Task model that represents a task in the database.
     """
 
-    __tablename__ = "tasks"
+    __tablename__ = "task"
 
     title: str = Field(default=None, description="The title of the task")
     description: str | None = Field(

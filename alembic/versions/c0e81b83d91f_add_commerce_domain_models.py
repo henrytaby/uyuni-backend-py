@@ -15,7 +15,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "c0e81b83d91f"
-down_revision: Union[str, Sequence[str], None] = "5ab725ad6f8a"
+down_revision: Union[str, Sequence[str], None] = "9140397f6a6a"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -50,8 +50,8 @@ def upgrade() -> None:
         sa.Column(
             "observations", sqlmodel.sql.sqltypes.AutoString(length=1000), nullable=True
         ),
-        sa.ForeignKeyConstraint(["created_by_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["updated_by_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -119,8 +119,8 @@ def upgrade() -> None:
         sa.Column(
             "observations", sqlmodel.sql.sqltypes.AutoString(length=1000), nullable=True
         ),
-        sa.ForeignKeyConstraint(["created_by_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["updated_by_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"]),
         sa.ForeignKeyConstraint(
             ["investment_round_id"], ["commerce_investment_round.id"]
         ),
@@ -152,8 +152,8 @@ def upgrade() -> None:
             sqlmodel.sql.sqltypes.AutoString(length=1000),
             nullable=True,
         ),
-        sa.ForeignKeyConstraint(["created_by_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["updated_by_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -190,8 +190,8 @@ def upgrade() -> None:
             sqlmodel.sql.sqltypes.AutoString(length=255),
             nullable=True,
         ),
-        sa.ForeignKeyConstraint(["created_by_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["updated_by_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -223,8 +223,8 @@ def upgrade() -> None:
         sa.Column(
             "is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")
         ),
-        sa.ForeignKeyConstraint(["created_by_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["updated_by_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -321,8 +321,8 @@ def upgrade() -> None:
         sa.Column(
             "is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")
         ),
-        sa.ForeignKeyConstraint(["created_by_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["updated_by_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"]),
         sa.ForeignKeyConstraint(["category_id"], ["commerce_category.id"]),
         sa.ForeignKeyConstraint(["live_basket_id"], ["commerce_live_basket.id"]),
         sa.PrimaryKeyConstraint("id"),
@@ -416,8 +416,8 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("false"),
         ),
-        sa.ForeignKeyConstraint(["created_by_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["updated_by_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"]),
         sa.ForeignKeyConstraint(
             ["master_product_id"], ["commerce_product_master.id"]
         ),
@@ -531,8 +531,8 @@ def upgrade() -> None:
         sa.Column(
             "observations", sqlmodel.sql.sqltypes.AutoString(length=1000), nullable=True
         ),
-        sa.ForeignKeyConstraint(["created_by_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["updated_by_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"]),
         sa.ForeignKeyConstraint(["channel_id"], ["commerce_channel.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -579,8 +579,8 @@ def upgrade() -> None:
         sa.Column("unit_cost", sa.Float(), nullable=False, server_default="0.0"),
         sa.Column("total_price", sa.Float(), nullable=False, server_default="0.0"),
         sa.Column("net_margin", sa.Float(), nullable=False, server_default="0.0"),
-        sa.ForeignKeyConstraint(["created_by_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["updated_by_id"], ["users.id"]),
+        sa.ForeignKeyConstraint(["created_by_id"], ["user.id"]),
+        sa.ForeignKeyConstraint(["updated_by_id"], ["user.id"]),
         sa.ForeignKeyConstraint(["sale_id"], ["commerce_sale.id"]),
         sa.ForeignKeyConstraint(["product_id"], ["commerce_product.id"]),
         sa.PrimaryKeyConstraint("id"),

@@ -10,7 +10,7 @@ from app.util.datetime import get_current_time
 
 
 class AuditLog(BaseModel, table=True):
-    __tablename__ = "audit_logs"
+    __tablename__ = "audit_log"
 
     # id inherited from BaseModel (UUID)
     user_id: uuid.UUID | None = Field(default=None, index=True)

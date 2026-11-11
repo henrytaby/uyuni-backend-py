@@ -282,3 +282,147 @@ El backend genera el código de venta (`VTA-YYYYMMDD-XXXXXX`), asocia el costo u
 }
 ```
 
+---
+
+## 🎛️ 5. Módulo Unificado de Catálogos y Parámetros (`/commerce/catalogs`)
+
+### 5.1. Estándar de Industria: Separación de Flujo Operativo vs. Catálogos Maestros
+En sistemas ERP de clase mundial (Shopify, Stripe, Odoo, SAP), los elementos de la interfaz se dividen en:
+1. **Flujo Transaccional Diario (Alta Frecuencia):** Pantallas como Ventas, Productos y Lotes, accesibles directamente desde la barra lateral.
+2. **Datos de Referencia y Catálogos (Baja Frecuencia):** Tablas de parametrización como Categorías, Canales de Venta y Rondas de Inversión, que se configuran esporádicamente.
+
+Para evitar saturar la barra lateral con 8 o 10 accesos directos (*efecto menú sábana*), el módulo `commerce` implementa el **Unified Catalog Hub Pattern**:
+- En la barra lateral solo se expone un acceso: **`Catálogos`** (ruta: `commerce/catalogs`, slug: `commerce-catalogs`, icono: `LucideSlidersHorizontal`).
+- Al ingresar, la pantalla presenta una interfaz basada en **Pestañas (Cejas / Tabs de PrimeNG 21)** donde cada pestaña gestiona un grupo de datos independiente con su propia tabla y formulario.
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  Comercio / Catálogos y Parámetros                                     │
+├─────────────────┬───────────────────┬──────────────────────────────────┤
+│  🏷️ Categorías   │  📢 Canales Venta │  📈 Rondas de Inversión          │
+├─────────────────┴───────────────────┴──────────────────────────────────┤
+│                                                [+ Nueva Categoría]     │
+│  Buscar categoría: [ Q Buscar... ]                                     │
+│                                                                        │
+│  Nombre             Slug           Estado      Acciones                │
+│  ─────────────────────────────────────────────────────────────         │
+│  Electrónica        electronica    Activo      [Editar] [Eliminar]     │
+│  Hogar y Cocina     hogar-cocina   Activo      [Editar] [Eliminar]     │
+│  Herramientas       herramientas   Activo      [Editar] [Eliminar]     │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 5.2. Cejas / Pestañas y sus Endpoints de Backend
+
+Cada pestaña ("ceja") en el componente de Angular se conecta a su propio submódulo CRUD en FastAPI:
+
+#### Ceja 1: Categorías de Producto (`/api/commerce/categories`)
+Permite clasificar el catálogo de productos (ej. Electrónica, Iluminación, Hogar, Herramientas):
+- **Listar:** `GET /api/commerce/categories/?offset=0&limit=50&search=`
+- **Crear:** `POST /api/commerce/categories/`
+  ```json
+  {
+    "name": "Electrónica y Audio",
+    "description": "Auriculares, micrófonos, parlantes y adaptadores bluetooth",
+    "is_active": true
+  }
+  ```
+- **Editar:** `PUT /api/commerce/categories/{id}`
+- **Eliminar:** `DELETE /api/commerce/categories/{id}`
+
+#### Ceja 2: Canales de Venta (`/api/commerce/channels`)
+Gestiona los canales comerciales por donde ingresan los pedidos (TikTok Live, Facebook Marketplace, WhatsApp, Tienda Física):
+- **Listar:** `GET /api/commerce/channels/?offset=0&limit=50&search=`
+- **Crear:** `POST /api/commerce/channels/`
+  ```json
+  {
+    "name": "TikTok Live",
+    "description": "Ventas directas durante transmisiones de remate en vivo",
+    "is_active": true
+  }
+  ```
+- **Editar:** `PUT /api/commerce/channels/{id}`
+- **Eliminar:** `DELETE /api/commerce/channels/{id}`
+
+#### Ceja 3: Canastas Live (`/api/commerce/live-baskets`)
+Agrupaciones temáticas de productos para subastas en vivo (C1 Taller & Auto, C2 Cables & Iluminación, C3 Hogar & Cocina, C+1 Flash):
+- **Listar:** `GET /api/commerce/live-baskets/?offset=0&limit=50&search=`
+- **Crear:** `POST /api/commerce/live-baskets/`
+  ```json
+  {
+    "code": "C1",
+    "name": "Taller & Auto",
+    "label": "Canasta 1 - Taller & Auto",
+    "description": "Herramientas eléctricas y accesorios para vehículo",
+    "price_range": "Bs. 40 - 200",
+    "target_audience": "Mecánicos, choferes y hobbistas"
+  }
+  ```
+- **Editar:** `PUT /api/commerce/live-baskets/{id}`
+- **Eliminar:** `DELETE /api/commerce/live-baskets/{id}`
+
+#### Ceja 4: Rondas de Inversión (`/api/commerce/rounds`)
+Control de aportes de capital y socios inversionistas:
+- **Listar:** `GET /api/commerce/rounds/?offset=0&limit=50`
+- **Crear:** `POST /api/commerce/rounds/`
+
+---
+
+### 5.3. Implementación Estándar en Angular 21 (PrimeNG 21 Tabs)
+
+Ejemplo de implementación recomendada para `CommerceCatalogsComponent` (`src/app/features/commerce/pages/catalogs`):
+
+```html
+<div class="card p-6">
+  <div class="flex items-center gap-3 mb-6">
+    <svg lucideSlidersHorizontal size="28" class="text-brand-500"></svg>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Catálogos de Comercio</h1>
+      <p class="text-sm text-gray-500">Gestión de categorías, canales comerciales, canastas live y rondas</p>
+    </div>
+  </div>
+
+  <p-tabs value="0">
+    <p-tablist>
+      <p-tab value="0">
+        <i class="pi pi-tags mr-2"></i> Categorías de Producto
+      </p-tab>
+      <p-tab value="1">
+        <i class="pi pi-share-alt mr-2"></i> Canales de Venta
+      </p-tab>
+      <p-tab value="2">
+        <i class="pi pi-video mr-2"></i> Canastas Live
+      </p-tab>
+      <p-tab value="3">
+        <i class="pi pi-chart-line mr-2"></i> Rondas de Inversión
+      </p-tab>
+    </p-tablist>
+
+    <p-tabpanels>
+      <!-- CEJA 1: CATEGORÍAS -->
+      <p-tabpanel value="0">
+        <app-commerce-categories-tab></app-commerce-categories-tab>
+      </p-tabpanel>
+
+      <!-- CEJA 2: CANALES DE VENTA -->
+      <p-tabpanel value="1">
+        <app-commerce-channels-tab></app-commerce-channels-tab>
+      </p-tabpanel>
+
+      <!-- CEJA 3: CANASTAS LIVE -->
+      <p-tabpanel value="2">
+        <app-commerce-live-baskets-tab></app-commerce-live-baskets-tab>
+      </p-tabpanel>
+
+      <!-- CEJA 4: RONDAS DE INVERSIÓN -->
+      <p-tabpanel value="3">
+        <app-commerce-rounds-tab></app-commerce-rounds-tab>
+      </p-tabpanel>
+    </p-tabpanels>
+  </p-tabs>
+</div>
+```
+
+

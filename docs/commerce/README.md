@@ -32,7 +32,7 @@ La documentación se encuentra organizada en 4 volúmenes especializados según 
 
 ---
 
-## 🧩 Resumen de Submódulos
+## 🧩 Resumen de Submódulos y Navegación Frontend
 
 El dominio se encuentra estructurado en 8 submódulos desacoplados dentro de `app/modules/commerce/`:
 
@@ -49,6 +49,18 @@ app/modules/commerce/
 ├── catalogs/          # Proveedores dinámicos para selectbox y bulk loading
 └── routers.py         # Enrutador agregador unificado (/api/commerce)
 ```
+
+### 🧭 Menú Frontend y Unified Catalog Hub Pattern
+
+Para mantener la barra lateral limpia y ergonómica, el menú de **Comercio** en Angular (`manifest.py`) expone los siguientes módulos:
+
+| Módulo | Ruta | Icono Lucide | Tipo | Propósito |
+| :--- | :--- | :--- | :--- | :--- |
+| **Productos** | `/commerce/products` | `LucideTag` | Operativo | Catálogo de SKUs NOV-XXX, stock físico y precios. |
+| **Lotes y Cajas** | `/commerce/batches` | `LucideBoxes` | Operativo | Control de costos de cajas y punto de equilibrio. |
+| **Ventas** | `/commerce/sales` | `LucideShoppingCart` | Operativo | Registro instantáneo de pedidos, cobros QR y despachos. |
+| **Catálogo Maestro** | `/commerce/product-masters` | `LucideDatabase` | Maestro | Fichas técnicas maestras, especificaciones y fotos WebP. |
+| **Catálogos** | `/commerce/catalogs` | `LucideSlidersHorizontal` | Catálogos (Tabs) | **Unified Hub con Cejas**: Categorías, Canales, Canastas Live y Rondas. |
 
 ---
 
