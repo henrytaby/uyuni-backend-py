@@ -201,9 +201,9 @@ Plataforma transaccional para control de inventarios, lotes y facturación de ve
 > **Convención del Entorno Virtual**: Este proyecto requiere el uso del entorno virtual `venv/`. Siempre ejecute las herramientas con el prefijo `venv/bin/<herramienta>` (ej. `venv/bin/python`, `venv/bin/alembic`, `venv/bin/pytest`).
 
 ### 1. Requisitos Previos
-* Python 3.14.6
-* PostgreSQL 16+
-* Git
+* **Python 3.14.6** (En Ubuntu/Debian se instala con `sudo add-apt-repository ppa:deadsnakes/ppa -y && sudo apt install -y python3.14 python3.14-venv python3.14-dev`)
+* **PostgreSQL 16+**
+* **Git**
 
 ### 2. Clonar el Repositorio
 ```bash

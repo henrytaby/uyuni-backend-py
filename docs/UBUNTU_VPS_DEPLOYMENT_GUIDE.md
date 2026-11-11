@@ -46,21 +46,41 @@ flowchart TD
 
 ## 🚀 Paso a Paso de Instalación
 
-### Paso 1: Actualizar el Sistema y Paquetes Base
+### Paso 1: Actualizar el Sistema e Instalar Python 3.14
 
 Conéctate por SSH a tu VPS:
 ```bash
 ssh root@IP_DE_TU_VPS
 ```
 
-Actualiza los repositorios e instala las dependencias esenciales de compilación y librerías de PostgreSQL:
+#### 1.1 Actualizar paquetes base y dependencias del sistema:
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y git curl ufw build-essential libpq-dev \
-                    python3 python3-pip python3-venv python3-dev
+sudo apt install -y git curl wget ufw build-essential libpq-dev \
+                    software-properties-common ca-certificates
 ```
 
-*(Opcional recomendado)* Si tu VPS tiene solo 1 GB de RAM, crea un archivo Swap de 2 GB para evitar caídas por falta de memoria:
+#### 1.2 Instalar Python 3.14 (vía PPA oficial deadsnakes):
+Por defecto, Ubuntu 22.04 incluye Python 3.10 y Ubuntu 24.04 incluye Python 3.12. Para instalar **Python 3.14** (utilizado por Uyuni Backend), agregamos el repositorio oficial mantenido por el equipo de Python para Ubuntu:
+
+```bash
+# 1. Agregar el repositorio PPA deadsnakes
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo apt update
+
+# 2. Instalar el intérprete Python 3.14, soporte para virtualenv y cabeceras de desarrollo
+sudo apt install -y python3.14 python3.14-venv python3.14-dev python3-pip
+
+# 3. Comprobar que Python 3.14 esté correctamente instalado
+python3.14 --version
+# Salida esperada: Python 3.14.x (ej: Python 3.14.6)
+```
+
+> [!TIP]
+> **Compatibilidad de Versiones Menores**: El PPA de `deadsnakes` instala la rama de mantenimiento oficial de Python 3.14 (3.14.6+), garantizando total compatibilidad binaria de C-extensions, SQLModel, Pydantic v2 y FastAPI.
+
+#### 1.3 Configurar memoria Swap (Recomendado para VPS de 1 GB o 2 GB de RAM):
+Si tu VPS tiene recursos ajustados, crea un archivo Swap de 2 GB para evitar que el compilador o los workers se queden sin memoria durante la instalación de paquetes:
 ```bash
 sudo fallocate -l 2G /swapfile
 sudo chmod 600 /swapfile
@@ -130,16 +150,20 @@ git clone https://github.com/TU_USUARIO/uyuni-backend-py.git .
 
 ---
 
-### Paso 4: Crear el Entorno Virtual Python e Instalar Dependencias
+### Paso 4: Crear el Entorno Virtual con Python 3.14 e Instalar Dependencias
 
 Aún como usuario `deploy` dentro de `/opt/uyuni`:
 ```bash
-# Crear virtualenv
-python3 -m venv venv
+# Crear virtualenv asegurando explícitamente el uso del intérprete Python 3.14
+python3.14 -m venv venv
 
-# Activar e instalar requerimientos
+# Verificar que el entorno virtual use efectivamente Python 3.14
+venv/bin/python --version
+# Salida esperada: Python 3.14.x (ej: Python 3.14.6)
+
+# Activar el entorno e instalar requerimientos
 source venv/bin/activate
-pip install --upgrade pip
+pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
