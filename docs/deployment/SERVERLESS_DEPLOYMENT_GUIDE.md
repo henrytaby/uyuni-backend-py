@@ -140,8 +140,8 @@ El proyecto soporta tanto contenedores Docker completos (Render) como ejecución
 *Ideal para procesos sin límite de tiempo, WebSockets nativos y sin complicaciones de verificación telefónica:*
 
 El repositorio ya cuenta con archivos nativos para Render:
-* [`Dockerfile`](../Dockerfile): Contenedor optimizado de Python 3.14 con Uvicorn y soporte PostgreSQL.
-* [`render.yaml`](../render.yaml): Blueprint de infraestructura como código.
+* [`Dockerfile`](../../Dockerfile): Contenedor optimizado de Python 3.14 con Uvicorn y soporte PostgreSQL.
+* [`render.yaml`](../../render.yaml): Blueprint de infraestructura como código.
 
 #### Paso a Paso para Desplegar en Render:
 1. Entra a **[https://render.com](https://render.com)** e inicia sesión con **"Continue with GitHub"**.

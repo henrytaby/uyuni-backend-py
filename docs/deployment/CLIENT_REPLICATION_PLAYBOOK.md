@@ -157,9 +157,9 @@ El backend corre en arquitectura **100% Serverless** a través de la red global 
 
 #### 🧩 Arquitectura Serverless de Uyuni en Vercel:
 El repositorio ya está 100% preparado y optimizado para Vercel con los siguientes archivos nativos:
-* [`vercel.json`](../vercel.json): Configura el enrutamiento inteligente redirigiendo todas las peticiones entrantes (`/(.*)`) al handler ASGI de Python.
-* [`api/index.py`](../api/index.py): Punto de entrada Serverless (*handler* de FastAPI) que inyecta la ruta raíz del backend a `sys.path` y expone `handler = app`.
-* [`requirements.txt`](../requirements.txt): Detectado automáticamente por el runtime `@vercel/python` para empaquetar e instalar las dependencias en la nube.
+* [`vercel.json`](../../vercel.json): Configura el enrutamiento inteligente redirigiendo todas las peticiones entrantes (`/(.*)`) al handler ASGI de Python.
+* [`api/index.py`](../../api/index.py): Punto de entrada Serverless (*handler* de FastAPI) que inyecta la ruta raíz del backend a `sys.path` y expone `handler = app`.
+* [`requirements.txt`](../../requirements.txt): Detectado automáticamente por el runtime `@vercel/python` para empaquetar e instalar las dependencias en la nube.
 
 Puedes desplegar en Vercel utilizando cualquiera de los dos métodos siguientes:
 
@@ -255,8 +255,8 @@ La API estará disponible en `http://localhost:3000` con recarga en caliente y e
 Ideal si prefieres un contenedor Linux completo con Python 3.14 nativo, procesos sin límite de tiempo y sin pasar por verificaciones de SMS complejas:
 
 El repositorio ya cuenta con archivos nativos para Render:
-* [`Dockerfile`](../Dockerfile): Imagen ligera de Python 3.14 optimizada para servidores HTTP.
-* [`render.yaml`](../render.yaml): Blueprint de infraestructura como código que auto-configura el servicio.
+* [`Dockerfile`](../../Dockerfile): Imagen ligera de Python 3.14 optimizada para servidores HTTP.
+* [`render.yaml`](../../render.yaml): Blueprint de infraestructura como código que auto-configura el servicio.
 
 ##### Paso a Paso para Desplegar en Render:
 1. Ingresa a **[Render.com](https://render.com)** y haz clic en **"GET STARTED FOR FREE"**.

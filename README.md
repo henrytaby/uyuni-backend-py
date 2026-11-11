@@ -288,11 +288,12 @@ venv/bin/ruff format app/ tests/
 
 ## 🚀 Opciones de Despliegue en Producción
 
-El proyecto soporta estrategias de despliegue según tus preferencias de infraestructura:
+El proyecto incluye una suite completa de guías de infraestructura y puesta en producción centralizada en [`docs/deployment/`](docs/deployment/README.md):
 
-1. ☁️ **[Despliegue Serverless en la Nube (Sin Servidores)](docs/SERVERLESS_DEPLOYMENT_GUIDE.md)**: **Recomendado**. Cero administración de Linux, despliegue continuo con `git push`, base de datos PostgreSQL en **Neon.tech**, backend Serverless en **Vercel**, fotos en **Cloudinary**, documentos en **Cloudflare R2** y frontend en **Cloudflare Pages**. Costo $0.00/mes.
-2. 🏢 **[Manual de Replicación para Nuevas Empresas (Marca Blanca)](docs/CLIENT_REPLICATION_PLAYBOOK.md)**: Guía paso a paso para desplegar instancias independientes y aisladas para nuevas empresas (como **Nova Labs** o futuros clientes) con sus propios correos, cuentas gratuitas y protección de propiedad intelectual.
-3. 🖥️ **[Despliegue Tradicional en Servidor VPS Ubuntu](docs/UBUNTU_VPS_DEPLOYMENT_GUIDE.md)**: Despliegue en tu propio servidor Linux con **Systemd**, **Nginx como Reverse Proxy** y certificados SSL de **Let's Encrypt**.
+1. 🏢 **[Manual de Replicación para Nuevas Empresas (Marca Blanca)](docs/deployment/CLIENT_REPLICATION_PLAYBOOK.md)**: **Recomendado**. Guía paso a paso para desplegar instancias independientes y aisladas para nuevas empresas (como **Nova Labs** o futuros clientes comerciales) con sus propios correos, cuentas gratuitas y protección de propiedad intelectual.
+2. 🟣 **[Despliegue en Render.com (Contenedor Docker)](docs/deployment/RENDER_DEPLOYMENT_GUIDE.md)**: Manual paso a paso para desplegar en Render con Docker (Python 3.14), base de datos Neon y monitor Keep-Alive 24/7 con UptimeRobot.
+3. ☁️ **[Despliegue Serverless en la Nube (Sin Servidores)](docs/deployment/SERVERLESS_DEPLOYMENT_GUIDE.md)**: Arquitectura moderna sin Linux con Neon.tech, Vercel/Render, fotos en Cloudinary y documentos en Cloudflare R2. Costo $0.00/mes.
+4. 🖥️ **[Despliegue Tradicional en Servidor VPS Ubuntu](docs/deployment/UBUNTU_VPS_DEPLOYMENT_GUIDE.md)**: Despliegue en tu propio servidor Linux con **Systemd**, **Nginx como Reverse Proxy** y certificados SSL de **Let's Encrypt**.
 
 ---
 
@@ -302,9 +303,11 @@ El proyecto incluye una completa suite de guías técnicas en el directorio [`do
 
 | Documento | Descripción |
 | :--- | :--- |
-| **[Despliegue Serverless (Recomendado)](docs/SERVERLESS_DEPLOYMENT_GUIDE.md)** | Manual completo paso a paso en la nube: Neon + Vercel + Cloudflare + Cloudinary |
-| **[Replicación para Nuevas Empresas](docs/CLIENT_REPLICATION_PLAYBOOK.md)** | Procedimiento de despliegue dedicado por empresa / marca blanca (Nova Labs y clientes) |
-| **[Despliegue VPS Ubuntu](docs/UBUNTU_VPS_DEPLOYMENT_GUIDE.md)** | Manual paso a paso para servidores privados virtuales con Systemd y Nginx |
+| 🚀 **[Suite de Despliegue & Infraestructura](docs/deployment/README.md)** | Índice maestro de producción, serverless, Render, VPS y marca blanca |
+| 🏢 **[Replicación para Nuevas Empresas](docs/deployment/CLIENT_REPLICATION_PLAYBOOK.md)** | Procedimiento de despliegue dedicado por empresa / marca blanca (Nova Labs y clientes) |
+| 🟣 **[Despliegue en Render.com](docs/deployment/RENDER_DEPLOYMENT_GUIDE.md)** | Manual paso a paso para contenedores Docker en Render.com (Python 3.14) |
+| ☁️ **[Despliegue Serverless](docs/deployment/SERVERLESS_DEPLOYMENT_GUIDE.md)** | Manual completo en la nube: Neon + Vercel/Render + Cloudflare + Cloudinary |
+| 🖥️ **[Despliegue VPS Ubuntu](docs/deployment/UBUNTU_VPS_DEPLOYMENT_GUIDE.md)** | Manual paso a paso para servidores privados virtuales con Systemd y Nginx |
 | **[Módulo Commerce (Guía Maestra)](docs/COMMERCE_MODULE_GUIDE.md)** | Visión general del ecosistema comercial, SKUs, lotes y ventas |
 | **[Arquitectura Commerce](docs/commerce/01_ARCHITECTURE.md)** | Diagramas de componentes, flujos transaccionales y entidades |
 | **[Diccionario de Base de Datos](docs/commerce/02_DATABASE_DICTIONARY.md)** | Tablas, campos, restricciones, llaves y tipos de datos de Commerce |

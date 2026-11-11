@@ -3,10 +3,11 @@
 ## Documentación de referencia (FastAPI actual)
 
 Esta carpeta contiene la documentación del proyecto FastAPI actual (legacy):
-- `SERVERLESS_DEPLOYMENT_GUIDE.md` (Guía completa de despliegue en la nube Serverless sin VPS: Neon + Vercel + Cloudflare + Cloudinary)
-- `RENDER_DEPLOYMENT_GUIDE.md` (Manual de despliegue en Render.com como contenedor Docker MicroVM de Python 3.14)
-- `CLIENT_REPLICATION_PLAYBOOK.md` (Manual de replicación y despliegue para nuevas empresas: modelo single-tenant dedicado y marca blanca)
-- `UBUNTU_VPS_DEPLOYMENT_GUIDE.md` (Guía de instalación y despliegue tradicional en VPS Ubuntu)
+- **[`deployment/`](./deployment/README.md)**: Suite completa de despliegue, infraestructura en la nube y replicación para nuevas empresas (marca blanca)
+  - `CLIENT_REPLICATION_PLAYBOOK.md` (Manual de replicación y despliegue dedicado por empresa)
+  - `RENDER_DEPLOYMENT_GUIDE.md` (Guía de despliegue en Render.com con Docker y UptimeRobot)
+  - `SERVERLESS_DEPLOYMENT_GUIDE.md` (Guía de arquitectura serverless en la nube: Neon + Vercel/Render + Cloudflare + Cloudinary)
+  - `UBUNTU_VPS_DEPLOYMENT_GUIDE.md` (Guía de instalación y despliegue tradicional en VPS Ubuntu)
 - `COMMERCE_MODULE_GUIDE.md` (y suite completa en [`docs/commerce/`](./commerce/README.md))
 - `RBAC_GUIDE.md`, `AUTHENTICATION_GUIDE.md`, `ALEMBIC_GUIDE.md`, `AUDIT_GUIDE.md`
 - `ASSETS_MODULE_GUIDE.md`, `CORE_MODULE_GUIDE.md`, `QUERY_SYSTEM_GUIDE.md`
