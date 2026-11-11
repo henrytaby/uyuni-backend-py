@@ -1,318 +1,262 @@
-# Uyuni-BackEnd API
+<p align="center">
+  <img src="app/static/logo-01.png" alt="Uyuni Logo" width="360" />
+</p>
 
-API RESTful construida con FastAPI para la gestión integral de Personal (Staff) y Activos Fijos.
+<h1 align="center">Uyuni Backend System</h1>
 
-## Descripción
+<p align="center">
+  <strong>Plataforma Transaccional Empresarial de Alto Rendimiento</strong><br>
+  <em>Arquitectura Modular DDD-Lite &bull; Seguridad Basada en Roles (RBAC) &bull; Auditoría CDC Transversal</em>
+</p>
 
-Este proyecto es una API profesional diseñada con una **Arquitectura Modular (DDD-Lite)**, enfocada en la escalabilidad y mantenibilidad empresarial. Permite gestionar:
+<p align="center">
+  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-v0.139+-009688?logo=fastapi&logoColor=white" alt="FastAPI" /></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.14.6-3776AB?logo=python&logoColor=white" alt="Python" /></a>
+  <a href="https://sqlmodel.tiangolo.com/"><img src="https://img.shields.io/badge/SQLModel-SQLAlchemy-0284C7?logo=pydantic&logoColor=white" alt="SQLModel" /></a>
+  <a href="https://www.postgresql.org/"><img src="https://img.shields.io/badge/PostgreSQL-v16+-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL" /></a>
+  <img src="https://img.shields.io/badge/Architecture-DDD--Lite%20%7C%20Clean-003865" alt="Clean Architecture" />
+  <img src="https://img.shields.io/badge/Quality-Ruff%20%7C%20Mypy%20%7C%20Pytest-10B981" alt="Quality" />
+  <img src="https://img.shields.io/badge/License-MIT-7BB661" alt="License" />
+</p>
 
-*   **Gestión de Personal (Core)**: Control de empleados, unidades organizacionales y cargos.
-*   **Activos Fijos (Assets)**: Inventario detallado, códigos SAF, estados de conservación y ubicaciones físicas.
-*   **Gestión Documental**: Control de actas de asignación y entrega vinculadas a activos.
-*   **Tareas**: Sistema básico de seguimiento de actividades operativas.
-*   **Seguridad**: Autenticación JWT robusta con **Rotación de Tokens**, Logout seguro y **RBAC (Control de Acceso Basado en Roles)**.
-*   **Búsqueda Inteligente**: Motor de búsqueda global polimórfico y sistema de filtros avanzados (AND/OR) inyectables.
-*   **Auditoría**: Registro transversal de accesos y cambios de datos (CDC) mediante Hooks de SQLAlchemy.
-*   **Catálogos Dinámicos**: Sistema modular de proveedores auto-registrados que expone selectores individuales (`GET /api/catalogs/{name}`) y carga masiva (`POST /api/catalogs/bulk`) para poblar dropdowns del frontend en una sola petición.
-## Arquitectura
+---
 
-El proyecto implementa una **Arquitectura Modular** apoyada en el **Patrón Repositorio**.
+Bienvenido a **Uyuni Backend**, una plataforma transaccional de nivel empresarial construida con **FastAPI**, **Python 3.14**, **SQLModel** y **PostgreSQL**. Diseñada bajo los principios de **Clean Architecture** y **DDD-Lite (Domain-Driven Design)**, incorpora autenticación JWT con rotación de tokens, control de acceso granular basado en roles (**RBAC** con personificación dinámica), auditoría transversal de cambios de datos (**CDC**), catálogos dinámicos masivos y dominios transaccionales para **Gestión de Personal**, **Control de Activos Fijos**, **Comercio Electrónico / Nova Box Bolivia** y **Gestión Operativa de Tareas**.
 
-### Diagrama de Flujo de Datos
+---
+
+## 📋 Tabla de Contenidos
+
+1. [Capacidades del Sistema](#-capacidades-del-sistema)
+2. [Arquitectura y Principios de Diseño](#-arquitectura-y-principios-de-diseño)
+3. [Módulos de Negocio (Dominios)](#-módulos-de-negocio-dominios)
+4. [Stack Tecnológico](#-stack-tecnológico)
+5. [Instalación y Puesta en Marcha](#-instalación-y-puesta-en-marcha)
+6. [Testing y Calidad de Código](#-testing-y-calidad-de-código)
+7. [Despliegue en Producción (VPS Ubuntu)](#-despliegue-en-producción-vps-ubuntu)
+8. [Documentación para Desarrolladores](#-documentación-para-desarrolladores)
+9. [Scripts y Utilidades](#-scripts-y-utilidades)
+10. [Licencia](#-licencia)
+
+---
+
+## 🚀 Capacidades del Sistema
+
+* **Seguridad y Control de Acceso (RBAC)**: Autenticación JWT con rotación continua de tokens, revocación/logout, protección contra fuerza bruta (bloqueo temporal de cuentas) y permisos granulares por módulo con soporte para agregación de roles o personificación (`X-Active-Role`).
+* **Auditoría Transversal (CDC)**: Captura automática de contexto HTTP mediante Middleware y registro histórico de cambios (Creación, Modificación, Eliminación) a través de Hooks de SQLAlchemy.
+* **Patrón Repositorio Genérico**: Abstracción `BaseRepository[T]` con paginación, ordenamiento dinámico, búsqueda global polimórfica y filtros inyectables seguros (`extra_filters`).
+* **Catálogos Dinámicos Masivos**: Protocolo `CatalogProvider` de auto-registro que expone endpoints individuales (`GET /api/catalogs/{name}`) y un optimizador en lote (**`POST /api/catalogs/bulk`**) para alimentar selectboxes del frontend en una única petición HTTP.
+* **Motor Transaccional de Comercio**: Gestión de SKUs, lotes de liquidación, punto de equilibrio, protección de precios mínimos y ventas atómicas multicanal.
+* **Sincronización ETL Idempotente**: Scripts de sincronización (Upsert + Soft-Delete) para mapear entidades externas con llaves foráneas locales UUIDv7.
+
+---
+
+## 🏛️ Arquitectura y Principios de Diseño
+
+El sistema implementa una **Arquitectura Modular (DDD-Lite)** apoyada en el **Patrón Repositorio** y en **Inyección de Dependencias**:
+
 ```mermaid
 graph LR
-    A["Router"] --> B["Service"]
-    B --> C["Repository"]
-    C --> D["Database (SQLModel)"]
+    A["Routers (FastAPI)"] --> B["Services (Lógica de Dominio)"]
+    B --> C["Repositories (Acceso a Datos)"]
+    C --> D["Database (PostgreSQL / SQLModel)"]
 ```
 
-### Componentes Principales
+### Componentes de Cada Dominio (`app/modules/`)
+Cada módulo de negocio está aislado en su propio submódulo para garantizar alta cohesión y bajo acoplamiento:
+* `routers.py`: Exposición de contratos RESTful, endpoints y políticas de seguridad RBAC.
+* `service.py`: Lógica de negocio pura, validaciones de dominio y transacciones atómicas.
+* `repository.py`: Consultas optimizadas, filtros especializados y operaciones sobre la base de datos.
+* `models.py`: Entidades relacionales mapeadas con SQLModel/SQLAlchemy.
+* `schemas.py`: Contratos de validación de entrada/salida tipados con Pydantic v2.
 
-#### 1. Estructura Modular (`app/modules/`)
-El código se organiza por dominios de negocio en lugar de capas técnicas. Cada dominio (`tasks`, `core`, `assets`) y sus submódulos contienen lo necesario para su funcionamiento:
-*   `routers.py`: Definición de endpoints.
-*   `service.py`: Lógica de negocio.
-*   `repository.py`: Acceso a datos.
-*   `models.py`: Definición de tablas.
-*   `schemas.py`: Validación de entrada/salida (Pydantic).
+---
 
-> **Submódulos actuales**: `tasks/`, `core/{staff, org_units, positions, users, catalogs}`, `assets/{assets, areas, groups, statuses, institutions, acts}`.
+## 🗄️ Módulos de Negocio (Dominios)
 
-#### 2. Patrón Repositorio (`app/core/repository.py`)
-Se utiliza para desacoplar la lógica de negocio de la capa de acceso a datos.
-*   **`BaseRepository[T]`**: Clase genérica que provee operaciones estándar (`get_by_id`, `get_all`, `count`, `create`, `update`, `delete`) con soporte integrado para **paginación**, **ordenamiento**, **búsqueda global polimórfica** y **filtros inyectables** (`extra_filters`).
-*   **Repositorios Específicos**: (Ej: `StaffRepository`, `FixedAssetRepository`) Extienden el base para consultas complejas, definiendo `searchable_fields` para búsqueda global o cargando relaciones específicas.
+El backend organiza sus capacidades en los siguientes módulos principales:
 
-#### 3. Inyección de Dependencias
-FastAPI `Depends` se utiliza para gestionar el ciclo de vida de los componentes:
-*   `get_session` inyecta la sesión de DB.
-*   El `Repository` se inyecta en el `Service`.
-*   El `Service` se inyecta en el `Router`.
+### 1. `commerce` (Motor Comercial & Nova Box Bolivia)
+Plataforma transaccional para control de inventarios, lotes y facturación de ventas:
+* **Fichas Maestras y SKUs (`product_masters`, `products`)**: Catálogo maestro de 240+ SKUs, control de condición (*nuevo, usado, caja abierta*), precio oficial y regla crítica de **precio mínimo (`minimum_price`)**.
+* **Lotes de Importación (`batches`)**: Control de cajas (Ataúd 1, Ataúd 2, Amazon Next, etc.), costos de flete, seguros e impuestos, cálculo del **punto de equilibrio** y margen neto.
+* **Ventas Atómicas (`sales`)**: Registro seguro de transacciones con métodos de pago bolivianos (QR Simple, Efectivo, Flota/Transferencia), cálculo automático de ganancias y cambio de estado a `vendido` en la misma transacción.
+* **Catálogo Público Cacheado (`api/public/catalog`)**: Endpoint de alta velocidad para alimentar la PWA de clientes en tiempo real sin reconstrucción de frontend.
 
-#### 4. Manejo Centralizado de Excepciones (`app/core/handlers.py`)
-El sistema captura excepciones de dominio (como `NotFoundException`) y las transforma automáticamente en respuestas JSON estandarizadas (HTTP 404, 400, 500), manteniendo limpios los servicios.
+### 2. `core` (Gestión de Personal & Seguridad)
+* **Staff & Estructura Organizacional**: Funcionarios, unidades organizacionales y cargos jerárquicos.
+* **Usuarios y Roles**: Usuarios del sistema, asignación de roles y control de acceso RBAC.
+* **Catálogos Dinámicos**: Registro modular de selectores globales para el frontend.
 
-#### 5. Configuración Tipada (`app/core/config.py`)
-Uso de `pydantic-settings` para cargar y validar variables de entorno desde `.env`.
+### 3. `assets` (Control de Activos Fijos)
+* **Inventario SAF**: Registro detallado de bienes patrimoniales, códigos SAF, marcas, modelos y series.
+* **Ubicación & Custodios**: Control de áreas físicas, estados de conservación y actas de entrega/devolución.
 
-## Tecnologías
+### 4. `tasks` (Seguimiento Operativo)
+* Gestión y monitoreo de tareas de mantenimiento, operativas y administrativas.
 
-*   **Python 3.14.6**
-*   **FastAPI**: Framework web moderno y rápido.
-*   **SQLModel**: ORM que combina SQLAlchemy y Pydantic.
-*   **PostgreSQL**: Base de datos relacional.
-*   **Pydantic Settings**: Gestión de configuración.
+---
 
-## Instalación y Configuración
+## 🛠️ Stack Tecnológico
+
+| Capa | Tecnología | Descripción |
+| :--- | :--- | :--- |
+| **Lenguaje** | **Python 3.14.6** | Tipado estático estricto y alto rendimiento |
+| **Framework Web** | **FastAPI 0.139+** | API REST asíncrona, validación automática y OpenAPI 3.1 |
+| **ORM / Datos** | **SQLModel + SQLAlchemy 2.0+** | Combinación declarativa de SQLAlchemy con modelos Pydantic |
+| **Base de Datos** | **PostgreSQL 16+** | PostgreSQL en producción / SQLite en memoria para tests |
+| **Migraciones** | **Alembic** | Control de versiones y evolución de esquema relacional |
+| **Seguridad** | **PyJWT + Passlib (bcrypt)** | Tokens JWT Bearer con rotación, RBAC y lockout defensivo |
+| **Logging** | **Structlog** | Trazabilidad estructurada JSON con `request_id` contextual |
+| **Linter & Formato** | **Ruff** | Herramienta ultra-rápida de linting y formateo de código |
+| **Type Checking** | **Mypy** | Análisis estático de tipos estricto (`--ignore-missing-imports`) |
+| **Testing** | **Pytest** | Suite automatizada de pruebas de integración unitarias |
+
+---
+
+## ⚙️ Instalación y Puesta en Marcha
+
+> [!IMPORTANT]
+> **Convención del Entorno Virtual**: Este proyecto requiere el uso del entorno virtual `venv/`. Siempre ejecute las herramientas con el prefijo `venv/bin/<herramienta>` (ej. `venv/bin/python`, `venv/bin/alembic`, `venv/bin/pytest`).
 
 ### 1. Requisitos Previos
-*   Python 3.14.6
-*   PostgreSQL
-*   Git
+* Python 3.14.6
+* PostgreSQL 16+
+* Git
 
-### 2. Clonar el repositorio
+### 2. Clonar el Repositorio
 ```bash
 git clone git@github.com:henrytaby/uyuni-backend-py.git
 cd uyuni-backend-py
 ```
 
-### 3. Crear entorno virtual
+### 3. Configurar el Entorno Virtual
 ```bash
 python3.14 -m venv venv
 source venv/bin/activate
-```
-
-### 4. Instalar dependencias
-```bash
 pip install -r requirements.txt
 ```
 
-### 5. Configurar Base de Datos
-Crear la base de datos en PostgreSQL:
+### 4. Configurar Base de Datos y Variables de Entorno
+Crea la base de datos en PostgreSQL:
 ```bash
-sudo su postgres
-createdb uyuni_admin
-exit
+sudo -u postgres createdb uyuni_admin
 ```
 
-Configurar variables de entorno:
+Copia la plantilla de entorno y edítala:
 ```bash
 cp .env.example .env
 ```
-Editar `.env` con tus credenciales:
+
+Configura tus credenciales en `.env`:
 ```env
-DATABASE_URL="postgresql://user:password@localhost/uyuni_admin"
-SECRET_KEY=tu_clave_secreta_generada
-SECURITY_LOGIN_MAX_ATTEMPTS=5
-SECURITY_LOCKOUT_MINUTES=15
-...
+DATABASE_URL="postgresql://user:password@localhost:5432/uyuni_admin"
+SECRET_KEY="tu_clave_secreta_generada_aleatoriamente"
+ENVIRONMENT="development"
+PORT=8000
 ```
 
-### 6. Inicializar Base de Datos (Crear Tablas)
-Una vez configurada la conexión en el `.env`, ejecuta las migraciones para crear todas las tablas:
+### 5. Ejecutar Migraciones de Base de Datos
+Aplica las migraciones de Alembic para crear la estructura completa de tablas:
 ```bash
 venv/bin/alembic upgrade head
 ```
 
-### 7. Inicializar Datos (Seeds)
-Para poblar la base de datos con módulos, roles y el usuario administrador.
-
-**Opción A: Ejecutar como módulo (Recomendado)**
-Más limpio y multiplataforma.
+### 6. Poblar Datos Iniciales (Seeds)
+Ejecuta los scripts de inicialización para crear los módulos, roles y el usuario administrador:
 ```bash
 venv/bin/python -m seeds.seed_create_modules
 venv/bin/python -m seeds.seed_users
 ```
 
-**Opción B: Usando PYTHONPATH**
-Útil si prefieres ejecutar el archivo directamente.
-```bash
-export PYTHONPATH=$PYTHONPATH:.
-venv/bin/python seeds/seed_create_modules.py
-venv/bin/python seeds/seed_users.py
-```
-
-*Usuario creado: `admin` / Password: `admin123`*
+*Credenciales por defecto de desarrollo: `admin` / `admin123`*
 
 > [!CAUTION]
-> **SEGURIDAD EN PRODUCCIÓN**:
-> La contraseña `admin123` es solo para desarrollo local. **Debe ser cambiada inmediatamente** antes de desplegar en cualquier entorno productivo o expuesto a internet.
+> **Seguridad en Producción**: La contraseña `admin123` es exclusiva para pruebas locales. Debe cambiarse inmediatamente antes de desplegar en producción.
 
-### 8. Testing Automatizado
-El proyecto incluye tests de integración usando `pytest`. Las pruebas utilizan una base de datos en memoria (SQLite), por lo que no afectan los datos reales.
-
-Ejecutar tests:
+### 7. Iniciar el Servidor de Desarrollo
 ```bash
+venv/bin/fastapi dev app/main.py
+```
+
+El portal y la documentación interactiva estarán disponibles en:
+* **Portal Gateway Web**: `http://localhost:8000/`
+* **Swagger UI Interactivo**: `http://localhost:8000/docs`
+* **ReDoc Technical Docs**: `http://localhost:8000/redoc`
+* **Health Check**: `http://localhost:8000/health`
+
+---
+
+## 🧪 Testing y Calidad de Código
+
+El proyecto cuenta con una batería de pruebas automatizadas y estándares estrictos de **Clean Code** y **SOLID**:
+
+```bash
+# 1. Ejecutar suite de pruebas con base de datos en memoria (SQLite)
 venv/bin/pytest
+
+# 2. Análisis estático de tipos
+venv/bin/mypy app/ --ignore-missing-imports
+
+# 3. Linter y formateo automático
+venv/bin/ruff check app/ tests/ --fix
+venv/bin/ruff format app/ tests/
 ```
 
-### 9. Calidad de Código
-El proyecto utiliza herramientas estándar para asegurar la consistencia y calidad, siguiendo principios de **Clean Code** y **SOLID**.
+---
 
-Linting y Formateo (Ruff):
-```bash
-venv/bin/ruff check .
-venv/bin/ruff format .
-```
+## 🚀 Despliegue en Producción (VPS Ubuntu)
 
-### 10. Logging Estructurado
-El sistema utiliza `structlog` para generar logs en formato JSON (en producción) o texto coloreado (en desarrollo), incluyendo un `request_id` único para trazabilidad.
+Para desplegar este backend en un servidor Ubuntu VPS listo para producción con **Systemd**, **Nginx como Reverse Proxy** y certificados SSL de **Let's Encrypt**:
 
-```bash
-# Los logs se mostrarán en la salida estándar (stdout)
-venv/bin/fastapi dev app/main.py
-```
+👉 Consulta la **[Guía Completa de Despliegue en VPS Ubuntu](docs/UBUNTU_VPS_DEPLOYMENT_GUIDE.md)**.
 
-### 11. Seguridad y RBAC (Control de Acceso)
-El sistema implementa un modelo de seguridad granular basado en **Roles** y **Módulos**:
+---
 
-*   **Permisos por Módulo**: El acceso se define a nivel de módulo usando **Slugs** (ej: `tasks`, `core_staff`, `core_users`, `assets`).
-*   **Permisos Agregados vs Personificación**:
-    *   Por defecto, se suman los permisos de todos los roles activos (Agregación).
-    *   Si se envía el header `X-Active-Role`, se restringen los permisos exclusivamente a ese rol (Personificación).
-*   **Data Scope**: Soporte para `scope_all` (Ver Todo) vs (Ver Propio).
-*   **Superusuario**: Acceso total ignorando reglas.
-*   **Dependencia de Seguridad**: Se utiliza `PermissionChecker` para proteger endpoints usando constantes modulares:
-    ```python
-    # Ejemplo: Requerir permiso de LECTURA en el módulo 'staff'
-    from app.modules.core.constants import CoreModuleSlug
-    
-    Depends(PermissionChecker(
-        module_slug=CoreModuleSlug.STAFF, 
-        required_permission=PermissionAction.READ
-    ))
-    ```
-    
-*   **Menús Dinámicos**: Endpoint `/me/menu/{role_slug}` genera la estructura del menú.
+## 📚 Documentación para Desarrolladores
 
-Para detalles de implementación y recetas, ver la **[Guía de RBAC (Permisos)](docs/RBAC_GUIDE.md)**.
+El proyecto incluye una completa suite de guías técnicas en el directorio [`docs/`](docs/README.md):
 
-### 12. Manejo de Base de Datos (Alembic)
-El proyecto utiliza **Alembic** para versionar la estructura de la base de datos.
-**Regla Crítica**: Todo nuevo modelo (tabla) debe ser importado en `alembic/env.py` para ser detectado.
+| Documento | Descripción |
+| :--- | :--- |
+| **[Módulo Commerce (Guía Maestra)](docs/COMMERCE_MODULE_GUIDE.md)** | Visión general del ecosistema comercial, SKUs, lotes y ventas |
+| **[Arquitectura Commerce](docs/commerce/01_ARCHITECTURE.md)** | Diagramas de componentes, flujos transaccionales y entidades |
+| **[Diccionario de Base de Datos](docs/commerce/02_DATABASE_DICTIONARY.md)** | Tablas, campos, restricciones, llaves y tipos de datos de Commerce |
+| **[Guía de Integración Frontend](docs/commerce/03_FRONTEND_INTEGRATION_GUIDE.md)** | Endpoints, contratos de petición/respuesta y ejemplos de consumo |
+| **[Flujos Operativos y Reglas de Negocio](docs/commerce/04_OPERATIONAL_WORKFLOW.md)** | Flujo de lotes, punto de equilibrio, ventas atómicas y mermas |
+| **[Manual del Desarrollador](docs/DEVELOPER_GUIDE.md)** | Guía paso a paso para crear nuevos submódulos |
+| **[Guía de RBAC y Permisos](docs/RBAC_GUIDE.md)** | Modelo de seguridad, slugs, roles y personificación |
+| **[Guía de Migraciones (Alembic)](docs/ALEMBIC_GUIDE.md)** | Procedimientos para versionar y aplicar cambios de esquema |
+| **[Guía de Catálogos Dinámicos](docs/developer_guide/02_sistema_catalogos_dinamicos.md)** | Protocolo `CatalogProvider` y carga masiva (`/api/catalogs/bulk`) |
+| **[Guía de Búsqueda y Filtros](docs/QUERY_SYSTEM_GUIDE.md)** | Motor polimórfico de búsqueda y filtros inyectables |
+| **[Guía de Auditoría (CDC)](docs/AUDIT_GUIDE.md)** | Registro contextual y trazabilidad de cambios en base de datos |
+| **[Estándar de AI Agents (.agents/)](.agents/README.md)** | Skills, personas y memoria para agentes de inteligencia artificial |
 
-Flujo de Trabajo:
-1.  **Crear Modelo**: Definir clase SQLModel en `models.py`.
-2.  **Registrar**: Importar el modelo en `alembic/env.py`.
-3.  **Generar Migración**: `venv/bin/alembic revision --autogenerate -m "nombre_cambio"`.
-4.  **Aplicar**: `venv/bin/alembic upgrade head`.
+---
 
-Si encuentras el error `UndefinedTable`, es porque el modelo no se registró antes de migrar. Ver **[Guía de Alembic Migraciones](docs/ALEMBIC_GUIDE.md)**.
+## 🛠️ Scripts y Utilidades
 
-## Guía de Uso para Desarrolladores
+Ubicados en la carpeta `scripts/` para tareas de mantenimiento y administración:
 
-### 1. Uso del Logger
-En cualquier archivo (Router, Service, Repository):
-```python
-import structlog
-logger = structlog.get_logger()
+* **Sincronización ETL SIGER**:
+  ```bash
+  venv/bin/python scripts/sync_siger.py
+  ```
+* **Archivado de Auditoría**:
+  ```bash
+  venv/bin/python scripts/archive_audit.py --days 90 --dir archive
+  ```
+* **Reinicio de Esquema DB (Desarrollo)**:
+  ```bash
+  venv/bin/python scripts/reset_db_schema.py
+  ```
+* **Demo Interactivo de Auditoría**:
+  ```bash
+  venv/bin/python scripts/demo_audit.py
+  ```
 
-def mi_funcion():
-    # Log simple
-    logger.info("iniciando_proceso")
-    
-    # Log con contexto (recomendado)
-    logger.info("usuario_creado", user_id=123, email="test@example.com")
-    
-    try:
-        ...
-    except Exception as e:
-        # Log de error con traza completa
-        logger.error("error_critico", error=str(e), exc_info=True)
-```
+---
 
-### 2. Uso de Repositorios
-La inyección de dependencias se maneja en el **Router**, el **Service** recibe el repositorio ya instanciado.
-```python
-# Service
-class TaskService:
-    def __init__(self, repository: TaskRepository):
-        self.repository = repository
+## 📜 Licencia
 
-    def get_task(self, task_id: uuid.UUID):
-        return self.repository.get_by_id(task_id)
-
-# Router
-@router.post("/")
-def create_task(
-    item: TaskCreate, 
-    service: TaskService = Depends(get_service) # Inyecta Repo automáticamente
-):
-    service.create(item)
-```
-
-### 3. Lanzar Excepciones
-Nunca uses `HTTPException` directamente en el Service. Usa las excepciones de dominio:
-```python
-from app.core.exceptions import NotFoundException, BadRequestException
-
-if not user:
-    raise NotFoundException(detail="Usuario no encontrado")
-```
-
-### 4. Documentación para Desarrolladores
-¿Quieres profundizar en el desarrollo? Consulta el **[Índice General de Documentación](docs/README.md)** o nuestras guías detalladas:
-
-1.  **[Manual del Desarrollador (Creación de Módulos)](docs/DEVELOPER_GUIDE.md)**
-2.  **[Guía de Gestión de Módulos y Permisos](docs/developer_guide/01_gestion_modulos_y_permisos.md)**
-3.  **[Guía del Sistema de Catálogos Dinámicos](docs/developer_guide/02_sistema_catalogos_dinamicos.md)**
-4.  **[Guía del Sistema de Consultas (Búsqueda y Filtros)](docs/QUERY_SYSTEM_GUIDE.md)**
-5.  **[Guía de Autenticación y Seguridad](docs/AUTHENTICATION_GUIDE.md)**
-6.  **[Guía de Testing Automatizado](docs/TESTING_GUIDE.md)**
-7.  **[Guía de Manejo de Excepciones](docs/EXCEPTION_HANDLING_GUIDE.md)**
-8.  **[Guía de RBAC (Permisos)](docs/RBAC_GUIDE.md)**
-9.  **[Guía de Auditoría](docs/AUDIT_GUIDE.md)**
-10. **[Guía de Alembic Migraciones](docs/ALEMBIC_GUIDE.md)**
-11. **[Guía de Calidad de Código (Linting & Typing)](docs/QUALITY_GUIDE.md)**
-12. **[Guía de Principios SOLID](docs/SOLID_GUIDE.md)**
-13. **[Guía de Patrones de Diseño](docs/DESIGN_PATTERNS_GUIDE.md)**
-14. **[Guía de Observabilidad y Logging](docs/OBSERVABILITY_GUIDE.md)**
-15. **[Módulo de Activos (Assets)](docs/ASSETS_MODULE_GUIDE.md)**
-16. **[Módulo Core (Staff, Org & Users)](docs/CORE_MODULE_GUIDE.md)**
-17. **[Guía de Integración Frontend (Angular)](docs/FRONTEND_AUTH_GUIDE.md)**
-18. **[Estándar de AI Agents y Skills (.agents/)](.agents/README.md)**
-19. **[Especificaciones SDD de Migración NestJS](docs/nestjs-migration/00-SDD-OVERVIEW.md)**
-
-## Scripts y Utilidades
-
-El proyecto incluye scripts en la carpeta `scripts/` para tareas de mantenimiento. **Siempre deben ejecutarse usando el intérprete del entorno virtual (`venv`)**.
-
-### 1. Limpieza de Base de Datos
-Borra el esquema público y lo recrea (útil en desarrollo para empezar de cero).
-```bash
-./venv/bin/python scripts/reset_db_schema.py
-```
-
-### 2. Archivado de Auditoría
-Mueve logs antiguos de la base de datos a archivos comprimidos en disco.
-```bash
-# Ejemplo: Archivar logs de más de 90 días en la carpeta 'archive/'
-./venv/bin/python scripts/archive_audit.py --days 90 --dir archive
-```
-
-### 3. Demo de Auditoría
-Script interactivo que realiza operaciones (Login, Create, Update) y muestra los logs generados en tiempo real.
-```bash
-./venv/bin/python scripts/demo_audit.py
-```
-
-### 4. Sincronización de Datos ETL (SIGER)
-Script idempotente (Upsert + Soft-Delete) para sincronizar masivamente Unidades Organizacionales, Cargos y Funcionarios desde la base de datos externa `an_core` hacia la base de datos de Uyuni, preservando llaves foráneas UUID locales.
-```bash
-# Requiere configurar SYNC_DATABASE_URL en .env
-./venv/bin/python scripts/sync_siger.py
-```
-
-## Ejecución
-
-Modo desarrollo (con hot-reload):
-```bash
-venv/bin/fastapi dev app/main.py
-```
-
-La API estará disponible en: `http://localhost:8000`
-- **[API Documentation](http://localhost:8000/docs)**: Swagger UI for interactive API testing.
-
-## Licencia
-
-MIT
+Distribuido bajo la Licencia **MIT**. Consulta el archivo `LICENSE` para más información.

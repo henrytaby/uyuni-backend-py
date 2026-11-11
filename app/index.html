@@ -1,20 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es" class="scroll-smooth">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Uyuni BackEnd System | API Portal</title>
+  <title>Uyuni BackEnd System | API Gateway & Services Portal</title>
 
-  <!-- Fonts -->
+  <!-- Google Fonts: Plus Jakarta Sans & Fira Code -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Icons -->
+  <!-- Font Awesome 6 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <script>
@@ -22,21 +22,15 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'sans-serif'],
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['Fira Code', 'monospace'],
           },
           colors: {
-            brand: {
-              50: '#f0f9ff',
-              100: '#e0f2fe',
-              500: '#0ea5e9', // Sky 500
-              600: '#0284c7', // Sky 600
-              900: '#0c4a6e', // Sky 900
-            },
-            dark: {
-              bg: '#0f172a', // Slate 900
-              card: '#1e293b', // Slate 800
-              text: '#f8fafc', // Slate 50
-              muted: '#94a3b8', // Slate 400
+            uyuni: {
+              navy: '#002b49',
+              blue: '#004889',
+              cyan: '#00b4d8',
+              aqua: '#06b6d4',
             }
           }
         }
@@ -46,139 +40,302 @@
 
   <style>
     body {
-      background-color: #0f172a;
-      color: #f8fafc;
-      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    .glass-card {
-      background: rgba(30, 41, 59, 0.7);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      transition: transform 0.2s ease, border-color 0.2s ease;
+    /* Ambient background grid pattern */
+    .bg-grid-pattern {
+      background-size: 28px 28px;
+      background-image: 
+        radial-gradient(circle, #cbd5e1 1.2px, transparent 1.2px);
     }
 
-    .glass-card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(14, 165, 233, 0.5);
+    /* Subtle glowing card */
+    .feature-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .hero-gradient {
-      background: linear-gradient(to right, #38bdf8, #818cf8);
+    .feature-card:hover {
+      transform: translateY(-3px);
+      border-color: #00b4d8;
+      box-shadow: 0 16px 32px -8px rgba(0, 72, 137, 0.12);
+    }
+
+    /* Brand gradient text */
+    .brand-gradient-text {
+      background: linear-gradient(135deg, #003865 0%, #0077b6 50%, #00b4d8 100%);
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
-    .status-dot {
-      height: 10px;
-      width: 10px;
-      background-color: #22c55e;
+    /* Pulsing status indicator */
+    .pulse-dot {
+      height: 9px;
+      width: 9px;
+      background-color: #10b981;
       border-radius: 50%;
       display: inline-block;
-      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-      animation: pulse-green 2s infinite;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+      animation: pulse-ring 2s infinite;
     }
 
-    @keyframes pulse-green {
+    @keyframes pulse-ring {
       0% {
         transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
       }
-
       70% {
         transform: scale(1);
-        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+        box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
       }
-
       100% {
         transform: scale(0.95);
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
       }
     }
   </style>
 </head>
 
-<body class="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+<body class="min-h-screen flex flex-col relative overflow-x-hidden selection:bg-uyuni-cyan selection:text-white">
 
-  <!-- Background Decoration -->
-  <div class="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-    <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-600/20 rounded-full blur-[120px]"></div>
-    <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px]"></div>
+  <!-- Background Ambient Glow Orbs -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+    <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-tr from-cyan-200/35 to-blue-300/25 rounded-full blur-[110px]"></div>
+    <div class="absolute top-[45%] -right-32 w-[450px] h-[450px] bg-sky-200/25 rounded-full blur-[100px]"></div>
+    <div class="absolute bottom-0 -left-32 w-[500px] h-[500px] bg-blue-100/30 rounded-full blur-[120px]"></div>
+    <div class="absolute inset-0 bg-grid-pattern opacity-60"></div>
   </div>
 
-  <!-- Main Container -->
-  <main class="w-full max-w-4xl">
-
-    <!-- Header -->
-    <header class="text-center mb-16">
-      <div
-        class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/50 border border-slate-700/50 mb-6">
-        <span class="status-dot"></span>
-        <span class="text-xs font-medium text-brand-50 tracking-wide uppercase">System Operational</span>
-      </div>
-      <h1 class="text-5xl md:text-6xl font-bold tracking-tight mb-4">
-        Uyuni <span class="hero-gradient">BackEnd System</span>
-      </h1>
-      <p class="text-lg text-dark-muted max-w-2xl mx-auto">
-        Enterprise-grade RESTful API.
-        Built with performance, scalability, and security in mind.
-      </p>
-    </header>
-
-    <!-- Cards Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full px-4 md:px-0">
-
-      <!-- Documentation Card -->
-      <a href="/docs" class="glass-card rounded-2xl p-8 group cursor-pointer block">
-        <div
-          class="h-12 w-12 rounded-lg bg-green-500/10 flex items-center justify-center mb-6 group-hover:bg-green-500/20 transition-colors">
-          <i class="fa-solid fa-rocket text-green-400 text-xl"></i>
+  <!-- Top Navigation Bar -->
+  <nav class="w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <!-- Brand Minimal Badge -->
+      <a href="/" class="flex items-center gap-3 group">
+        <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-uyuni-blue to-uyuni-cyan flex items-center justify-center text-white shadow-sm shadow-cyan-500/30 group-hover:scale-105 transition-transform">
+          <i class="fa-solid fa-cube text-base"></i>
         </div>
-        <h2 class="text-2xl font-semibold mb-2 group-hover:text-green-400 transition-colors">Swagger UI</h2>
-        <p class="text-dark-muted mb-6">Interactive API documentation. Test endpoints directly from your browser.</p>
-        <div class="flex items-center text-sm font-medium text-green-400">
-          Explore API <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+        <div class="flex flex-col">
+          <span class="font-extrabold text-slate-900 tracking-tight leading-none text-base">UYUNI</span>
+          <span class="text-[10px] font-semibold text-uyuni-cyan uppercase tracking-wider">Enterprise Backend</span>
         </div>
       </a>
 
-      <!-- Redoc Card -->
-      <a href="/redoc" class="glass-card rounded-2xl p-8 group cursor-pointer block">
-        <div
-          class="h-12 w-12 rounded-lg bg-brand-500/10 flex items-center justify-center mb-6 group-hover:bg-brand-500/20 transition-colors">
-          <i class="fa-solid fa-book-open text-brand-400 text-xl"></i>
+      <!-- Quick Nav Links -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Live Status Pill -->
+        <a href="/health" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition-colors">
+          <span class="pulse-dot"></span>
+          <span class="hidden sm:inline">API Online</span>
+          <span class="sm:hidden">Online</span>
+        </a>
+
+        <!-- Swagger Button -->
+        <a href="/docs" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 shadow-sm transition-all hover:-translate-y-0.5">
+          <i class="fa-solid fa-bolt text-amber-400"></i>
+          <span>Swagger</span>
+        </a>
+
+        <!-- ReDoc Button -->
+        <a href="/redoc" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors">
+          <i class="fa-solid fa-book-open text-uyuni-blue"></i>
+          <span class="hidden sm:inline">ReDoc</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Hero Section -->
+  <main class="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-16 flex flex-col items-center">
+
+    <!-- Central Logo -->
+    <div class="flex justify-center items-center mb-8">
+      <img
+        src="/static/logo-01.png"
+        alt="Uyuni Logo"
+        class="h-16 sm:h-20 md:h-24 w-auto object-contain transition-transform duration-300 hover:scale-[1.02] filter drop-shadow-sm select-none"
+      />
+    </div>
+
+    <!-- Title & Subtitle (Agnostic & Professional) -->
+    <div class="text-center w-full max-w-4xl mx-auto mb-10">
+      <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-3 md:whitespace-nowrap">
+        API Gateway &amp; <span class="brand-gradient-text">Services Portal</span>
+      </h1>
+      <p class="text-base sm:text-lg text-slate-600 leading-relaxed max-w-3xl mx-auto">
+        Plataforma modular de servicios RESTful de nivel empresarial. Diseñada para alta disponibilidad, seguridad basada en roles (RBAC) y transacciones atómicas.
+      </p>
+
+      <!-- Technical Architecture Badges (No business leaks) -->
+      <div class="flex flex-wrap items-center justify-center gap-2 mt-5 text-xs font-semibold text-slate-600">
+        <span class="px-2.5 py-1 rounded-md bg-white border border-slate-200 shadow-xs flex items-center gap-1.5">
+          <i class="fa-solid fa-bolt text-uyuni-cyan"></i> FastAPI Engine
+        </span>
+        <span class="px-2.5 py-1 rounded-md bg-white border border-slate-200 shadow-xs flex items-center gap-1.5">
+          <i class="fa-solid fa-database text-uyuni-blue"></i> PostgreSQL + SQLModel
+        </span>
+        <span class="px-2.5 py-1 rounded-md bg-white border border-slate-200 shadow-xs flex items-center gap-1.5">
+          <i class="fa-solid fa-shield-halved text-emerald-500"></i> JWT &amp; RBAC
+        </span>
+        <span class="px-2.5 py-1 rounded-md bg-white border border-slate-200 shadow-xs flex items-center gap-1.5">
+          <i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> Audit CDC
+        </span>
+      </div>
+    </div>
+
+    <!-- 4 Primary Documentation & Tool Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 w-full mb-12">
+
+      <!-- Swagger Card -->
+      <a href="/docs" class="feature-card rounded-2xl p-6 sm:p-7 block group">
+        <div class="flex items-start justify-between mb-4">
+          <div class="h-12 w-12 rounded-xl bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-100 flex items-center justify-center text-uyuni-blue group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-rocket text-xl text-uyuni-cyan"></i>
+          </div>
+          <span class="text-xs font-bold text-uyuni-cyan bg-cyan-50 px-2.5 py-1 rounded-full border border-cyan-100 uppercase tracking-wide">
+            Interactivo
+          </span>
         </div>
-        <h2 class="text-2xl font-semibold mb-2 group-hover:text-brand-400 transition-colors">ReDoc</h2>
-        <p class="text-dark-muted mb-6">Clean, organized technical documentation ideal for reading and reference.</p>
-        <div class="flex items-center text-sm font-medium text-brand-400">
-          Read Docs <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+        <h2 class="text-xl font-bold text-slate-900 group-hover:text-uyuni-blue transition-colors mb-2">
+          Swagger UI
+        </h2>
+        <p class="text-sm text-slate-500 mb-5 leading-relaxed">
+          Explorador interactivo de endpoints. Prueba peticiones HTTP, autenticación JWT con Bearer token y visualiza esquemas en tiempo real.
+        </p>
+        <div class="flex items-center text-sm font-bold text-uyuni-blue group-hover:text-uyuni-cyan transition-colors">
+          <span>Explorar endpoints</span>
+          <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+        </div>
+      </a>
+
+      <!-- ReDoc Card -->
+      <a href="/redoc" class="feature-card rounded-2xl p-6 sm:p-7 block group">
+        <div class="flex items-start justify-between mb-4">
+          <div class="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 flex items-center justify-center text-uyuni-blue group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-book-bookmark text-xl text-uyuni-blue"></i>
+          </div>
+          <span class="text-xs font-bold text-uyuni-blue bg-blue-50 px-2.5 py-1 rounded-full border border-blue-100 uppercase tracking-wide">
+            Referencia
+          </span>
+        </div>
+        <h2 class="text-xl font-bold text-slate-900 group-hover:text-uyuni-blue transition-colors mb-2">
+          ReDoc Technical Docs
+        </h2>
+        <p class="text-sm text-slate-500 mb-5 leading-relaxed">
+          Documentación técnica estructurada por dominios de negocio y modelos de datos. Formato ideal para lectura, arquitectura e integración.
+        </p>
+        <div class="flex items-center text-sm font-bold text-uyuni-blue group-hover:text-uyuni-cyan transition-colors">
+          <span>Consultar especificación</span>
+          <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+        </div>
+      </a>
+
+      <!-- OpenAPI Spec Card -->
+      <a href="/openapi.json" target="_blank" class="feature-card rounded-2xl p-6 sm:p-7 block group">
+        <div class="flex items-start justify-between mb-4">
+          <div class="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-code text-xl"></i>
+          </div>
+          <span class="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-100 uppercase tracking-wide">
+            JSON Schema
+          </span>
+        </div>
+        <h2 class="text-xl font-bold text-slate-900 group-hover:text-amber-600 transition-colors mb-2">
+          OpenAPI 3.1 Spec
+        </h2>
+        <p class="text-sm text-slate-500 mb-5 leading-relaxed">
+          Esquema JSON crudo para importar directamente en Postman, Insomnia, o generar clientes tipados para Angular y React.
+        </p>
+        <div class="flex items-center text-sm font-bold text-amber-600 group-hover:text-amber-700 transition-colors">
+          <span>Ver openapi.json</span>
+          <i class="fa-solid fa-arrow-up-right-from-square ml-2 text-xs"></i>
+        </div>
+      </a>
+
+      <!-- Healthcheck Card -->
+      <a href="/health" class="feature-card rounded-2xl p-6 sm:p-7 block group">
+        <div class="flex items-start justify-between mb-4">
+          <div class="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-heart-pulse text-xl"></i>
+          </div>
+          <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100 uppercase tracking-wide">
+            Monitoreo
+          </span>
+        </div>
+        <h2 class="text-xl font-bold text-slate-900 group-hover:text-emerald-600 transition-colors mb-2">
+          Health & Observability
+        </h2>
+        <p class="text-sm text-slate-500 mb-5 leading-relaxed">
+          Comprobación activa del estado del servicio, base de datos y latencia de respuesta del servidor en tiempo real.
+        </p>
+        <div class="flex items-center text-sm font-bold text-emerald-600 group-hover:text-emerald-700 transition-colors">
+          <span>Comprobar /health</span>
+          <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
         </div>
       </a>
 
     </div>
 
-    <!-- Info Footer -->
-    <div
-      class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-4 text-center text-sm text-dark-muted border-t border-slate-800 pt-8">
-      <div class="flex flex-col items-center">
-        <span class="block text-brand-500 font-semibold mb-1">Version</span>
-        <span>v0.3.0 (Beta)</span>
+    <!-- Quick Terminal Code Snippet (Generic and clean) -->
+    <div class="w-full bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-800 text-slate-200">
+      <div class="px-4 py-3 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <span class="h-3 w-3 rounded-full bg-rose-500/80 inline-block"></span>
+          <span class="h-3 w-3 rounded-full bg-amber-500/80 inline-block"></span>
+          <span class="h-3 w-3 rounded-full bg-emerald-500/80 inline-block"></span>
+          <span class="ml-2 font-mono text-slate-400">Verificación de Salud y API (cURL)</span>
+        </div>
+        <button id="copy-btn" onclick="copySnippet()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors flex items-center gap-1.5 font-mono text-[11px]">
+          <i class="fa-regular fa-copy"></i>
+          <span id="copy-text">Copiar</span>
+        </button>
       </div>
-      <div class="flex flex-col items-center">
-        <span class="block text-brand-500 font-semibold mb-1">Authentication</span>
-        <span>OAuth2 / JWT Bearer</span>
-      </div>
-      <div class="flex flex-col items-center">
-        <span class="block text-brand-500 font-semibold mb-1">Support</span>
-        <a href="mailto:henry.taby@gmail.com" class="hover:text-white transition-colors">henry.taby@gmail.com</a>
+      <div class="p-4 sm:p-5 font-mono text-xs sm:text-sm overflow-x-auto text-cyan-300">
+        <span class="text-slate-500"># Comprobar estado del servicio y conectividad</span><br>
+        <span class="text-amber-400">curl</span> -X GET <span class="text-emerald-400">"http://127.0.0.1:8000/health"</span><br><br>
+        <span class="text-slate-500"># Consultar recurso autenticado</span><br>
+        <span class="text-amber-400">curl</span> -X GET <span class="text-emerald-400">"http://127.0.0.1:8000/api/auth/me"</span> \<br>
+        &nbsp;&nbsp;-H <span class="text-emerald-400">"Authorization: Bearer &lt;TOKEN&gt;"</span>
       </div>
     </div>
 
   </main>
 
-  <footer class="absolute bottom-4 text-xs text-slate-700">
-    &copy; 2026 Uyuni BackEnd System. All rights reserved.
+  <!-- Clean Footer -->
+  <footer class="w-full border-t border-slate-200 bg-white py-6 mt-auto">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-slate-700">Uyuni Backend</span>
+        <span>&bull;</span>
+        <span>v1.0.0 (Production)</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="/docs" class="hover:text-slate-900 transition-colors">Documentación</a>
+        <a href="mailto:henry.taby@gmail.com" class="hover:text-slate-900 transition-colors">Soporte Técnico</a>
+      </div>
+      <div>
+        &copy; 2026 Uyuni Backend System. Todos los derechos reservados.
+      </div>
+    </div>
   </footer>
+
+  <!-- Script for 1-click copy -->
+  <script>
+    function copySnippet() {
+      const snippet = 'curl -X GET "http://127.0.0.1:8000/health"';
+      navigator.clipboard.writeText(snippet).then(() => {
+        const text = document.getElementById('copy-text');
+        text.innerText = '¡Copiado!';
+        setTimeout(() => {
+          text.innerText = 'Copiar';
+        }, 2000);
+      });
+    }
+  </script>
 
 </body>
 

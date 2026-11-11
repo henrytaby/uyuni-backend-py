@@ -1,3 +1,4 @@
+import os
 import time
 import uuid
 from collections.abc import Callable
@@ -10,6 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 
 from app.core.audit import AuditMiddleware, register_audit_hooks
@@ -191,6 +193,10 @@ version_prefix = "/api"
 # Incluir el router principal
 app.include_router(api_router, prefix=version_prefix)
 
+# Servir archivos estáticos (logos, assets)
+os.makedirs("app/static", exist_ok=True)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 
 app.add_exception_handler(NotFoundException, not_found_exception_handler)  # type: ignore
 app.add_exception_handler(BadRequestException, bad_request_exception_handler)  # type: ignore
@@ -205,16 +211,26 @@ async def read_items() -> FileResponse:
     return FileResponse("./app/index.html")
 
 
+@app.get("/health", tags=["Health"])
+async def health_check() -> dict[str, str]:
+    return {
+        "status": "healthy",
+        "service": "uyuni-backend",
+        "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT,
+    }
+
+
 @app.get("/redoc", include_in_schema=False)
 async def redoc_html() -> HTMLResponse:
     """
-    Custom Redoc setup to use unpkg.com CDN instead of the default jsdelivr.net
-    which may be blocked in some network environments.
+    Custom Redoc setup pinning the stable UMD bundle (v2.1.5) on unpkg CDN,
+    avoiding the 'import.meta' ESM syntax error introduced in unpkg @latest (v3+).
     """
     return get_redoc_html(
         openapi_url=cast(str, app.openapi_url),
         title=f"{app.title} - ReDoc",
-        redoc_js_url="https://unpkg.com/redoc@latest/bundles/redoc.standalone.js",
+        redoc_js_url="https://unpkg.com/redoc@2.1.5/bundles/redoc.standalone.js",
     )
 
 
