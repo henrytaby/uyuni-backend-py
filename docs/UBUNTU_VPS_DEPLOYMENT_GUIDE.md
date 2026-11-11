@@ -10,16 +10,28 @@ En el servidor VPS, los componentes interactúan de la siguiente manera:
 
 ```mermaid
 flowchart TD
-    Internet["Internet (Clientes / Frontends)"] -->|HTTPS 443| Nginx["Nginx (Reverse Proxy + SSL Lets Encrypt)"]
+    Internet["Internet (Clientes / Frontends)"] -->|HTTPS 443| Nginx["Nginx (Reverse Proxy + SSL Let's Encrypt)"]
     Nginx -->|HTTP 8000| Uvicorn["Uvicorn ASGI Workers (Systemd Daemon)"]
-    Uvicorn -->|SQLModel / SQLAlchemy| Postgres["PostgreSQL Local 5432"]
+    Uvicorn -->|SQLModel / SQLAlchemy| Postgres[("PostgreSQL Local 5432")]
     
-    subgraph Host ["Servidor Ubuntu VPS"]
+    subgraph Host ["Servidor Ubuntu VPS (Linux)"]
         Nginx
         Uvicorn
         Postgres
         Systemd["Systemd Service uyuni-backend"] -.->|Monitorea y reinicia| Uvicorn
     end
+
+    classDef clientNode fill:#f0f9ff,stroke:#00b4d8,stroke-width:2px,color:#003865,font-weight:bold;
+    classDef proxyNode fill:#002b49,stroke:#00c2cb,stroke-width:2px,color:#ffffff,font-weight:bold;
+    classDef appNode fill:#003865,stroke:#00b4d8,stroke-width:2px,color:#ffffff,font-weight:bold;
+    classDef dbNode fill:#004889,stroke:#38bdf8,stroke-width:2.5px,color:#ffffff,font-weight:bold;
+    classDef sysNode fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#334155;
+
+    class Internet clientNode;
+    class Nginx proxyNode;
+    class Uvicorn appNode;
+    class Postgres dbNode;
+    class Systemd sysNode;
 ```
 
 ---

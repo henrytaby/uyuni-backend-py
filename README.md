@@ -53,13 +53,94 @@ Bienvenido a **Uyuni Backend**, una plataforma transaccional de nivel empresaria
 
 ## 🏛️ Arquitectura y Principios de Diseño
 
-El sistema implementa una **Arquitectura Modular (DDD-Lite)** apoyada en el **Patrón Repositorio** y en **Inyección de Dependencias**:
+El sistema implementa una **Arquitectura Modular (DDD-Lite)** apoyada en el **Patrón Repositorio**, **Inyección de Dependencias** y un **Modelo Transversal de Auditoría (CDC)**:
 
 ```mermaid
-graph LR
-    A["Routers (FastAPI)"] --> B["Services (Lógica de Dominio)"]
-    B --> C["Repositories (Acceso a Datos)"]
-    C --> D["Database (PostgreSQL / SQLModel)"]
+flowchart TB
+    %% ==========================================
+    %% UYUNI ARCHITECTURE - CORPORATE BRAND THEME
+    %% ==========================================
+    
+    subgraph Clients["🌐 Capas de Consumo / Clientes"]
+        SPA["Frontend de Gestión (Angular 21)"]
+        PWA["PWA Comercial (React + Vite)"]
+        CLI["Scripts ETL / Mobile / API Clients"]
+    end
+
+    subgraph Gateway["🚪 Capa de Entrada, Middleware & Seguridad"]
+        API["FastAPI 0.139 Engine (/api)"]
+        AUDIT_MW["Audit Middleware (RequestID & Context)"]
+        AUTH["Control de Acceso RBAC (Tokens JWT & X-Active-Role)"]
+    end
+
+    subgraph BusinessDomains["📦 Dominios Modulares de Negocio (DDD-Lite)"]
+        direction TB
+        
+        subgraph Commerce["🛒 Módulo Commerce (Nova Box Bolivia)"]
+            direction LR
+            C_R["Routers (SKUs, Lotes)"] --> C_S["Service (Ventas, Piso Mínimo)"] --> C_RP["Commerce Repositories"]
+        end
+
+        subgraph Core["👥 Módulo Core (Personal & Estructura)"]
+            direction LR
+            U_R["Routers (Staff, Users)"] --> U_S["Service (Roles & Catálogos)"] --> U_RP["Core Repositories"]
+        end
+
+        subgraph Assets["🏢 Módulo Assets (Activos Fijos)"]
+            direction LR
+            A_R["Routers (SAF, Bienes)"] --> A_S["Service (Asignación, Actas)"] --> A_RP["Assets Repositories"]
+        end
+    end
+
+    subgraph SharedCore["⚙️ Infraestructura Transversal (app/core)"]
+        BASE_REPO["BaseRepository[T] (Paginación, Búsqueda, Filtros)"]
+        CATALOG_REG["Catálogos Dinámicos (Global Registry)"]
+        EXC_HANDLER["Manejo Centralizado de Excepciones"]
+    end
+
+    subgraph DataPersistence["💾 Capa de Persistencia & Auditoría"]
+        ORM["SQLModel / SQLAlchemy 2.0 ORM"]
+        DB[("PostgreSQL 16 (Engine Transaccional)")]
+        CDC["SQLAlchemy Event Hooks (CDC Audit Logs)"]
+    end
+
+    %% Relaciones de Flujo
+    Clients --> API
+    API --> AUDIT_MW
+    AUDIT_MW --> AUTH
+    AUTH --> BusinessDomains
+
+    Commerce -.-> BASE_REPO
+    Core -.-> BASE_REPO
+    Assets -.-> BASE_REPO
+    Core -.-> CATALOG_REG
+
+    C_RP --> ORM
+    U_RP --> ORM
+    A_RP --> ORM
+
+    ORM --> DB
+    DB -.->|Captura CDC| CDC
+    CDC -.->|Inserta historial| DB
+
+    %% ==========================================
+    %% ESTILOS CORPORATIVOS UYUNI
+    %% ==========================================
+    classDef clientNode fill:#f0f9ff,stroke:#00b4d8,stroke-width:1.5px,color:#003865,font-weight:bold;
+    classDef gatewayNode fill:#002b49,stroke:#00b4d8,stroke-width:2px,color:#ffffff,font-weight:bold;
+    classDef commerceNode fill:#003865,stroke:#00c2cb,stroke-width:2px,color:#ffffff;
+    classDef coreNode fill:#004889,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef assetsNode fill:#0f172a,stroke:#67e8f9,stroke-width:2px,color:#ffffff;
+    classDef sharedNode fill:#f8fafc,stroke:#00b4d8,stroke-width:1.5px,color:#003865;
+    classDef dbNode fill:#002b49,stroke:#00c2cb,stroke-width:2.5px,color:#ffffff,font-weight:bold;
+
+    class SPA,PWA,CLI clientNode;
+    class API,AUTH,AUDIT_MW gatewayNode;
+    class C_R,C_S,C_RP commerceNode;
+    class U_R,U_S,U_RP coreNode;
+    class A_R,A_S,A_RP assetsNode;
+    class BASE_REPO,CATALOG_REG,EXC_HANDLER sharedNode;
+    class ORM,DB,CDC dbNode;
 ```
 
 ### Componentes de Cada Dominio (`app/modules/`)

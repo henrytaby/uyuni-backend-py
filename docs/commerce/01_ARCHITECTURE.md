@@ -12,7 +12,7 @@ El módulo sigue una arquitectura desacoplada y orientada al dominio (DDD-Lite) 
 flowchart TD
     Client["Cliente HTTP (Angular / React PWA)"] --> Routers["Routers Layer (app/modules/commerce/*/routers.py)"]
     
-    subgraph CommerceDomain ["Dominio Commerce"]
+    subgraph CommerceDomain ["Dominio Commerce (Nova Box Bolivia)"]
         Routers --> Services["Services Layer (app/modules/commerce/*/service.py)"]
         Services --> Repositories["Repositories Layer (app/modules/commerce/*/repository.py)"]
         Repositories --> Models["Models Layer (app/modules/commerce/*/models.py)"]
@@ -22,6 +22,20 @@ flowchart TD
     end
     
     Models --> DB[("PostgreSQL / SQLite")]
+
+    classDef clientNode fill:#f0f9ff,stroke:#00b4d8,stroke-width:2px,color:#003865,font-weight:bold;
+    classDef routerNode fill:#002b49,stroke:#00b4d8,stroke-width:2px,color:#ffffff,font-weight:bold;
+    classDef serviceNode fill:#003865,stroke:#00c2cb,stroke-width:2px,color:#ffffff;
+    classDef repoNode fill:#004889,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
+    classDef ruleNode fill:#f8fafc,stroke:#00b4d8,stroke-width:1.5px,color:#003865;
+    classDef dbNode fill:#002b49,stroke:#00c2cb,stroke-width:2.5px,color:#ffffff,font-weight:bold;
+
+    class Client clientNode;
+    class Routers routerNode;
+    class Services serviceNode;
+    class Repositories,Models repoNode;
+    class BusinessRules,BaseRepo ruleNode;
+    class DB dbNode;
 ```
 
 ### Responsabilidades por Capa:
