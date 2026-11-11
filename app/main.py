@@ -13,6 +13,7 @@ from fastapi.openapi.docs import get_redoc_html
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session
 
 from app.core.audit import AuditMiddleware, register_audit_hooks
 from app.core.config import settings
@@ -33,6 +34,7 @@ from app.core.handlers import (
     unauthorized_exception_handler,
 )
 from app.core.logging import configure_logging
+from app.core.manifests import global_manifest_registry
 from app.core.routers import router as api_router
 
 # Setup Logging
@@ -54,6 +56,13 @@ async def lifespan(app: FastAPI):
     app.state.engine = engine
     create_db_and_tables()
     register_audit_hooks(engine)
+    try:
+        with Session(app.state.engine) as session:
+            global_manifest_registry.sync(session)
+    except Exception as exc:
+        structlog.get_logger("lifespan").warning(
+            "modules_manifest_sync_failed", error=str(exc)
+        )
     yield
 
 
