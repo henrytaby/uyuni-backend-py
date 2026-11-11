@@ -52,8 +52,8 @@ flowchart TD
 ## 📋 Archivos de Soporte Nativos en el Repositorio
 
 El proyecto ya cuenta con soporte nativo para Render:
-* [`Dockerfile`](file:///opt/uyuni/uyuni-backend-py/Dockerfile): Imagen `python:3.14-slim` que instala dependencias compiladas y ejecuta Uvicorn en el puerto `${PORT:-8000}`.
-* [`render.yaml`](file:///opt/uyuni/uyuni-backend-py/render.yaml): Blueprint de infraestructura como código para auto-aprovisionar el servicio con un solo clic.
+* [`Dockerfile`](../Dockerfile): Imagen `python:3.14-slim` que instala dependencias compiladas y ejecuta Uvicorn en el puerto `${PORT:-8000}`.
+* [`render.yaml`](../render.yaml): Blueprint de infraestructura como código para auto-aprovisionar el servicio con un solo clic.
 
 ---
 

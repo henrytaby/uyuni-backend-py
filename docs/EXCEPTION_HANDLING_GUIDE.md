@@ -73,7 +73,7 @@ sequenceDiagram
 Si necesitas un error nuevo (ej. `ExternalServiceException`), sigue estos 3 pasos:
 
 ### Paso 1: Definir la Clase
-Añádela en [exceptions.py](file:///opt/uyuni/uyuni-backend-py/app/core/exceptions.py).
+Añádela en [`app/core/exceptions.py`](../app/core/exceptions.py).
 ```python
 class ExternalServiceException(CustomException):
     """Error cuando un API de terceros falla"""
@@ -81,7 +81,7 @@ class ExternalServiceException(CustomException):
 ```
 
 ### Paso 2: Definir el Handler
-Dile a FastAPI cómo responder en [handlers.py](file:///opt/uyuni/uyuni-backend-py/app/core/handlers.py).
+Dile a FastAPI cómo responder en [`app/core/handlers.py`](../app/core/handlers.py).
 ```python
 async def external_service_handler(request: Request, exc: ExternalServiceException):
     return JSONResponse(
@@ -91,7 +91,7 @@ async def external_service_handler(request: Request, exc: ExternalServiceExcepti
 ```
 
 ### Paso 3: Registrar en Main
-"Enchufa" todo en [main.py](file:///opt/uyuni/uyuni-backend-py/app/main.py).
+"Enchufa" todo en [`app/main.py`](../app/main.py).
 ```python
 from app.core.exceptions import ExternalServiceException
 from app.core.handlers import external_service_handler

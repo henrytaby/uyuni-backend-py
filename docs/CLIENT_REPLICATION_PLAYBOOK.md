@@ -155,9 +155,9 @@ El backend corre en arquitectura **100% Serverless** a través de la red global 
 
 #### 🧩 Arquitectura Serverless de Uyuni en Vercel:
 El repositorio ya está 100% preparado y optimizado para Vercel con los siguientes archivos nativos:
-* [`vercel.json`](file:///opt/uyuni/uyuni-backend-py/vercel.json): Configura el enrutamiento inteligente redirigiendo todas las peticiones entrantes (`/(.*)`) al handler ASGI de Python.
-* [`api/index.py`](file:///opt/uyuni/uyuni-backend-py/api/index.py): Punto de entrada Serverless (*handler* de FastAPI) que inyecta la ruta raíz del backend a `sys.path` y expone `handler = app`.
-* [`requirements.txt`](file:///opt/uyuni/uyuni-backend-py/requirements.txt): Detectado automáticamente por el runtime `@vercel/python` para empaquetar e instalar las dependencias en la nube.
+* [`vercel.json`](../vercel.json): Configura el enrutamiento inteligente redirigiendo todas las peticiones entrantes (`/(.*)`) al handler ASGI de Python.
+* [`api/index.py`](../api/index.py): Punto de entrada Serverless (*handler* de FastAPI) que inyecta la ruta raíz del backend a `sys.path` y expone `handler = app`.
+* [`requirements.txt`](../requirements.txt): Detectado automáticamente por el runtime `@vercel/python` para empaquetar e instalar las dependencias en la nube.
 
 Puedes desplegar en Vercel utilizando cualquiera de los dos métodos siguientes:
 
@@ -208,7 +208,7 @@ Puedes desplegar en Vercel utilizando cualquiera de los dos métodos siguientes:
    *(Selecciona continuar con GitHub o ingresa el correo corporativo novabo.app@gmail.com).*
 
 3. **Vincular el proyecto local con Vercel:**
-   Desde la raíz de `/opt/uyuni/uyuni-backend-py`:
+   Desde la raíz del proyecto (`uyuni-backend-py`):
    ```bash
    vercel link
    ```
@@ -246,6 +246,47 @@ Si deseas probar cómo se comporta FastAPI bajo el emulador de funciones serverl
 vercel dev
 ```
 La API estará disponible en `http://localhost:3000` con recarga en caliente y emulando las reglas de `vercel.json`.
+
+---
+
+#### 🟣 Opción 5.B: Desplegar en Render.com (Contenedor Docker MicroVM)
+Ideal si prefieres un contenedor Linux completo con Python 3.14 nativo, procesos sin límite de tiempo y sin pasar por verificaciones de SMS complejas:
+
+El repositorio ya cuenta con archivos nativos para Render:
+* [`Dockerfile`](../Dockerfile): Imagen ligera de Python 3.14 optimizada para servidores HTTP.
+* [`render.yaml`](../render.yaml): Blueprint de infraestructura como código que auto-configura el servicio.
+
+##### Paso a Paso para Desplegar en Render:
+1. Ingresa a **[Render.com](https://render.com)** y haz clic en **"GET STARTED FOR FREE"**.
+2. Selecciona **"Continue with GitHub"** para iniciar sesión con la cuenta de la empresa (`novalabs-bo`).
+3. En el panel principal, haz clic en **"New +"** (arriba a la derecha) > **"Web Service"**.
+4. En la sección *Connect a repository*, selecciona el repositorio `henrytaby/uyuni-backend-py`.
+5. **Configuración del Web Service:**
+   * **Name**: `uyuni-backend-novalabs` (o el nombre de la empresa).
+   * **Region**: `Ohio (US East)` (la misma región que tu base de datos de Neon para latencia ultra-baja).
+   * **Runtime**: Selecciona **Docker** (Render detectará automáticamente el archivo `Dockerfile`).
+   * **Instance Type**: Selecciona **Free** ($0 / mes - 512 MB RAM, 0.1 CPU).
+6. **Variables de Entorno (Environment Variables):**
+   Haz clic en **"Add Environment Variable"** y añade:
+   * `DATABASE_URL` = Cadena de conexión de Neon del cliente (con `?sslmode=require`).
+   * `SECRET_KEY` = Tu clave aleatoria segura (ej: `openssl rand -hex 32`).
+   * `PROJECT_NAME` = `"Uyuni ERP - Nova Box Bolivia"`
+   * `ENVIRONMENT` = `production`
+   * `BACKEND_CORS_ORIGINS` = `["*"]`
+7. Despliega la sección **"Advanced"**:
+   * **Health Check Path**: Escribe `/health` (así Render sabe cuando el backend está listo para recibir tráfico).
+8. Haz clic en **"Deploy Web Service"**.
+
+En aproximadamente 2 minutos, Render compilará el contenedor Docker y te entregará tu URL pública con SSL automático:
+👉 **`https://uyuni-backend-novalabs.onrender.com`**
+
+> [!TIP]
+> **Keep-Alive 24/7 en Render (Opcional):**
+> En el plan gratuito de Render, el contenedor entra en modo suspensión si no recibe visitas durante 15 minutos.
+> Si deseas que responda siempre en menos de 50 milisegundos sin demoras:
+> 1. Crea una cuenta gratuita en **[UptimeRobot.com](https://uptimerobot.com)**.
+> 2. Crea un monitor tipo HTTP hacia `https://uyuni-backend-novalabs.onrender.com/health` con intervalo de 5 minutos.
+> 3. ¡Listo! El contenedor se mantendrá despierto y caliente 24/7 sin ningún costo.
 
 ---
 

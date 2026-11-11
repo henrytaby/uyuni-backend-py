@@ -126,9 +126,9 @@ Antes de levantar el backend en la nube, inicializaremos la estructura en la bas
 El backend de FastAPI se ejecuta de forma nativa en la infraestructura Serverless de Vercel. **No requiere servidores, no necesita UptimeRobot (no se suspende por inactividad) y cuenta con CDN global Anycast**.
 
 El repositorio ya incluye los archivos de configuración nativos:
-* [`vercel.json`](file:///opt/uyuni/uyuni-backend-py/vercel.json): Reglas de reescritura que redirigen todas las peticiones al handler de Python.
-* [`api/index.py`](file:///opt/uyuni/uyuni-backend-py/api/index.py): Punto de entrada Serverless (*handler = app*).
-* [`requirements.txt`](file:///opt/uyuni/uyuni-backend-py/requirements.txt): Detectado automáticamente por `@vercel/python`.
+* [`vercel.json`](../vercel.json): Reglas de reescritura que redirigen todas las peticiones al handler de Python.
+* [`api/index.py`](../api/index.py): Punto de entrada Serverless (*handler = app*).
+* [`requirements.txt`](../requirements.txt): Detectado automáticamente por `@vercel/python`.
 
 ---
 
