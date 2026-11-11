@@ -1,43 +1,38 @@
 # Product Context - Uyuni Backend
 
 ## Problem Statement
-Organizations need a centralized system to manage:
-- Organizational structure (units, positions, staff)
-- Institutional assets (equipment, areas, groups, statuses)
-- User authentication and authorization
-- Audit trails for compliance and accountability
+Commercial ventures and enterprises (such as Nova Box Bolivia and white-label client businesses) need a robust, dedicated transactional ERP to manage:
+- Commercial operations (products, imported batches, sales, live baskets, investment rounds)
+- Inventory pricing rules (floor price protection via `minimum_price`, profit margins, break-even)
+- User accounts and access control (RBAC with granular permissions and role impersonation)
+- Audit trails for operations and security compliance (CDC)
 
 ## Solution
-Uyuni Backend provides a RESTful API that enables:
-1. **Secure Access**: JWT-based authentication with token rotation and account lockout
-2. **Granular Permissions**: RBAC system with CRUD permissions per module
-3. **Asset Management**: Complete CRUD operations for assets, areas, groups, institutions, statuses, and acts
-4. **Organizational Management**: Management of org units, positions, and staff assignments
-5. **Audit Trail**: Automatic logging of all data changes for compliance
+Uyuni Backend provides a high-performance RESTful API that enables:
+1. **Secure Access**: JWT-based authentication with token rotation, logout revocation, and account lockout
+2. **Granular Permissions**: RBAC system with CRUD permissions per module and dynamic domain manifests
+3. **Commerce Management**: Atomic sales with Bolivian payment methods (QR, cash, carrier transfer), batches with landed cost tracking, SKU master records, and live catalog endpoints
+4. **Account & Access Management**: User management, active role selection, and audit logging
+5. **Audit Trail**: Automatic CDC logging of all entity modifications via SQLAlchemy hooks
 
 ## User Personas
 
 ### System Administrator
-- Manages users, roles, and permissions
-- Configures system settings
+- Manages users, accounts, and security settings
+- Configures global settings and monitors system health
 - Reviews audit logs
-- Needs full access to all modules
+- Full access to all modules
 
-### Asset Manager
-- Manages institutional assets
-- Organizes assets into areas and groups
-- Tracks asset statuses
-- Needs read/write access to assets module
+### Commercial / Store Manager
+- Manages inventory SKUs, categories, and batches
+- Registers sales and manages customer orders
+- Tracks break-even points, profit margins, and sales channels
+- Needs access to commerce module (`commerce_*`)
 
-### Staff Manager
-- Manages organizational units
-- Assigns positions and staff
-- Needs access to core module (org_units, positions, staff)
-
-### Auditor
-- Reviews audit trails
-- Generates compliance reports
-- Needs read-only access to audit data
+### Auditor / Operations
+- Reviews audit trails and transaction histories
+- Generates operational and financial reconciliation reports
+- Read-only access to audit logs and sales data
 
 ## Key Workflows
 
@@ -52,26 +47,29 @@ Uyuni Backend provides a RESTful API that enables:
 ### RBAC Permission Check Flow
 1. User makes request to protected endpoint
 2. System extracts user from JWT token
-3. System retrieves user's active role
+3. System retrieves user's active role (supports `X-Active-Role` header)
 4. System checks if role has required permission for module and action
 5. If permitted: request proceeds
 6. If denied: returns 403 Forbidden
 
+### Commerce Sales Flow
+1. User creates a sale with items, channel, and payment modality
+2. System verifies price is at or above `minimum_price`
+3. In a single atomic transaction: records sale, sale items, calculates net margin, and transitions product status to `vendido`
+
 ### Audit Logging Flow
 1. Request enters audit middleware
-2. Middleware captures request metadata (user, path, method)
-3. SQLAlchemy hooks capture entity changes
-4. Changes recorded in audit_logs table
+2. Middleware captures request metadata (user, path, method, IP, user agent)
+3. SQLAlchemy hooks capture entity changes (CDC)
+4. Changes recorded in `audit_log` table
 5. On error: logged but doesn't affect main transaction
 
 ## Technical Constraints
-- Must support PostgreSQL database
-- Must be compatible with Vercel serverless deployment
-- Must follow REST API conventions
-- Must maintain backward compatibility for API versions
+- Must support PostgreSQL database (with strict singular table naming convention)
+- Compatible with Docker containers (Render), Serverless (Vercel), and VPS (Ubuntu)
+- Must follow REST API conventions and strict type safety
 
 ## Integration Points
-- Frontend: React/Next.js application consuming the API
-- Database: PostgreSQL instance
-- Authentication: Internal JWT system (no external OAuth providers)
-- Logging: Structured logs for observability platforms
+- Frontend Admin: Angular 21 + PrimeNG 21 (`uyuni-frontend-ng`)
+- Public Customer Catalog: React + Vite PWA (`catalog-pwa`)
+- Database: Dedicated PostgreSQL instance per tenant (Neon.tech / Render)

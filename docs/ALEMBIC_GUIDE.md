@@ -11,22 +11,19 @@ Alembic necesita "ver" tus modelos para detectar cambios. Si no los importas en 
 **Archivo:** `alembic/env.py`
 ```python
 # Importa todos los modelos para poblar SQLModel.metadata
-from app.models.user import User, UserRole, UserRevokedToken, UserLogLogin
-from app.models.role import Role, RoleModule
-from app.models.module import Module, ModuleGroup
-from app.models.audit import AuditLog
-# Domain models
-from app.modules.core.staff.models import Staff
-from app.modules.core.org_units.models import OrgUnit
-from app.modules.core.positions.models import StaffPosition
-from app.modules.assets.assets.models import FixedAsset
-from app.modules.assets.areas.models import Area
-from app.modules.assets.groups.models import AssetGroup
-from app.modules.assets.statuses.models import AssetStatus
-from app.modules.assets.institutions.models import Institution
-from app.modules.assets.acts.models import Act, AssetActLink
-from app.modules.tasks.models import Task
-# [NUEVO] Agrega tu modelo aquí:
+import app.models.audit  # noqa: F401
+import app.models.module  # noqa: F401
+import app.models.role  # noqa: F401
+import app.models.user  # noqa: F401
+import app.modules.commerce.batches.models  # noqa: F401
+import app.modules.commerce.categories.models  # noqa: F401
+import app.modules.commerce.channels.models  # noqa: F401
+import app.modules.commerce.live_baskets.models  # noqa: F401
+import app.modules.commerce.product_masters.models  # noqa: F401
+import app.modules.commerce.products.models  # noqa: F401
+import app.modules.commerce.rounds.models  # noqa: F401
+import app.modules.commerce.sales.models  # noqa: F401
+import app.modules.tasks.models  # noqa: F401
 ```
 
 ---
@@ -34,19 +31,19 @@ from app.modules.tasks.models import Task
 ## 👨‍💻 Recetas para Desarrolladores
 
 ### Receta 1: Agregando un Nuevo Módulo (Nuevas Tablas)
-Has creado una nueva carpeta de módulo `app/modules/assets/inventory` y definido un modelo `Product` en `app/modules/assets/inventory/models.py`.
+Has creado un nuevo modelo `DiscountCoupon` en `app/modules/commerce/coupons/models.py`.
 
 **Pasos:**
-1.  **Definir el Modelo:** Asegúrate de que tu clase herede de `BaseModel` (o `SQLModel`) y tenga `table=True`.
+1.  **Definir el Modelo (Estándar Singular):** Asegúrate de que tu clase herede de `BaseModel` (o `SQLModel`), tenga `table=True` y `__tablename__` en singular.
     ```python
-    class Product(BaseModel, table=True):
-        # ID (UUIDv7) y campos de auditoría (created_at, etc.) son automáticos.
-        name: str
-        price: float
+    class DiscountCoupon(BaseModel, AuditMixin, table=True):
+        __tablename__ = "commerce_discount_coupon"
+        code: str = Field(index=True, unique=True)
+        discount_percentage: float = Field(default=0.0)
     ```
 2.  **Registrar en `env.py`:** abre `alembic/env.py` y agrega:
     ```python
-    from app.modules.inventory.models import Product
+    import app.modules.commerce.coupons.models  # noqa: F401
     ```
 3.  **Generar Migración:**
     Ejecuta el siguiente comando en tu terminal (asegúrate de que el entorno virtual esté activo):

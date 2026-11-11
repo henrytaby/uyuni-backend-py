@@ -16,7 +16,7 @@ from app.modules.core.users.schemas import (
 )
 from app.modules.core.users.service import UserService
 
-router = APIRouter(prefix="/users", tags=["Core Staff - Users"])
+router = APIRouter(prefix="/users", tags=["Core - Users"])
 
 
 @router.post("/", response_model=UserRead)

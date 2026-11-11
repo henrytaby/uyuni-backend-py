@@ -9,7 +9,7 @@ El sistema permite un control de permisos granular a nivel de **Módulo**. Utili
 ### Componentes Clave en RBAC
 *   **Usuarios**: Pueden tener múltiples **Roles**.
 *   **Roles**: Colecciones de permisos. Se identifican por un `slug` (ej: `admin`, `ventas`).
-*   **Módulos**: Representan áreas funcionales (ej: `Staff`, `Assets`). Identificados por `slug`.
+*   **Módulos**: Representan áreas funcionales (ej: `users`, `commerce_products`). Identificados por `slug`.
 *   **RoleModule**: Tabla de enlace que define:
     *   **Acciones**: `can_create`, `can_update`, `can_delete`.
     *   **Alcance (Scope)**: `scope_all`.
@@ -77,7 +77,7 @@ router = APIRouter()
 async def get_items(
     permissions: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug=CoreModuleSlug.STAFF, 
+            module_slug=CoreModuleSlug.USERS, 
             required_permission=PermissionAction.READ
         )
     ),
@@ -92,7 +92,7 @@ async def get_items(
 async def create_item(
     _: UserModulePermission = Depends(
         PermissionChecker(
-            module_slug=CoreModuleSlug.STAFF, 
+            module_slug=CoreModuleSlug.USERS, 
             required_permission=PermissionAction.CREATE
         )
     ),

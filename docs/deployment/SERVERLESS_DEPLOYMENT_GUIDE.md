@@ -93,37 +93,47 @@ Antes de levantar el backend en la nube, inicializaremos la estructura en la bas
    ```bash
    DATABASE_URL="postgresql://uyuni_owner:npg_X1Y2Z3A4B5@ep-quiet-star-123456.us-east-2.aws.neon.tech/uyuni-production?sslmode=require" venv/bin/alembic upgrade head
    ```
-   *Verás que Alembic crea todas las tablas de roles, usuarios, staff, activos fijos y el dominio comercial en Neon.*
+   *Verás que Alembic crea todas las 19 tablas en singular de configuración, roles, usuarios y el dominio comercial en Neon.*
 
 3. Puebla la estructura de navegación y permisos para el frontend:
    ```bash
-   DATABASE_URL="postgresql://uyuni_owner:npg_X1Y2Z3A4B5@ep-quiet-star-123456.us-east-2.aws.neon.tech/uyuni-production?sslmode=require" venv/bin/python -m seeds.seed_create_modules
+   DATABASE_URL="postgresql://uyuni_owner:npg_X1Y2Z3A4B5@ep-quiet-star-123456.us-east-2.aws.neon.tech/uyuni-production?sslmode=require" venv/bin/python seeds/seed_create_modules.py
    ```
 
-4. Crea tu usuario administrador con tu contraseña segura personalizada:
+4. Crea tu usuario administrador con tu contraseña segura personalizada y rol vinculado:
    ```bash
    DATABASE_URL="postgresql://uyuni_owner:npg_X1Y2Z3A4B5@ep-quiet-star-123456.us-east-2.aws.neon.tech/uyuni-production?sslmode=require" venv/bin/python -c '
    from sqlmodel import Session, create_engine, select
-   from app.models.user import User
+   from app.models.user import User, UserRole
    from app.auth.utils import get_password_hash
+   from app.util.datetime import get_current_time
    import os
 
    engine = create_engine(os.environ["DATABASE_URL"])
    with Session(engine) as s:
-       existing = s.exec(select(User).where(User.username == "admin")).first()
-       if not existing:
+       admin = s.exec(select(User).where(User.username == "admin")).first()
+       if not admin:
            admin = User(
                username="admin",
                email="admin@novabox.bo",
                password_hash=get_password_hash("TuPasswordSuperSeguro2026!"),
                is_superuser=True,
-               is_active=True
+               is_verified=True,
+               is_active=True,
+               created_at=get_current_time(),
+               updated_at=get_current_time()
            )
            s.add(admin)
            s.commit()
+           s.refresh(admin)
            print("✅ Superusuario admin creado con éxito en Neon!")
-       else:
-           print("ℹ️ El usuario admin ya existe.")
+
+       # Asegurar vinculación del rol admin en user_role
+       link = s.exec(select(UserRole).where(UserRole.user_id == admin.id, UserRole.role_slug == "admin")).first()
+       if not link:
+           s.add(UserRole(user_id=admin.id, role_slug="admin", is_active=True))
+           s.commit()
+           print("✅ Rol admin vinculado correctamente en user_role!")
    '
    ```
    *¡Listo! Tu base de datos en Neon ya está 100% estructurada, con roles, módulos y tu usuario creados.*

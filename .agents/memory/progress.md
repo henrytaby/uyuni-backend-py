@@ -23,10 +23,13 @@
 - [x] Superuser bypass for RBAC checks
 
 #### Phase 3: Domain Modules ✅
-- [x] Assets module (assets, areas, groups, statuses, institutions, acts)
-- [x] Core module (org_units, positions, staff)
+- [x] Commerce module (products, product_masters, batches, sales, live_baskets, investment_rounds, categories, channels)
+- [x] Core module (user accounts, roles, permissions, manifests)
 - [x] Tasks module (basic CRUD)
 - [x] Nested routing architecture
+- [x] Dynamic Modular Catalogs with bulk loader (`/api/catalogs/bulk`)
+- [x] Depuration of legacy public sector modules (`assets`, `core_staff`, `core_org_unit`, `core_staff_position`)
+- [x] Mandatory Singular Table Naming Convention across all 19 database tables
 
 #### Phase 4: Audit System ✅
 - [x] Audit middleware for request capture (Access logging)
@@ -65,7 +68,6 @@
 
 ### Pending (Enterprise Features)
 - [ ] API versioning (/api/v1/)
-- [ ] Integration tests for assets module (target: 90% coverage)
 - [ ] OpenAPI documentation enhancement
 - [ ] Performance monitoring integration
 - [ ] CI/CD pipeline configuration
@@ -76,16 +78,14 @@
 None currently identified.
 
 ## Technical Debt
-1. Missing integration tests for assets module
-2. No rate limiting on authentication endpoints
-3. Health check endpoint not implemented
-4. Connection pooling not explicitly configured
+1. No rate limiting on authentication endpoints
+2. Health check endpoint not implemented
+3. Connection pooling not explicitly configured
 
 ## Next Steps
 1. Implement rate limiting for login endpoint
 2. Add health check endpoint
 3. Configure connection pooling for production
-4. Add integration tests for assets module
 
 ## Architecture Decisions (ADRs)
 - **Nested Routing**: Modules use aggregated routers for clean global routing

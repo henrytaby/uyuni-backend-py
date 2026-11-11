@@ -25,12 +25,12 @@ The application follows a **layered architecture** with clear separation of conc
 
 ### 1.2 Module Organization
 The project uses **Domain-Driven Design (DDD-lite)** with nested routing:
-- **Assets Module**: Fixed assets, areas, groups, statuses, institutions, acts
-- **Core Module**: Organizational units, positions, staff, users, dynamic catalogs
+- **Commerce Module**: Products, product masters, batches, sales, live baskets, investment rounds, categories, channels
+- **Core Module**: User accounts, authentication, RBAC, domain manifests
 - **Tasks Module**: Task management
 
 Additionally, the project implements a **Dynamic Modular Catalogs** system
-(`app/core/catalogs/` + domain providers in `app/modules/core/catalogs/`) that
+(`app/core/catalogs/` + domain providers in `app/modules/commerce/catalogs/`) that
 exposes `GET /api/catalogs/{name}` and `POST /api/catalogs/bulk` for efficient
 frontend selectbox population.
 
@@ -219,8 +219,7 @@ raise NotFoundException(detail="Resource not found")
 ### 3.4 Testing
 
 #### Issue 1: Limited Test Coverage
-- No integration tests for assets module
-- No API endpoint tests (only unit tests for permissions)
+- Need expanded integration tests for high-volume edge cases
 - Missing test for edge cases (concurrent updates, large datasets)
 
 #### Issue 2: In-Memory SQLite Limitations

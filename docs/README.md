@@ -10,7 +10,7 @@ Esta carpeta contiene la documentación del proyecto FastAPI actual (legacy):
   - `UBUNTU_VPS_DEPLOYMENT_GUIDE.md` (Guía de instalación y despliegue tradicional en VPS Ubuntu)
 - `COMMERCE_MODULE_GUIDE.md` (y suite completa en [`docs/commerce/`](./commerce/README.md))
 - `RBAC_GUIDE.md`, `AUTHENTICATION_GUIDE.md`, `ALEMBIC_GUIDE.md`, `AUDIT_GUIDE.md`
-- `ASSETS_MODULE_GUIDE.md`, `CORE_MODULE_GUIDE.md`, `QUERY_SYSTEM_GUIDE.md`
+- `CORE_MODULE_GUIDE.md`, `QUERY_SYSTEM_GUIDE.md`
 - `DEVELOPER_GUIDE.md`, `EXCEPTION_HANDLING_GUIDE.md`, `FRONTEND_AUTH_GUIDE.md`
 - `OBSERVABILITY_GUIDE.md`, `QUALITY_GUIDE.md`, `SOLID_GUIDE.md`, `TESTING_GUIDE.md`
 - `DESIGN_PATTERNS_GUIDE.md`, `CODE_STANDARDS_REVIEW.md`

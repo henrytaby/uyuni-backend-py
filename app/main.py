@@ -41,12 +41,13 @@ from app.core.routers import router as api_router
 configure_logging()
 
 description = """
-API de Gestión de Personal y Activos Fijos (ERP Lite).
+API Transaccional y ERP para Emprendimientos y Comercio (Nova Box Bolivia).
 
 Funciones:
-- Gestión Integral de Personal (Staff) y Unidades Organizacionales.
-- Administración y Control de Activos Fijos y Actas de Respaldo.
-- Arquitectura Modular Robusta con Auditoría y RBAC.
+- Gestión Integral de Comercio: SKUs, Fichas Maestras, Lotes y Ventas.
+- Control de Usuarios, Cuentas y Accesos Basados en Roles (RBAC).
+- Motor de Catálogos Dinámicos de Alto Rendimiento (Bulk Loader).
+- Arquitectura Modular Robusta con Auditoría CDC Transversal.
 """
 
 
@@ -81,79 +82,55 @@ app = FastAPI(
     openapi_tags=[
         {
             "name": "Auth",
-            "description": "Gestión de Autenticación, Roles y Permisos de Usuario.",
+            "description": "Autenticación, Tokens JWT, Roles y Sesión Activa.",
         },
         {
-            "name": "Tasks",
-            "description": "Sistema de gestión de actividades y tareas operativas.",
-        },
-        {
-            "name": "Core Staff - Personal",
-            "description": "Administración del capital humano "
-            "y datos maestros del personal.",
-        },
-        {
-            "name": "Core Staff - Org Units",
-            "description": "Gestión de la estructura organizacional "
-            "y unidades administrativas.",
-        },
-        {
-            "name": "Core Staff - Positions",
-            "description": "Definición y control de cargos y puestos de trabajo.",
-        },
-        {
-            "name": "Assets - Institutions",
-            "description": "Registro de entidades gubernamentales "
-            "y organizaciones externas.",
-        },
-        {
-            "name": "Assets - Areas",
-            "description": "Control de ubicaciones físicas "
-            "y áreas geográficas de inventario.",
-        },
-        {
-            "name": "Assets - Asset Groups",
-            "description": "Categorización lógica y contable "
-            "de los bienes del sistema.",
-        },
-        {
-            "name": "Assets - Asset Statuses",
-            "description": "Gestión de estados de conservación "
-            "y situación legal de activos.",
-        },
-        {
-            "name": "Assets - Acts",
-            "description": "Control documental de actas de asignación, "
-            "entrega y respaldo.",
-        },
-        {
-            "name": "Assets - Fixed Assets",
-            "description": "Gestión centralizada de Bienes de Uso, "
-            "códigos SAF y verificación física.",
+            "name": "Core - Users",
+            "description": "Cuentas de Usuario, Credenciales y Búsqueda.",
         },
         {
             "name": "Commerce - Products",
-            "description": "Catálogo de productos, SKUs NOV-XXX y stock.",
+            "description": "Catálogo de productos, SKUs NOV-XXX, stock y estados.",
+        },
+        {
+            "name": "Commerce - Product Masters",
+            "description": "Fichas maestras de productos, catálogo y especificaciones.",
         },
         {
             "name": "Commerce - Sales",
-            "description": "Punto de venta y transacciones atómicas.",
+            "description": "Punto de venta y transacciones atómicas multicanal.",
         },
         {
             "name": "Commerce - Batches & Boxes",
-            "description": "Lotes de importación y análisis de costos.",
+            "description": "Lotes de importación, costos y punto de equilibrio.",
+        },
+        {
+            "name": "Commerce - Categories",
+            "description": "Taxonomía oficial de categorías de productos.",
+        },
+        {
+            "name": "Commerce - Sales Channels",
+            "description": "Canales comerciales de venta (Tienda, WhatsApp, etc.).",
+        },
+        {
+            "name": "Commerce - Live Baskets",
+            "description": "Canastas estratégicas para transmisiones en vivo.",
         },
         {
             "name": "Commerce - Investment Rounds",
             "description": "Control de rondas de inversión y retorno de capital.",
         },
         {
-            "name": "Commerce - Categories",
-            "description": "Taxonomía oficial de categorías Nova Box.",
+            "name": "Global - Catalogs",
+            "description": "Catálogos Dinámicos Modulares y Carga Masiva (Bulk).",
         },
         {
-            "name": "Commerce - Live Baskets",
-            "description": "Canastas estratégicas para transmisiones en vivo.",
+            "name": "Tasks",
+            "description": "Sistema de gestión de actividades y tareas operativas.",
+        },
+        {
+            "name": "Health",
+            "description": "Monitoreo y verificación del estado del servidor.",
         },
     ],
     openapi_url="/openapi.json",

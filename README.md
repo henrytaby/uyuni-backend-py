@@ -21,7 +21,7 @@
 
 ---
 
-Bienvenido a **Uyuni Backend**, una plataforma transaccional de nivel empresarial construida con **FastAPI**, **Python 3.14**, **SQLModel** y **PostgreSQL**. Diseñada bajo los principios de **Clean Architecture** y **DDD-Lite (Domain-Driven Design)**, incorpora autenticación JWT con rotación de tokens, control de acceso granular basado en roles (**RBAC** con personificación dinámica), auditoría transversal de cambios de datos (**CDC**), catálogos dinámicos masivos y dominios transaccionales para **Gestión de Personal**, **Control de Activos Fijos**, **Comercio Electrónico / Nova Box Bolivia** y **Gestión Operativa de Tareas**.
+Bienvenido a **Uyuni Backend**, una plataforma transaccional de nivel empresarial construida con **FastAPI**, **Python 3.14**, **SQLModel** y **PostgreSQL**. Diseñada bajo los principios de **Clean Architecture** y **DDD-Lite (Domain-Driven Design)**, incorpora autenticación JWT con rotación de tokens, control de acceso granular basado en roles (**RBAC** con personificación dinámica), auditoría transversal de cambios de datos (**CDC**), catálogos dinámicos masivos y dominios transaccionales para **Comercio Electrónico / Nova Box Bolivia**, **Gestión de Usuarios y Accesos** y **Gestión Operativa de Tareas**.
 
 ---
 
@@ -81,14 +81,14 @@ flowchart TB
             C_R["Routers (SKUs, Lotes)"] --> C_S["Service (Ventas, Piso Mínimo)"] --> C_RP["Commerce Repositories"]
         end
 
-        subgraph Core["👥 Módulo Core (Personal & Estructura)"]
+        subgraph Core["👥 Módulo Core (Seguridad, Usuarios & Configuración)"]
             direction LR
-            U_R["Routers (Staff, Users)"] --> U_S["Service (Roles & Catálogos)"] --> U_RP["Core Repositories"]
+            U_R["Routers (Users, Auth)"] --> U_S["Service (Roles & Manifests)"] --> U_RP["Core Repositories"]
         end
 
-        subgraph Assets["🏢 Módulo Assets (Activos Fijos)"]
+        subgraph Tasks["📋 Módulo Tasks (Operaciones)"]
             direction LR
-            A_R["Routers (SAF, Bienes)"] --> A_S["Service (Asignación, Actas)"] --> A_RP["Assets Repositories"]
+            T_R["Routers (Tasks)"] --> T_S["Service (Seguimiento)"] --> T_RP["Task Repository"]
         end
     end
 
@@ -100,7 +100,7 @@ flowchart TB
 
     subgraph DataPersistence["💾 Capa de Persistencia & Auditoría"]
         ORM["SQLModel / SQLAlchemy 2.0 ORM"]
-        DB[("PostgreSQL 16 (Engine Transaccional)")]
+        DB[("PostgreSQL 16 (19 Tablas Singulares)")]
         CDC["SQLAlchemy Event Hooks (CDC Audit Logs)"]
     end
 
@@ -112,12 +112,12 @@ flowchart TB
 
     Commerce -.-> BASE_REPO
     Core -.-> BASE_REPO
-    Assets -.-> BASE_REPO
-    Core -.-> CATALOG_REG
+    Tasks -.-> BASE_REPO
+    Commerce -.-> CATALOG_REG
 
     C_RP --> ORM
     U_RP --> ORM
-    A_RP --> ORM
+    T_RP --> ORM
 
     ORM --> DB
     DB -.->|Captura CDC| CDC
@@ -130,7 +130,7 @@ flowchart TB
     classDef gatewayNode fill:#002b49,stroke:#00b4d8,stroke-width:2px,color:#ffffff,font-weight:bold;
     classDef commerceNode fill:#003865,stroke:#00c2cb,stroke-width:2px,color:#ffffff;
     classDef coreNode fill:#004889,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
-    classDef assetsNode fill:#0f172a,stroke:#67e8f9,stroke-width:2px,color:#ffffff;
+    classDef tasksNode fill:#0f172a,stroke:#67e8f9,stroke-width:2px,color:#ffffff;
     classDef sharedNode fill:#f8fafc,stroke:#00b4d8,stroke-width:1.5px,color:#003865;
     classDef dbNode fill:#002b49,stroke:#00c2cb,stroke-width:2.5px,color:#ffffff,font-weight:bold;
 
@@ -138,7 +138,7 @@ flowchart TB
     class API,AUTH,AUDIT_MW gatewayNode;
     class C_R,C_S,C_RP commerceNode;
     class U_R,U_S,U_RP coreNode;
-    class A_R,A_S,A_RP assetsNode;
+    class T_R,T_S,T_RP tasksNode;
     class BASE_REPO,CATALOG_REG,EXC_HANDLER sharedNode;
     class ORM,DB,CDC dbNode;
 ```
@@ -164,17 +164,13 @@ Plataforma transaccional para control de inventarios, lotes y facturación de ve
 * **Ventas Atómicas (`sales`)**: Registro seguro de transacciones con métodos de pago bolivianos (QR Simple, Efectivo, Flota/Transferencia), cálculo automático de ganancias y cambio de estado a `vendido` en la misma transacción.
 * **Catálogo Público Cacheado (`api/public/catalog`)**: Endpoint de alta velocidad para alimentar la PWA de clientes en tiempo real sin reconstrucción de frontend.
 
-### 2. `core` (Gestión de Personal & Seguridad)
-* **Staff & Estructura Organizacional**: Funcionarios, unidades organizacionales y cargos jerárquicos.
-* **Usuarios y Roles**: Usuarios del sistema, asignación de roles y control de acceso RBAC.
-* **Catálogos Dinámicos**: Registro modular de selectores globales para el frontend.
+### 2. `core` (Seguridad, Usuarios & Configuración)
+* **Usuarios y Cuentas**: Gestión de cuentas de usuario, verificación, reseteo y lockout defensivo.
+* **Control de Acceso (RBAC)**: Roles (`role`), módulos (`module`), grupos de módulos (`module_group`) y permisos de acción (`role_module`).
+* **Manifiestos Descentralizados**: Sincronización declarativa e idempotente de menús y permisos de cada dominio.
 
-### 3. `assets` (Control de Activos Fijos)
-* **Inventario SAF**: Registro detallado de bienes patrimoniales, códigos SAF, marcas, modelos y series.
-* **Ubicación & Custodios**: Control de áreas físicas, estados de conservación y actas de entrega/devolución.
-
-### 4. `tasks` (Seguimiento Operativo)
-* Gestión y monitoreo de tareas de mantenimiento, operativas y administrativas.
+### 3. `tasks` (Seguimiento Operativo)
+* Gestión y monitoreo de tareas operativas y administrativas.
 
 ---
 
@@ -246,8 +242,8 @@ venv/bin/alembic upgrade head
 ### 6. Poblar Datos Iniciales (Seeds)
 Ejecuta los scripts de inicialización para crear los módulos, roles y el usuario administrador:
 ```bash
-venv/bin/python -m seeds.seed_create_modules
-venv/bin/python -m seeds.seed_users
+venv/bin/python seeds/seed_create_modules.py
+venv/bin/python seeds/seed_users.py
 ```
 
 *Credenciales por defecto de desarrollo: `admin` / `admin123`*

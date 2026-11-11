@@ -129,8 +129,8 @@ erDiagram
 > Todas las tablas heredan de `BaseModel` y `AuditMixin`, lo que significa que contienen automáticamente las siguientes 4 columnas de auditoría:
 > - `created_at` (TIMESTAMP): Fecha y hora UTC de creación del registro.
 > - `updated_at` (TIMESTAMP): Fecha y hora UTC de la última modificación.
-> - `created_by_id` (UUID, FK -> `users.id`): Usuario que originó el registro.
-> - `updated_by_id` (UUID, FK -> `users.id`): Usuario que realizó el último cambio.
+> - `created_by_id` (UUID, FK -> `user.id`): Usuario que originó el registro.
+> - `updated_by_id` (UUID, FK -> `user.id`): Usuario que realizó el último cambio.
 
 ---
 

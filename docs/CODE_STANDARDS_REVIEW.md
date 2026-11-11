@@ -28,14 +28,14 @@ Es casi obligatorio en proyectos modernos (FastAPI lo exige).
 
 ## 2. Auditoría del Proyecto (`app/modules/`)
 
-He revisado los módulos actuales (`assets`, `core`, `tasks`) y este es el reporte:
+He revisado los módulos actuales (`commerce`, `core`, `tasks`) y este es el reporte:
 
 ### ✅ Puntos Positivos (Cumplimiento)
 1.  **Estructura Modular**: Se respeta estrictamente `routers.py`, `service.py`, `repository.py`, `models.py`, `schemas.py`. Esto es excelente y cumple con estándares enterprise.
 2.  **Type Hinting**: El uso de Pydantic y SQLModel fuerza tipos estrictos en casi todo el código.
 3.  **Naming Conventions**:
-    *   Variables y funciones usan `snake_case` correctamente (`create_staff`, `user_id`).
-    *   Clases usan `PascalCase` (`StaffService`, `AssetService`).
+    *   Variables y funciones usan `snake_case` correctamente (`create_product`, `user_id`).
+    *   Clases usan `PascalCase` (`ProductService`, `SaleService`).
 4.  **Patrón Repositorio**: Se implementa correctamente la separación de la capa de datos.
 
 ### ⚠️ Hallazgos y Correcciones (Deuda Técnica)

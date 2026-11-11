@@ -1,130 +1,174 @@
-# Core Module Guide - Global Staff & Org Structure
+# Core Module Guide - Security, Users & Domain Manifests
 
-Este documento describe la arquitectura, el modelo de datos y la implementación del módulo **Core** del sistema, encargado de gestionar la estructura organizacional y el personal global.
+Este documento describe la arquitectura, el modelo de datos y la implementación del módulo **Core** del sistema, encargado de la gestión de usuarios, seguridad, control de acceso y manifiestos de dominio para emprendimientos y plataformas comerciales.
+
+---
 
 ## 1. Arquitectura Modular
 
-El módulo Core implementa el patrón de **Nested Routing** y **Aplanamiento Estructural** para maximizar la mantenibilidad.
+El módulo Core implementa el patrón de **Arquitectura Modular DDD-Lite** con soporte para manifiestos declarativos:
 
 ### Estructura de Archivos
 ```text
 app/modules/core/
+├── __init__.py
+├── constants.py        # CoreModuleSlug (RBAC slugs: USERS = "users")
+├── manifest.py         # Manifiesto declarativo del dominio Core (Grupo: Configuración)
 ├── routers.py          # Agregador raíz (Nested Router)
-├── constants.py        # CoreModuleSlug (RBAC slugs)
-├── org_units/          # Unidades Organizacionales
-│   ├── models.py       # Modelo OrgUnit (Jerárquico)
-│   ├── repository.py
-│   ├── service.py
-│   ├── schemas.py
-│   └── routers.py      # /core/org-units
-├── positions/          # Cargos / Ítems
-│   ├── models.py       # Modelo StaffPosition
-│   ├── repository.py
-│   ├── service.py
-│   ├── schemas.py
-│   └── routers.py      # /core/positions
-├── staff/              # Personal (Funcionarios)
-│   ├── models.py       # Modelo Staff
-│   ├── repository.py   # Soporte para Búsqueda Global
-│   ├── service.py
-│   ├── schemas.py
-│   └── routers.py      # /core/staff
-└── users/              # Gestión de Usuarios (CRUD)
-    ├── models.py       # Reexporta User de app/models
-    ├── repository.py
-    ├── service.py      # UserService
+└── users/              # Gestión de Cuentas de Usuario (CRUD)
+    ├── __init__.py
+    ├── repository.py   # Repositorio UserRepository heredando de BaseRepository[User]
+    ├── service.py      # UserService (Hashing, validaciones de email/username único)
     ├── schemas.py      # UserCreate, UserRead, UserReadDetailed, UserUpdate
-    └── routers.py      # /core/users
+    └── routers.py      # Endpoints RESTful (/core/users)
 ```
 
 ---
 
-## 2. Diagrama Entidad-Relación (ERD)
+## 2. Diagrama Entidad-Relación (Estándar Singular)
+
+Todas las entidades de base de datos están normalizadas estrictamente bajo la **Singular Table Naming Convention**:
 
 ```mermaid
 erDiagram
-    OrgUnit ||--o{ OrgUnit : "parent_id"
-    OrgUnit ||--o{ Staff : "org_unit_id"
-    StaffPosition ||--o{ Staff : "position_id"
-    
-    OrgUnit {
-        uuid id PK
-        int external_id
-        string name
-        string acronym
-        string type "MANAGEMENT / DEPARTMENT"
-        uuid parent_id FK
-    }
+    user ||--o{ user_role : "assigned"
+    role ||--o{ user_role : "defines"
+    role ||--o{ role_module : "grants"
+    module ||--o{ role_module : "protected_resource"
+    module_group ||--o{ module : "categorizes"
+    user ||--o{ user_log_login : "logs"
 
-    StaffPosition {
+    user {
         uuid id PK
-        int external_id
-        string name
-        string level
-        string position_type
-    }
-
-    Staff {
-        uuid id PK
-        int external_id
-        string first_name
-        string last_name_1
-        string last_name_2
-        string full_name
-        date birth_date
-        string document_number UK
+        string username UK
         string email UK
-        uuid org_unit_id FK
-        uuid position_id FK
-        string status "INCORPORADO / CESANTE"
+        string first_name
+        string last_name
+        bool is_verified
+        bool is_active
+        bool is_superuser
+        string password_hash
+        int failed_login_attempts
+        datetime locked_until
+        datetime last_login_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    role {
+        uuid id PK
+        string name UK
+        string slug UK
+        string description
+        bool is_active
+        string icon
+        int sort_order
+    }
+
+    user_role {
+        uuid id PK
+        uuid user_id FK
+        string role_slug FK
+        bool is_active
+    }
+
+    module_group {
+        uuid id PK
+        string name UK
+        string slug UK
+        string description
+        string icon
+        int sort_order
+        bool is_active
+    }
+
+    module {
+        uuid id PK
+        string name UK
+        string slug UK
+        string group_slug FK
+        string route
+        string icon
+        int sort_order
+        bool is_active
+    }
+
+    role_module {
+        uuid id PK
+        string role_slug FK
+        string module_slug FK
+        bool can_create
+        bool can_update
+        bool can_delete
+        bool scope_all
+        bool is_active
     }
 ```
 
 ---
 
-## 3. Características Avanzadas
+## 3. Manifiestos de Dominio y Sincronización Automática
 
-### Soporte para PrimeNG DataTables
-Todos los submódulos de Core soportan de forma nativa los requerimientos del frontend PrimeNG:
-1. **Paginación en Servidor**: Parámetros `offset` y `limit`.
-2. **Ordenamiento Dinámico**: Usando `sort_by` y `sort_order` sobre cualquier columna del modelo.
-3. **Conteo unificado**: Endpoint `/count` para calcular la paginación global.
+El módulo Core no requiere inserciones manuales en SQL para sus menús de navegación. Define su estructura en `manifest.py`:
 
-### Búsqueda Global (Global Search)
-El repositorio de `Staff` incluye un método `search` optimizado con `col().ilike()` para filtrar simultáneamente por:
-- Nombre Completo
-- Número de Documento (CI)
-- Correo Electrónico
-
----
-
-## 4. Guía para el Desarrollador
-
-### Cómo añadir un nuevo submódulo a Core
-1. Crea la carpeta del submódulo bajo `app/modules/core/`.
-2. Implementa los componentes estándar (`models`, `repository`, `service`, `schemas`, `routers`).
-3. **Importante**: Registra el nuevo router en `app/modules/core/routers.py`:
 ```python
-from app.modules.core.new_module import routers as new_module_router
-router.include_router(new_module_router.router)
+core_manifest = DomainManifest(
+    domain_name="core",
+    groups=[
+        GroupDefinition(
+            name="Configuración",
+            slug="configuration",
+            description="Gestión de Cuentas y Accesos de Usuario",
+            sort_order=1,
+            icon="pi pi-cog",
+            is_active=True,
+            modules=[
+                ModuleDefinition(
+                    name="Usuarios",
+                    slug="users",
+                    description="Gestión de Cuentas de Usuario",
+                    group_slug="configuration",
+                    sort_order=1,
+                    icon="pi pi-user",
+                    route="users",
+                    is_active=True,
+                ),
+            ],
+        ),
+    ],
+)
 ```
 
-### Convenciones de Naming (PEP8)
-Al importar routers como alias en el agregador de Core, utiliza siempre minúsculas para cumplir con los estándares de calidad del proyecto y evitar alertas en el IDE.
-- Correcto: `import routers as staff_router`
-- Incorrecto: `import routers as StaffRouter`
+Al iniciar el servidor o ejecutar el script `seeds/seed_create_modules.py`, el `ManifestRegistry` sincroniza de forma idempotente:
+1. Crea o actualiza el grupo `configuration` en la tabla `module_group`.
+2. Crea o actualiza el módulo `users` en la tabla `module`.
+3. Sincroniza los permisos iniciales para el rol `admin` en `role_module`.
 
 ---
 
-> [!NOTE]
-> Este módulo utiliza `TYPE_CHECKING` para resolver referencias circulares entre modelos jerárquicos y relaciones cruzadas, manteniendo la compatibilidad estricta con **MyPy**.
+## 4. Soporte para DataTables del Frontend (PrimeNG)
+
+El submódulo `/core/users` soporta de forma nativa la integración con tablas avanzadas:
+1. **Paginación en Servidor**: Parámetros `skip` y `limit`.
+2. **Ordenamiento Dinámico**: Usando `sort_by` y `sort_order` sobre cualquier columna.
+3. **Búsqueda Global Polimórfica**: Filtrado insensible a mayúsculas/minúsculas por `username`, `email`, `first_name`, `last_name`.
+4. **Endpoint de Conteo**: `/core/users/count` para la paginación reactiva.
+
+---
 
 ## 5. Integración RBAC
-Los submódulos de Core utilizan constantes específicas para su protección granular:
-- **Staff**: CoreModuleSlug.STAFF (slug: `core_staff`).
-- **Org Units**: CoreModuleSlug.ORG_UNIT (slug: `core_org_unit`).
-- **Positions**: CoreModuleSlug.POSITIONS (slug: `core_positions`).
-- **Users**: CoreModuleSlug.USERS (slug: `core_users`).
 
-> [!NOTE]
-> El módulo Core también incluye un submódulo `catalogs/` que no expone rutas HTTP propias sino que auto-registra proveedores de catálogos dinámicos (gerencias, departamentos) en el `global_registry`. Ver `docs/developer_guide/02_sistema_catalogos_dinamicos.md` para más detalles.
+Los endpoints de usuarios están protegidos a través de la dependencia de permisos:
+
+```python
+from app.auth.permissions import PermissionChecker, PermissionAction
+from app.modules.core.constants import CoreModuleSlug
+
+@router.get(
+    "",
+    dependencies=[Depends(PermissionChecker(CoreModuleSlug.USERS, PermissionAction.READ))],
+    response_model=List[UserReadDetailed],
+)
+def get_users(...):
+    ...
+```

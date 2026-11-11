@@ -119,35 +119,72 @@ Para cada empresa se utiliza un correo corporativo dedicado (ej: `novabo.app@gma
 ### Paso 4: Inicializar Estructura y Usuario Admin desde tu Terminal
 Desde tu máquina de desarrollo, apunta temporalmente a la base de datos del nuevo cliente para construir las tablas y crear su usuario administrador:
 
+#### 1. (Opcional) Resetear Esquema si se está Actualizando una Base de Datos Existente
+Si la base de datos ya tenía tablas previas o necesitas empezar desde cero:
 ```bash
-# 1. Crear todas las tablas en la base de datos del cliente
+DATABASE_URL="cadena_de_neon_del_cliente" venv/bin/python -c '
+from sqlmodel import create_engine, text
+import os
+engine = create_engine(os.environ["DATABASE_URL"])
+with engine.connect() as conn:
+    print("Reseteando esquema public...")
+    conn.execute(text("DROP SCHEMA public CASCADE;"))
+    conn.execute(text("CREATE SCHEMA public;"))
+    conn.commit()
+print("✅ Base de datos reseteada limpiamente!")
+'
+```
+
+#### 2. Crear todas las tablas en la base de datos del cliente (Alembic)
+Aplica las migraciones para generar las 19 tablas en singular (`user`, `role`, `user_role`, `commerce_product`, etc.):
+```bash
 DATABASE_URL="cadena_de_neon_del_cliente" venv/bin/alembic upgrade head
+```
 
-# 2. Poblar módulos, roles y menús de la interfaz
-DATABASE_URL="cadena_de_neon_del_cliente" venv/bin/python -m seeds.seed_create_modules
+#### 3. Poblar módulos, roles y menús de la interfaz
+```bash
+DATABASE_URL="cadena_de_neon_del_cliente" venv/bin/python seeds/seed_create_modules.py
+```
 
-# 3. Dar de alta al administrador de la empresa con contraseña segura
+#### 4. Dar de alta al administrador de la empresa con contraseña segura y rol vinculado
+Ejecuta el script de alta directa con el correo y contraseña personalizados del cliente:
+```bash
 DATABASE_URL="cadena_de_neon_del_cliente" venv/bin/python -c '
 from sqlmodel import Session, create_engine, select
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.auth.utils import get_password_hash
+from app.util.datetime import get_current_time
 import os
 
 engine = create_engine(os.environ["DATABASE_URL"])
 with Session(engine) as s:
-    if not s.exec(select(User).where(User.username == "admin")).first():
+    admin = s.exec(select(User).where(User.username == "admin")).first()
+    if not admin:
         admin = User(
             username="admin",
-            email="admin@novabox.bo",
-            password_hash=get_password_hash("PasswordSuperSeguro2026!"),
+            email="admin@novabox.bo",  # Reemplazar con el correo corporativo del cliente
+            password_hash=get_password_hash("PasswordSuperSeguro2026!"),  # Reemplazar con clave segura
             is_superuser=True,
-            is_active=True
+            is_verified=True,
+            is_active=True,
+            created_at=get_current_time(),
+            updated_at=get_current_time()
         )
         s.add(admin)
         s.commit()
+        s.refresh(admin)
         print("✅ Superusuario creado exitosamente para la empresa!")
+
+    # Asegurar vinculación formal del rol admin en user_role
+    link = s.exec(select(UserRole).where(UserRole.user_id == admin.id, UserRole.role_slug == "admin")).first()
+    if not link:
+        s.add(UserRole(user_id=admin.id, role_slug="admin", is_active=True))
+        s.commit()
+        print("✅ Rol admin vinculado correctamente en user_role!")
 '
 ```
+
+*(Para entornos de prueba o desarrollo local rápido, también puedes usar `DATABASE_URL="..." venv/bin/python seeds/seed_users.py` con usuario `admin` / `admin123`).*
 
 ---
 

@@ -8,7 +8,7 @@ Esta guía está diseñada didácticamente para que **desarrolladores de todos l
 
 ## 🎯 ¿Qué problema resuelve?
 
-En sistemas empresariales complejos, un solo formulario de registro puede requerir cargar múltiples listados auxiliares (ej. *gerencias, departamentos, puestos, estados de activos, etc.*). 
+En sistemas empresariales complejos, un solo formulario de registro puede requerir cargar múltiples listados auxiliares (ej. *categorías de productos, canales de venta, métodos de pago, etc.*). 
 
 *   **El Enfoque Tradicional (Malo):** El frontend realiza 10 llamadas HTTP individuales concurrentes a 10 endpoints distintos. Esto satura el pool de conexiones, incrementa la latencia de carga y genera un código de enrutamiento repetitivo (*boilerplate*) en el backend.
 *   **Nuestro Enfoque Híbrido (Óptimo):** Centralizamos las llamadas de red mediante un **único punto de entrada global** que expone consultas individuales (`GET /api/catalogs/{name}`) y consultas masivas en lote (`POST /api/catalogs/bulk`). Con una sola petición HTTP, el frontend puede poblar un formulario completo de golpe, delegando la obtención de datos a proveedores especializados en el backend.
@@ -17,9 +17,9 @@ En sistemas empresariales complejos, un solo formulario de registro puede requer
 
 ## 🏛️ Diseño Arquitectónico (Para Seniors)
 
-El sistema se basa en el patrón de **Registro Desacoplado con Auto-registro** (Decoupled Registration with Self-Registration). Cada módulo de dominio (Core, Assets, Tasks, etc.) es el dueño absoluto de sus consultas de catálogos y se encarga de registrarlas de manera autónoma.
+El sistema se basa en el patrón de **Registro Desacoplado con Auto-registro** (Decoupled Registration with Self-Registration). Cada módulo de dominio (Commerce, Tasks, etc.) es el dueño absoluto de sus consultas de catálogos y se encarga de registrarlas de manera autónoma.
 
-### Mapa de Capas del Sistema (Corregido)
+### Mapa de Capas del Sistema
 
 ```mermaid
 graph TD
@@ -29,9 +29,9 @@ graph TD
     GlobalRouter -->|"2. Exec Query"| Provider["CatalogProvider Implementation"]
     Registry -.->|"Stores Instances of"| Provider
     
-    subgraph CoreDomain ["Domain Module - Core Domain"]
-        DomainModule["app/modules/core/catalogs/__init__.py"] -->|"Registers"| Gerencias["GerenciasProvider"]
-        DomainModule -->|"Registers"| Departamentos["DepartamentosProvider"]
+    subgraph CommerceDomain ["Domain Module - Commerce Domain"]
+        DomainModule["app/modules/commerce/catalogs/__init__.py"] -->|"Registers"| Categories["CommerceCategoriesProvider"]
+        DomainModule -->|"Registers"| Channels["CommerceSalesChannelsProvider"]
     end
 ```
 
@@ -59,27 +59,27 @@ Si te preguntas *"¿cómo sabe el backend qué clase de Python ejecutar cuando m
 
 Imagina que el sistema tiene una libreta de contactos en memoria llamada `global_registry`. Esta libreta asocia un **nombre de catálogo (String)** con una **instancia del proveedor (Clase Python)**.
 
-1. **El Registro en memoria (Startup):** Al arrancar el servidor, el archivo `app/modules/core/catalogs/__init__.py` inscribe las relaciones:
+1. **El Registro en memoria (Startup):** Al arrancar el servidor, el archivo `app/modules/commerce/catalogs/__init__.py` inscribe las relaciones:
    ```python
-   global_registry.register("gerencias", GerenciasProvider())
-   global_registry.register("departamentos", DepartamentosProvider())
+   global_registry.register("commerce_categories", CommerceCategoriesProvider())
+   global_registry.register("commerce_sales_channels", CommerceSalesChannelsProvider())
    ```
    Nuestra "libreta de contactos" (`global_registry._providers`) queda guardada en memoria exactamente así:
    ```python
    {
-       "gerencias": GerenciasProvider(),
-       "departamentos": DepartamentosProvider()
+       "commerce_categories": CommerceCategoriesProvider(),
+       "commerce_sales_channels": CommerceSalesChannelsProvider()
    }
    ```
 
 2. **El viaje del JSON en el Router:** Cuando envías una petición en lote (Bulk) con este cuerpo JSON:
    ```json
    {
-     "gerencias": {},
-     "departamentos": {"gerencia_id": "UUID-X"}
+     "commerce_categories": {},
+     "commerce_sales_channels": {}
    }
    ```
-   FastAPI recibe este JSON y lo convierte en un diccionario de Python. El enrutador global de Core en `app/core/catalogs/routers.py` recorre este diccionario llave por llave:
+   FastAPI recibe este JSON y lo convierte en un diccionario de Python. El enrutador global en `app/core/catalogs/routers.py` recorre este diccionario llave por llave:
    ```python
    for catalog_name, params in request_data.items():
        provider = global_registry.get_provider(catalog_name)
@@ -87,10 +87,10 @@ Imagina que el sistema tiene una libreta de contactos en memoria llamada `global
    ```
 
 3. **Resolución dinámica:**
-   * **Iteración 1:** Toma la llave `"gerencias"`. Llama a `global_registry.get_provider("gerencias")` y obtiene el objeto `GerenciasProvider()`. Ejecuta su método `.get_items(session)` y guarda los resultados.
-   * **Iteración 2:** Toma la llave `"departamentos"`. Llama a `global_registry.get_provider("departamentos")` y obtiene el objeto `DepartamentosProvider()`. Ejecuta su método `.get_items(session, gerencia_id="UUID-X")` y guarda los resultados.
+   * **Iteración 1:** Toma la llave `"commerce_categories"`. Llama a `global_registry.get_provider("commerce_categories")` y obtiene el objeto `CommerceCategoriesProvider()`. Ejecuta su método `.get_items(session)` y guarda los resultados.
+   * **Iteración 2:** Toma la llave `"commerce_sales_channels"`. Llama a `global_registry.get_provider("commerce_sales_channels")` y obtiene el objeto `CommerceSalesChannelsProvider()`. Ejecuta su método `.get_items(session)` y guarda los resultados.
 
-4. **Control de Errores e Inexistencias:** ¿Qué pasa si mandas por error una llave inexistente como `"gerencias2"`? El método `get_provider("gerencias2")` valida si la clave existe en el diccionario en memoria. Al no encontrarla, lanza de forma segura una excepción `NotFoundException` que responde al cliente con un HTTP 404: `"Catalog 'gerencias2' not found"` evitando errores de ejecución imprevistos.
+4. **Control de Errores e Inexistencias:** ¿Qué pasa si mandas por error una llave inexistente como `"categories_invalid"`? El método `get_provider("categories_invalid")` valida si la clave existe en el diccionario en memoria. Al no encontrarla, lanza de forma segura una excepción `NotFoundException` que responde al cliente con un HTTP 404: `"Catalog 'categories_invalid' not found"` evitando errores de ejecución imprevistos.
 
 ---
 
@@ -102,13 +102,13 @@ Cuando inicias FastAPI, el servidor importa los routers de los módulos. Al impo
 sequenceDiagram
     participant App as FastAPI Startup
     participant R as Core Router
-    participant I as app/modules/core/catalogs/__init__.py
+    participant I as app/modules/commerce/catalogs/__init__.py
     participant Reg as global_registry (Singleton)
     
-    App->>R: Import app.modules.core.routers
-    R->>I: Import app.modules.core.catalogs (Trigger self-registration)
-    I->>Reg: register("gerencias", GerenciasProvider())
-    I->>Reg: register("departamentos", DepartamentosProvider())
+    App->>R: Import app.modules.commerce.routers
+    R->>I: Import app.modules.commerce.catalogs (Trigger self-registration)
+    I->>Reg: register("commerce_categories", CommerceCategoriesProvider())
+    I->>Reg: register("commerce_sales_channels", CommerceSalesChannelsProvider())
     Reg-->>I: Guardados en diccionario interno
     I-->>R: Registro dinámico completado
 ```
@@ -123,11 +123,11 @@ sequenceDiagram
     participant Reg as global_registry
     participant DB as PostgreSQL Database
     
-    Client->>Route: GET /api/catalogs/departamentos?gerencia_id=UUID-X
-    Route->>Reg: get_provider("departamentos")
-    Reg-->>Route: Retorna la instancia DepartamentosProvider
-    Route->>Route: Invoca get_items(session, gerencia_id=UUID-X)
-    Route->>DB: SELECT id, name FROM core_org_unit WHERE parent_id = UUID-X
+    Client->>Route: GET /api/catalogs/commerce_categories
+    Route->>Reg: get_provider("commerce_categories")
+    Reg-->>Route: Retorna la instancia CommerceCategoriesProvider
+    Route->>Route: Invoca get_items(session)
+    Route->>DB: SELECT id, name FROM commerce_category WHERE is_active = true
     DB-->>Route: Retorna registros SQL
     Route-->>Client: HTTP 200 list[CatalogItemSchema]
 ```
@@ -144,7 +144,7 @@ sequenceDiagram
     participant Reg as global_registry
     participant DB as PostgreSQL Database
     
-    Client->>Route: POST con {"gerencias": {}, "departamentos": {"gerencia_id": UUID-X}}
+    Client->>Route: POST con {"commerce_categories": {}, "commerce_sales_channels": {}}
     loop Por cada elemento del JSON recibido
         Route->>Reg: get_provider(nombre_catalogo)
         Reg-->>Route: Retorna el Provider correspondiente
@@ -197,31 +197,31 @@ Abre el constructor de catálogos de tu módulo de dominio e inscribe tu clase e
 ```python
 from app.core.catalogs.registry import global_registry
 from app.modules.core.catalogs.providers import (
-    DepartamentosProvider,
-    GerenciasProvider,
-    CargosProvider,  # 1. Importas tu proveedor
+    CommerceCategoriesProvider,
+    CommerceSalesChannelsProvider,
+    CommercePaymentMethodsProvider,  # 1. Importas tu proveedor
 )
 
-# 2. Lo agregas al registry global asignándole un identificador de texto único ("cargos")
-global_registry.register("gerencias", GerenciasProvider())
-global_registry.register("departamentos", DepartamentosProvider())
-global_registry.register("cargos", CargosProvider())  # <-- ¡Agregado!
+# 2. Lo agregas al registry global asignándole un identificador de texto único
+global_registry.register("commerce_categories", CommerceCategoriesProvider())
+global_registry.register("commerce_sales_channels", CommerceSalesChannelsProvider())
+global_registry.register("commerce_payment_methods", CommercePaymentMethodsProvider())  # <-- ¡Agregado!
 ```
 
 ### Paso 3: Disparar el Auto-registro
 Asegúrate de que el router agregador del módulo importe silenciosamente el paquete de catálogos para que Python ejecute la carga de `__init__.py` al levantar el servidor.
 
-*Ruta:* [app/modules/core/routers.py](../../app/modules/core/routers.py)
+*Ruta:* [app/modules/commerce/routers.py](../../app/modules/commerce/routers.py)
 
 ```python
 from fastapi import APIRouter
 
 # Importación silenciosa indispensable
-import app.modules.core.catalogs  # noqa: F401
+import app.modules.commerce.catalogs  # noqa: F401
 ...
 ```
 
-¡Eso es todo! Sin tocar controladores de red, código HTTP ni validaciones de rutas, tu catálogo `"cargos"` ya está expuesto en los endpoints globales.
+¡Eso es todo! Sin tocar controladores de red, código HTTP ni validaciones de rutas, tu catálogo ya está expuesto en los endpoints globales.
 
 ---
 
@@ -230,16 +230,16 @@ import app.modules.core.catalogs  # noqa: F401
 Siempre debes agregar pruebas para asegurar la estabilidad de la API. Escribe tu caso de prueba dentro de [test_catalogs.py](../../tests/test_catalogs.py):
 
 ```python
-def test_get_cargos_success(client: TestClient, superuser_token_headers: dict):
+def test_get_commerce_categories_success(client: TestClient, superuser_token_headers: dict):
     # Probamos la consulta individual (GET)
-    response = client.get("/api/catalogs/cargos", headers=superuser_token_headers)
+    response = client.get("/api/catalogs/commerce_categories", headers=superuser_token_headers)
     assert response.status_code == 200
     
     # Probamos la consulta masiva (POST Bulk)
-    payload = {"cargos": {}}
+    payload = {"commerce_categories": {}}
     response = client.post("/api/catalogs/bulk", json=payload, headers=superuser_token_headers)
     assert response.status_code == 200
-    assert "cargos" in response.json()
+    assert "commerce_categories" in response.json()
 ```
 
 Para correr las pruebas locales:
@@ -252,13 +252,13 @@ venv/bin/pytest tests/test_catalogs.py
 ## 📋 Ejemplos de Intercambio de Datos (REST API)
 
 ### 1. Consulta GET Simple
-*   **Request:** `GET /api/catalogs/gerencias`
+*   **Request:** `GET /api/catalogs/commerce_categories`
 *   **Response (HTTP 200):**
     ```json
     [
       {
         "value": "019e2c7a-cc93-73bd-b877-623043fe07ef",
-        "label": "GERENCIA REGIONAL POTOSÍ",
+        "label": "Smartphones & Accesorios",
         "extra": null
       }
     ]
@@ -269,23 +269,21 @@ venv/bin/pytest tests/test_catalogs.py
 *   **Request Body:**
     ```json
     {
-      "gerencias": {},
-      "departamentos": {
-        "gerencia_id": "019e2c7a-cc93-73bd-b877-623043fe07ef"
-      }
+      "commerce_categories": {},
+      "commerce_sales_channels": {}
     }
     ```
 *   **Response (HTTP 200):**
     ```json
     {
-      "gerencias": [
+      "commerce_categories": [
         {
           "value": "019e2c7a-cc93-73bd-b877-623043fe07ef",
-          "label": "GERENCIA REGIONAL POTOSÍ",
+          "label": "Smartphones & Accesorios",
           "extra": null
         }
       ],
-      "departamentos": [
+      "commerce_sales_channels": [
         {
           "value": "019e2c7a-cc94-7c12-a6c0-bcc390f8fbd3",
           "label": "UNIDAD JURÍDICA",

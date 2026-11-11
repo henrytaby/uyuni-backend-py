@@ -105,10 +105,10 @@ uyuni-backend-py/
 │   │   ├── logging.py         # Logging configuration
 │   │   ├── repository.py      # Base repository pattern
 │   │   └── routers.py         # Health check endpoint
-│   ├── models/            # Database models
+│   ├── models/            # Database models (user, role, module, audit, mixins)
 │   ├── modules/           # Domain modules
-│   │   ├── assets/            # Asset management
-│   │   ├── core/              # Organizational management
+│   │   ├── commerce/          # Commerce domain (products, batches, sales, catalogs)
+│   │   ├── core/              # Core business domain (users, configuration)
 │   │   └── tasks/             # Task management
 │   ├── util/              # Utility functions
 │   └── main.py            # FastAPI application entry
@@ -131,46 +131,55 @@ uyuni-backend-py/
 - `GET /auth/me` - Current user info
 - `PUT /auth/role` - Set active role
 
-### Assets Module
-- `/assets/assets` - Asset CRUD
-- `/assets/areas` - Area CRUD
-- `/assets/groups` - Group CRUD
-- `/assets/statuses` - Status CRUD
-- `/assets/institutions` - Institution CRUD
-- `/assets/acts` - Act CRUD
+### Commerce Module
+- `/commerce/products` - Product SKUs CRUD & status transitions
+- `/commerce/product-masters` - Master product catalog definitions
+- `/commerce/batches` - Import batches and landed cost control
+- `/commerce/sales` - Atomic sales and items
+- `/commerce/categories` - Product categories CRUD
+- `/commerce/channels` - Sales channels CRUD
+- `/commerce/live-baskets` - Live baskets CRUD
+- `/commerce/rounds` - Investment rounds CRUD
+- `/commerce/catalogs` - Dynamic catalogs hub
 
 ### Core Module
-- `/core/org-units` - Organizational units CRUD
-- `/core/positions` - Positions CRUD
-- `/core/staff` - Staff CRUD
+- `/core/users` - User accounts CRUD, search, and count
 
 ### Tasks Module
 - `/tasks/tasks` - Task CRUD
 
-## Database Schema
+### Dynamic Catalogs Engine
+- `GET /api/catalogs/{name}` - Dynamic catalog selector
+- `POST /api/catalogs/bulk` - High-performance batch catalog loader
+
+## Database Schema (Singular Table Naming Convention)
 
 ### Core Tables
-- `users` - User accounts
-- `roles` - User roles
-- `role_modules` - Role-permission mappings
-- `modules` - System modules
+- `user` - User accounts & authentication
+- `role` - User roles
+- `user_role` - User-role mappings
+- `role_module` - Role-permission mappings
+- `module` - System modules
+- `module_group` - System module groups
+- `user_revoked_token` - Blacklisted revoked tokens
+- `user_log_login` - User login security audit
 
 ### Audit Table
-- `audit_entries` - Audit log records
+- `audit_log` - CDC change records
 
-### Domain Tables
-- `assets` - Institutional assets
-- `areas` - Physical locations
-- `groups` - Logical groupings
-- `statuses` - Asset states
-- `institutions` - Organizations
-- `acts` - Asset transactions
+### Commerce Tables
+- `commerce_product` - Individual product SKUs
+- `commerce_product_master` - Master product definitions
+- `commerce_batch` - Import containers & boxes
+- `commerce_sale` - Sales transactions
+- `commerce_sale_item` - Items sold per transaction
+- `commerce_category` - Product categories
+- `commerce_channel` - Sales channels
+- `commerce_live_basket` - Live sales baskets
+- `commerce_investment_round` - Investment rounds
 
-- `org_units` - Organizational units
-- `positions` - Job positions
-- `staff` - Staff assignments
-
-- `tasks` - Tasks
+### Tasks Table
+- `task` - Operational tasks
 
 ## Deployment
 

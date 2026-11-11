@@ -250,34 +250,43 @@ venv/bin/alembic upgrade head
 #### 6.1 Poblar Módulos y Roles del Sistema (Imprescindible para el Frontend y RBAC):
 Registra los grupos de módulos, roles y permisos de navegación requeridos por la SPA de gestión:
 ```bash
-venv/bin/python -m seeds.seed_create_modules
+venv/bin/python seeds/seed_create_modules.py
 ```
 
-#### 6.2 Crear el Superusuario Inicial (`admin`) con Contraseña Segura:
-Crea el script de seed para dar de alta al administrador con tus credenciales de producción:
+#### 6.2 Crear el Superusuario Inicial (`admin`) con Contraseña Segura y Rol Vinculado:
+Crea el script de seed para dar de alta al administrador con tus credenciales de producción y vincular formalmente el rol `admin`:
 ```bash
 venv/bin/python -c '
 from sqlmodel import Session, create_engine, select
 from app.core.config import settings
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.auth.utils import get_password_hash
+from app.util.datetime import get_current_time
 
 engine = create_engine(str(settings.DATABASE_URL))
 with Session(engine) as s:
-    existing = s.exec(select(User).where(User.username == "admin")).first()
-    if not existing:
+    admin = s.exec(select(User).where(User.username == "admin")).first()
+    if not admin:
         admin = User(
             username="admin",
             email="admin@novabox.bo",
             password_hash=get_password_hash("PasswordSuperSeguro2026!"),
             is_superuser=True,
-            is_active=True
+            is_verified=True,
+            is_active=True,
+            created_at=get_current_time(),
+            updated_at=get_current_time()
         )
         s.add(admin)
         s.commit()
+        s.refresh(admin)
         print("✅ Superusuario admin creado con éxito!")
-    else:
-        print("ℹ️ El usuario admin ya existe.")
+
+    link = s.exec(select(UserRole).where(UserRole.user_id == admin.id, UserRole.role_slug == "admin")).first()
+    if not link:
+        s.add(UserRole(user_id=admin.id, role_slug="admin", is_active=True))
+        s.commit()
+        print("✅ Rol admin vinculado correctamente en user_role!")
 '
 ```
 

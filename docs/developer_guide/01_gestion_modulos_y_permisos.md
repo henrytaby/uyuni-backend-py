@@ -52,7 +52,7 @@ erDiagram
     }
 ```
 
-> **Nota**: La lectura (`can_read`) es **implícita**: si existe un registro activo en `RoleModule` para un módulo, el permiso de lectura se asume automáticamente. No existe una columna `can_read` en la tabla `role_modules`.
+> **Nota**: La lectura (`can_read`) es **implícita**: si existe un registro activo en `RoleModule` para un módulo, el permiso de lectura se asume automáticamente. No existe una columna `can_read` en la tabla `role_module`.
 
 ---
 
