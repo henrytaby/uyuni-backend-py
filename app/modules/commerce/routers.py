@@ -1,5 +1,5 @@
 """
-Módulo de enrutamiento unificado para el dominio Commerce (Nova Box Bolivia).
+Módulo de enrutamiento unificado para el dominio Commerce.
 Agrega los submódulos de rondas de inversión, lotes/cajas, categorías,
 canastas para live, productos y transacciones de venta.
 """

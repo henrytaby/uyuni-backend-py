@@ -1,6 +1,6 @@
 # Guía de Instalación y Despliegue en Servidor Ubuntu (VPS) — Uyuni Backend
 
-Esta guía proporciona el procedimiento completo, paso a paso y listo para producción, para desplegar el backend **Uyuni / Nova Box Bolivia** en un servidor privado virtual (**VPS**) con **Ubuntu 22.04 LTS** o **Ubuntu 24.04 LTS**.
+Esta guía proporciona el procedimiento completo, paso a paso y listo para producción, para desplegar el backend **Uyuni** (Plataforma Marca Blanca) en un servidor privado virtual (**VPS**) con **Ubuntu 22.04 LTS** o **Ubuntu 24.04 LTS**.
 
 ---
 
@@ -40,7 +40,7 @@ flowchart TD
 
 1. **VPS:** Mínimo 1 vCPU y 1 GB de RAM (recomendado 2 vCPU y 2 GB de RAM o activar swap de 2 GB).
 2. **Sistema Operativo:** Ubuntu 22.04 LTS o 24.04 LTS con acceso `sudo` o `root`.
-3. **Dominio o Subdominio (Opcional pero recomendado para SSL):** Un registro DNS tipo `A` que apunte la IP pública de tu VPS a tu dominio (ej: `api.novabox.bo` o `api.tudominio.com`). Si no tienes dominio, puedes usar la IP pública temporalmente.
+3. **Dominio o Subdominio (Opcional pero recomendado para SSL):** Un registro DNS tipo `A` que apunte la IP pública de tu VPS a tu dominio (ej: `api.tudominio.com`). Si no tienes dominio, puedes usar la IP pública temporalmente.
 
 ---
 
@@ -208,7 +208,7 @@ SECURITY_LOCKOUT_MINUTES=15
 # ==========================================
 # Configuración de la Aplicación
 # ==========================================
-PROJECT_NAME="Uyuni Backend - Nova Box"
+PROJECT_NAME="Uyuni Backend"
 VERSION="v1"
 ENVIRONMENT="production"
 PORT=8000
@@ -269,7 +269,7 @@ with Session(engine) as s:
     if not admin:
         admin = User(
             username="admin",
-            email="admin@novabox.bo",
+            email="admin@empresa.com",
             password_hash=get_password_hash("PasswordSuperSeguro2026!"),
             is_superuser=True,
             is_verified=True,
@@ -310,7 +310,7 @@ Pega la siguiente configuración:
 
 ```ini
 [Unit]
-Description=Uyuni FastAPI Backend Service (Nova Box)
+Description=Uyuni FastAPI Backend Service
 After=network.target postgresql.service
 Wants=postgresql.service
 

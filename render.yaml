@@ -12,7 +12,7 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: PROJECT_NAME
-        value: "Uyuni ERP - Nova Box Bolivia"
+        value: "Uyuni ERP"
       - key: BACKEND_CORS_ORIGINS
         value: '["*"]'
       - key: DATABASE_URL

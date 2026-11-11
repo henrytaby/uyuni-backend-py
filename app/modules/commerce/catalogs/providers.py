@@ -106,8 +106,8 @@ class CommerceDeliveryModalitiesProvider(CatalogProvider):
                 value="NATIONAL_COURIER", label="Envío Courier (Nacional)"
             ),
             CatalogItemSchema(
-                value="STORE_PICKUP_TIQUIPAYA",
-                label="Recojo en Tienda (Tiquipaya)",
+                value="STORE_PICKUP",
+                label="Recojo en Tienda",
             ),
             CatalogItemSchema(value="PARCEL_SERVICE", label="Paquetería"),
         ]
@@ -118,7 +118,7 @@ class CommerceDeliveryPaidByProvider(CatalogProvider):
         return [
             CatalogItemSchema(value="FREE", label="Sin Costo"),
             CatalogItemSchema(value="CUSTOMER", label="Cliente"),
-            CatalogItemSchema(value="STORE", label="Nova Box"),
+            CatalogItemSchema(value="STORE", label="Tienda / Empresa"),
         ]
 
 

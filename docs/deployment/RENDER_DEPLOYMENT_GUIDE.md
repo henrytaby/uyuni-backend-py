@@ -18,7 +18,7 @@ flowchart TD
     end
 
     subgraph RenderCompute ["⚡ 2. Cómputo Backend (Render.com)"]
-        DOCKER["Contenedor Docker (Python 3.14)<br/>FastAPI Engine + Uvicorn<br/>https://uyuni-backend-novalabs.onrender.com"]
+        DOCKER["Contenedor Docker (Python 3.14)<br/>FastAPI Engine + Uvicorn<br/>https://uyuni-backend-empresa.onrender.com"]
     end
 
     subgraph ManagedData ["🛡️ 3. Datos & Archivos"]
@@ -62,7 +62,7 @@ El proyecto ya cuenta con soporte nativo para Render:
 ### Paso 1: Iniciar Sesión en Render con GitHub
 1. Ingresa a **[https://render.com](https://render.com)**.
 2. Haz clic en **"GET STARTED FOR FREE"** o **"Sign In"**.
-3. Selecciona **"Continue with GitHub"** (utiliza la cuenta corporativa `novalabs-bo` o la cuenta donde tengas acceso al repositorio).
+3. Selecciona **"Continue with GitHub"** (utiliza la cuenta corporativa de la empresa o la cuenta donde tengas acceso al repositorio).
 4. Confirma la autorización en GitHub.
 
 ---
@@ -82,7 +82,7 @@ En el formulario de configuración:
 
 | Campo | Valor Recomendado | Explicación |
 | :--- | :--- | :--- |
-| **Name** | `uyuni-backend-novalabs` | Nombre único que definirá tu URL pública. |
+| **Name** | `uyuni-backend-empresa` | Nombre único que definirá tu URL pública. |
 | **Region** | `Ohio (US East)` | Misma región que tu base de datos de Neon para menor latencia (<40ms). |
 | **Branch** | `main` | Rama principal del proyecto. |
 | **Runtime** | `Docker` | Render compilará automáticamente el `Dockerfile` de Python 3.14. |
@@ -96,9 +96,9 @@ Haz clic en **"Add Environment Variable"** y añade una por una:
 
 | Key (Nombre) | Value (Valor) |
 | :--- | :--- |
-| `DATABASE_URL` | Tu cadena de Neon con `?sslmode=require` (ej: `postgresql://novabox_owner:pass@ep-xyz.us-east-2.aws.neon.tech/novabox-production?sslmode=require`) |
+| `DATABASE_URL` | Tu cadena de Neon con `?sslmode=require` (ej: `postgresql://empresa_owner:pass@ep-xyz.us-east-2.aws.neon.tech/empresa-production?sslmode=require`) |
 | `SECRET_KEY` | Tu clave aleatoria segura de 64 caracteres hex (`openssl rand -hex 32`) |
-| `PROJECT_NAME` | `Uyuni ERP - Nova Box Bolivia` |
+| `PROJECT_NAME` | `Uyuni ERP` |
 | `ENVIRONMENT` | `production` |
 | `BACKEND_CORS_ORIGINS` | `["*"]` *(o el dominio de tu frontend)* |
 
@@ -120,12 +120,12 @@ Render iniciará la compilación del contenedor Docker en tiempo real:
 1. Verás los logs de compilación: descarga de Python 3.14, instalación de dependencias con pip y arranque de Uvicorn.
 2. En aproximadamente **90 a 120 segundos**, el estado cambiará a **`Live`** (en verde).
 3. En la parte superior verás tu URL pública segura:
-   👉 **`https://uyuni-backend-novalabs.onrender.com`**
+   👉 **`https://uyuni-backend-empresa.onrender.com`**
 
 #### Comprueba que responde de inmediato:
-* **Health Check**: `https://uyuni-backend-novalabs.onrender.com/health`
-* **Documentación Swagger**: `https://uyuni-backend-novalabs.onrender.com/docs`
-* **ReDoc**: `https://uyuni-backend-novalabs.onrender.com/redoc`
+* **Health Check**: `https://uyuni-backend-empresa.onrender.com/health`
+* **Documentación Swagger**: `https://uyuni-backend-empresa.onrender.com/docs`
+* **ReDoc**: `https://uyuni-backend-empresa.onrender.com/redoc`
 
 ---
 
@@ -139,7 +139,7 @@ Para mantenerlo **caliente y respondiendo en <50 milisegundos 24/7/365**:
 2. Haz clic en **"+ Add New Monitor"**:
    * **Monitor Type**: `HTTP(s)`
    * **Friendly Name**: `Uyuni Backend Live (Render)`
-   * **URL (or IP)**: `https://uyuni-backend-novalabs.onrender.com/health`
+   * **URL (or IP)**: `https://uyuni-backend-empresa.onrender.com/health`
    * **Monitoring Interval**: `Every 5 minutes`
 3. Haz clic en **"Create Monitor"**.
 

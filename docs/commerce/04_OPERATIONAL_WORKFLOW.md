@@ -1,6 +1,6 @@
 # 04. Flujo Operativo y Ciclo de Vida — Commerce
 
-Este documento describe de manera **didáctica y paso a paso** el ciclo de vida completo de un producto en el ecosistema comercial de **Nova Box Bolivia**: desde que los inversionistas desembolsan el capital para adquirir una caja de liquidación en Estados Unidos hasta que el producto es vendido en vivo por TikTok, despachado por flota y se cierra el retorno de inversión del lote.
+Este documento describe de manera **didáctica y paso a paso** el ciclo de vida completo de un producto en el ecosistema comercial: desde que los inversionistas desembolsan el capital para adquirir una caja o lote de importación hasta que el producto es vendido, despachado y se cierra el retorno de inversión del lote.
 
 ---
 
@@ -30,10 +30,10 @@ flowchart TD
 ---
 
 ### Fase 2: Desempaque, Clasificación e Inventariado
-Al abrir la caja física en el almacén de Tiquipaya, el operador saca cada producto y realiza una doble verificación:
+Al abrir la caja física en el almacén, el operador saca cada producto y realiza una doble verificación:
 
 1. **¿El producto ya existe en el catálogo maestro? (`ProductMaster`):**
-   - **Caso A (Producto Nuevo):** Se crea una nueva Ficha Maestra con su número correlativo limpio (`item_number: 243`), nombre oficial, categoría y precios de referencia (`official_price: 180`, `minimum_price: 140`). Se crea la carpeta correspondiente en `/opt/nova/nova-home-tech/products/243-...` para sus fotos y creativos.
+   - **Caso A (Producto Nuevo):** Se crea una nueva Ficha Maestra con su número correlativo limpio (`item_number: 243`), nombre oficial, categoría y precios de referencia (`official_price: 180`, `minimum_price: 140`). Se almacenan las fotos y creativos correspondientes en el repositorio o CDN de medios (`products/243-...`).
    - **Caso B (Producto Repetido):** Si el producto ya existía de una importación anterior (por ejemplo, el producto `#53 - Almohadilla Térmica`), **NO** se duplica la ficha maestra. Se utiliza la ficha existente `#53`.
 2. **Registro de la Unidad Física en el Lote (`Product`):**
    - Se crea el registro de inventario físico vinculándolo a la ficha maestra (`master_product_id`) y a la caja de donde salió (`batch_id`).

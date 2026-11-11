@@ -8,7 +8,7 @@ Este directorio centraliza toda la documentación operativa, guías de infraestr
 
 | Guía | Propósito | Entorno / Servicios | Costo Estimado |
 | :--- | :--- | :--- | :---: |
-| 🏢 **[Manual de Replicación para Clientes (Marca Blanca)](./CLIENT_REPLICATION_PLAYBOOK.md)** | Procedimiento paso a paso para dar de alta una nueva empresa (ej: **Nova Labs / Nova Box**) con aislamiento total de datos, cuentas gratuitas dedicadas y protección de propiedad intelectual del desarrollador. | GitHub + Neon + Render/Vercel + Cloudinary + Cloudflare | **$0.00 / mes** |
+| 🏢 **[Manual de Replicación para Clientes (Marca Blanca)](./CLIENT_REPLICATION_PLAYBOOK.md)** | Procedimiento paso a paso para dar de alta una nueva empresa (marca blanca) con aislamiento total de datos, cuentas gratuitas dedicadas y protección de propiedad intelectual del desarrollador. | GitHub + Neon + Render/Vercel + Cloudinary + Cloudflare | **$0.00 / mes** |
 | 🟣 **[Guía de Despliegue en Render.com](./RENDER_DEPLOYMENT_GUIDE.md)** | Despliegue continuo en contenedor Docker MicroVM (Python 3.14 nativo), configuración de variables, health checks y monitor Keep-Alive 24/7 con UptimeRobot. | Render (Docker) + UptimeRobot | **$0.00 / mes** |
 | ☁️ **[Guía de Arquitectura Serverless en la Nube](./SERVERLESS_DEPLOYMENT_GUIDE.md)** | Arquitectura moderna en la nube sin mantenimiento de Linux. Combina bases de datos PostgreSQL serverless, cómputo backend, almacenamiento de fotos y documentos privados. | Neon.tech + Vercel/Render + Cloudflare Pages/R2 + Cloudinary | **$0.00 / mes** |
 | 🖥️ **[Guía de Despliegue en VPS Linux (Ubuntu)](./UBUNTU_VPS_DEPLOYMENT_GUIDE.md)** | Instalación tradicional en un servidor privado virtual propio con servicio de sistema Systemd, Nginx como Reverse Proxy y certificados SSL automáticos de Let's Encrypt. | Ubuntu 22.04/24.04 + Systemd + Nginx + Certbot | ~$5 - $15 / mes |
@@ -27,12 +27,12 @@ flowchart TD
         REPO["GitHub Privado (henrytaby/uyuni-backend-py)<br/>Propiedad Intelectual Protegida"]
     end
 
-    subgraph Client1 ["🏢 Empresa 1: Nova Labs (novabo.app@gmail.com)"]
-        GH1["GitHub: novalabs-bo (Solo Lectura)"]
+    subgraph Client1 ["🏢 Empresa 1: Cliente Alfa (cliente1@empresa.com)"]
+        GH1["GitHub: cliente1-bo (Solo Lectura)"]
         NEON1[("Neon Postgres (1 GB Dedicado)")]
-        SERVER1["Render Docker o Vercel<br/>(novalabs-bo-api)"]
-        CLD1["Cloudinary (Fotos Nova Box)"]
-        R2_1["Cloudflare R2 (Facturas Nova Labs)"]
+        SERVER1["Render Docker o Vercel<br/>(cliente1-api)"]
+        CLD1["Cloudinary (Fotos de Catálogo)"]
+        R2_1["Cloudflare R2 (Facturas y Documentos)"]
         PAGES1["Cloudflare Pages (Frontend Admin)"]
     end
 

@@ -21,7 +21,7 @@
 
 ---
 
-Bienvenido a **Uyuni Backend**, una plataforma transaccional de nivel empresarial construida con **FastAPI**, **Python 3.14**, **SQLModel** y **PostgreSQL**. Diseñada bajo los principios de **Clean Architecture** y **DDD-Lite (Domain-Driven Design)**, incorpora autenticación JWT con rotación de tokens, control de acceso granular basado en roles (**RBAC** con personificación dinámica), auditoría transversal de cambios de datos (**CDC**), catálogos dinámicos masivos y dominios transaccionales para **Comercio Electrónico / Nova Box Bolivia**, **Gestión de Usuarios y Accesos** y **Gestión Operativa de Tareas**.
+Bienvenido a **Uyuni Backend**, una plataforma transaccional de nivel empresarial construida con **FastAPI**, **Python 3.14**, **SQLModel** y **PostgreSQL**. Diseñada bajo los principios de **Clean Architecture** y **DDD-Lite (Domain-Driven Design)**, incorpora autenticación JWT con rotación de tokens, control de acceso granular basado en roles (**RBAC** con personificación dinámica), auditoría transversal de cambios de datos (**CDC**), catálogos dinámicos masivos y dominios transaccionales para **Comercio Electrónico**, **Gestión de Usuarios y Accesos** y **Gestión Operativa de Tareas**.
 
 ---
 
@@ -76,7 +76,7 @@ flowchart TB
     subgraph BusinessDomains["📦 Dominios Modulares de Negocio (DDD-Lite)"]
         direction TB
         
-        subgraph Commerce["🛒 Módulo Commerce (Nova Box Bolivia)"]
+        subgraph Commerce["🛒 Módulo Commerce (Ecosistema Comercial)"]
             direction LR
             C_R["Routers (SKUs, Lotes)"] --> C_S["Service (Ventas, Piso Mínimo)"] --> C_RP["Commerce Repositories"]
         end
@@ -157,7 +157,7 @@ Cada módulo de negocio está aislado en su propio submódulo para garantizar al
 
 El backend organiza sus capacidades en los siguientes módulos principales:
 
-### 1. `commerce` (Motor Comercial & Nova Box Bolivia)
+### 1. `commerce` (Motor Comercial & Emprendimientos)
 Plataforma transaccional para control de inventarios, lotes y facturación de ventas:
 * **Fichas Maestras y SKUs (`product_masters`, `products`)**: Catálogo maestro de 240+ SKUs, control de condición (*nuevo, usado, caja abierta*), precio oficial y regla crítica de **precio mínimo (`minimum_price`)**.
 * **Lotes de Importación (`batches`)**: Control de cajas (Ataúd 1, Ataúd 2, Amazon Next, etc.), costos de flete, seguros e impuestos, cálculo del **punto de equilibrio** y margen neto.

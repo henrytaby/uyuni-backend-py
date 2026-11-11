@@ -1,6 +1,6 @@
 # 03. Guía de Integración Frontend — Commerce
 
-Esta guía está dirigida a los desarrolladores de frontend encargados de integrar el módulo `commerce` en el panel de administración (**Angular 21 + PrimeNG 21** en `/opt/uyuni/uyuni-frontend-ng`) y la aplicación móvil de catálogo para clientes (**React + Vite PWA** en `/opt/nova/nova-home-tech/apps/catalog-pwa`).
+Esta guía está dirigida a los desarrolladores de frontend encargados de integrar el módulo `commerce` en el panel de administración (**Angular 21 + PrimeNG 21**) y aplicaciones cliente (**React + Vite PWA** o móviles).
 
 ---
 
@@ -114,7 +114,7 @@ Cada elemento incluye el consolidado de existencias en tiempo real de todas las 
     "minimum_price": 140.0,
     "published_price": 160.0,
     "currency": "BOB",
-    "cover_image_url": "https://pub-novabox.r2.dev/products/053/cover.webp",
+    "cover_image_url": "https://pub-cdn.empresa.com/products/053/cover.webp",
     "marketplace_url": "https://www.facebook.com/marketplace/item/123456789/",
     "external_info_url": "https://www.amazon.com/dp/B08XYZ123",
     "features": "• 6 niveles de temperatura\n• Auto-apagado a las 2 horas\n• Lavable a máquina",

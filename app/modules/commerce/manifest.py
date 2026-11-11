@@ -1,5 +1,5 @@
 """
-Manifiesto de dominio para el módulo Commerce (Nova Box Bolivia).
+Manifiesto de dominio para el módulo Commerce.
 Declara los grupos y submódulos de productos, lotes, ventas,
 canastas live y catálogo maestro.
 """
@@ -17,7 +17,7 @@ commerce_manifest = DomainManifest(
         GroupDefinition(
             name="Comercio",
             slug="commerce",
-            description="Gestión Comercial, Lotes y Ventas Nova Box Bolivia",
+            description="Gestión Comercial, Lotes y Ventas",
             sort_order=5,
             icon="pi pi-shopping-bag",
             is_active=True,
@@ -25,7 +25,7 @@ commerce_manifest = DomainManifest(
                 ModuleDefinition(
                     name="Productos",
                     slug="products",
-                    description="Catálogo de SKUs NOV-XXX, estados y precios",
+                    description="Catálogo de SKUs, estados y precios",
                     group_slug="commerce",
                     sort_order=1,
                     icon="pi pi-tags",

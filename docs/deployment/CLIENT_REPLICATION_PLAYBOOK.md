@@ -1,6 +1,6 @@
 # Manual de Replicación y Despliegue para Nuevas Empresas (Modelo Single-Tenant Marca Blanca)
 
-Este manual documenta el procedimiento estándar paso a paso para desplegar una nueva instancia independiente y aislada de **Uyuni Backend / Ecosistema Comercial** para una empresa o unidad de negocio (como **Nova Labs / Nova Box** o futuros clientes comerciales).
+Este manual documenta el procedimiento estándar paso a paso para desplegar una nueva instancia independiente y aislada de **Uyuni Backend / Ecosistema Comercial** para una empresa o unidad de negocio (marca blanca para clientes comerciales).
 
 ---
 
@@ -18,12 +18,12 @@ flowchart TD
         REPO["GitHub Privado del Desarrollador<br/>(henrytaby/uyuni-backend-py)<br/>Propiedad Intelectual Protegida"]
     end
 
-    subgraph Client1 ["🏢 Empresa 1: Nova Labs (novabo.app@gmail.com)"]
-        GH1["GitHub: novalabs-bo (Solo Lectura)"]
+    subgraph Client1 ["🏢 Empresa 1: Cliente Comercial (cliente1@empresa.com)"]
+        GH1["GitHub: cliente1-app (Solo Lectura)"]
         NEON1[("Neon Postgres (1 GB Dedicado)")]
         SERVER1["Backend API<br/>Render.com o Vercel"]
-        CLD1["Cloudinary (Fotos Nova Box)"]
-        R2_1["Cloudflare R2 (Facturas Nova Labs)"]
+        CLD1["Cloudinary (Fotos de Catálogo)"]
+        R2_1["Cloudflare R2 (Facturas y Documentos)"]
         PAGES1["Cloudflare Pages (Frontend Admin)"]
     end
 
@@ -67,19 +67,19 @@ flowchart TD
 
 ---
 
-## 📋 Checklist de Cuentas por Empresa (Ejemplo: Nova Labs)
+## 📋 Checklist de Cuentas por Empresa (Ejemplo: Cliente Comercial)
 
-Para cada empresa se utiliza un correo corporativo dedicado (ej: `novabo.app@gmail.com`):
+Para cada empresa se utiliza un correo corporativo dedicado (ej: `contacto@empresa.com`):
 
 | # | Servicio | Cuenta / Nombre sugerido | Propósito | Costo |
 | :---: | :--- | :--- | :--- | :---: |
-| **1** | **GitHub** | `novalabs-bo` (o `empresa-app`) | Acceso de lectura al código para despliegues | $0.00 |
-| **2** | **Neon.tech** | `uyuni-novalabs-prod` | Base de datos PostgreSQL 16 dedicada (1 GB SSD) | $0.00 |
-| **3** | **Render.com** | `novalabs-bo-api` | Servidor FastAPI en Docker MicroVM (Recomendado) | $0.00 |
-| **4** | **UptimeRobot** | Monitor `novalabs-bo-api` | Ping cada 5 min (Keep-Alive 24/7 en Render) | $0.00 |
-| **5** | **Vercel** *(Opcional)* | `uyuni-backend-novalabs` | Alternativa Serverless en el Edge | $0.00 |
-| **6** | **Cloudinary** | Cloud Name: `novabox-bo` | Almacenamiento y optimización de fotos de catálogo | $0.00 |
-| **7** | **Cloudflare** | Cuenta `novabo.app@gmail.com` | R2 (Facturas/Videos) y Pages (Frontend Angular) | $0.00 |
+| **1** | **GitHub** | `empresa-app` | Acceso de lectura al código para despliegues | $0.00 |
+| **2** | **Neon.tech** | `uyuni-empresa-prod` | Base de datos PostgreSQL 16 dedicada (1 GB SSD) | $0.00 |
+| **3** | **Render.com** | `empresa-app-api` | Servidor FastAPI en Docker MicroVM (Recomendado) | $0.00 |
+| **4** | **UptimeRobot** | Monitor `empresa-app-api` | Ping cada 5 min (Keep-Alive 24/7 en Render) | $0.00 |
+| **5** | **Vercel** *(Opcional)* | `uyuni-backend-empresa` | Alternativa Serverless en el Edge | $0.00 |
+| **6** | **Cloudinary** | Cloud Name: `empresa-media` | Almacenamiento y optimización de fotos de catálogo | $0.00 |
+| **7** | **Cloudflare** | Cuenta `contacto@empresa.com` | R2 (Facturas/Videos) y Pages (Frontend Angular) | $0.00 |
 
 ---
 
@@ -87,8 +87,8 @@ Para cada empresa se utiliza un correo corporativo dedicado (ej: `novabo.app@gma
 
 ### Paso 1: Crear la Identidad Corporativa en GitHub
 1. Abre una ventana de incógnito en tu navegador.
-2. Ingresa a **[GitHub.com](https://github.com/signup)** y crea una cuenta con el correo del cliente (ej. `novabo.app@gmail.com`).
-3. Elige un nombre de usuario institucional representativo (ej: `novalabs-bo`).
+2. Ingresa a **[GitHub.com](https://github.com/signup)** y crea una cuenta con el correo del cliente (ej. `cliente@empresa.com`).
+3. Elige un nombre de usuario institucional representativo (ej: `empresa-bo`).
 4. Confirma el correo de verificación.
 
 ---
@@ -97,7 +97,7 @@ Para cada empresa se utiliza un correo corporativo dedicado (ej: `novabo.app@gma
 1. Entra a tu cuenta personal de GitHub (dueña del código).
 2. Ve al repositorio maestro: `https://github.com/henrytaby/uyuni-backend-py`.
 3. Ve a **Settings > Collaborators > Add people**.
-4. Busca al usuario de la empresa (ej: `novalabs-bo`) y envíale la invitación con rol **Read** (Lectura).
+4. Busca al usuario de la empresa (ej: `empresa-bo`) y envíale la invitación con rol **Read** (Lectura).
 5. En la ventana de la empresa, acepta la invitación.
    *(A partir de este momento, las plataformas cloud de la empresa podrán desplegar el código automáticamente sin que el cliente pueda modificar o borrar tu repositorio principal).*
 
@@ -105,13 +105,13 @@ Para cada empresa se utiliza un correo corporativo dedicado (ej: `novabo.app@gma
 
 ### Paso 3: Crear la Base de Datos en Neon.tech
 1. Con la sesión de la empresa abierta, ingresa a **[Neon.tech](https://neon.tech)**.
-2. Haz clic en **"Sign Up"** y selecciona **"Continue with GitHub"** (iniciará sesión como `novalabs-bo`).
+2. Haz clic en **"Sign Up"** y selecciona **"Continue with GitHub"** (iniciará sesión con la cuenta de la empresa).
 3. Haz clic en **"Create Project"**:
-   * **Name**: `novabox-production` (o el nombre de la empresa).
+   * **Name**: `empresa-production` (o el nombre de la empresa).
    * **Region**: `US East (N. Virginia u Ohio)`.
 4. Copia la cadena de conexión generada con pooling activado:
    ```text
-   postgresql://usuario:password@ep-xyz.us-east-2.aws.neon.tech/novabox-production?sslmode=require
+   postgresql://usuario:password@ep-xyz.us-east-2.aws.neon.tech/empresa-production?sslmode=require
    ```
 
 ---
@@ -162,7 +162,7 @@ with Session(engine) as s:
     if not admin:
         admin = User(
             username="admin",
-            email="admin@novabox.bo",  # Reemplazar con el correo corporativo del cliente
+            email="admin@empresa.com",  # Reemplazar con el correo corporativo del cliente
             password_hash=get_password_hash("PasswordSuperSeguro2026!"),  # Reemplazar con clave segura
             is_superuser=True,
             is_verified=True,
@@ -205,7 +205,7 @@ Puedes desplegar en Vercel utilizando cualquiera de los dos métodos siguientes:
 #### 🖥️ Método 1: Despliegue Visual desde la Interfaz Web (Vercel Dashboard)
 *Recomendado para una configuración rápida o para entregar al cliente:*
 
-1. Ingresa a **[Vercel.com](https://vercel.com)** e inicia sesión con el GitHub de la empresa (`novalabs-bo` o la cuenta corporativa creada).
+1. Ingresa a **[Vercel.com](https://vercel.com)** e inicia sesión con el GitHub de la empresa (`empresa-bo` o la cuenta corporativa creada).
 2. En el Dashboard principal, haz clic en **"Add New..." > "Project"**.
 3. En la lista de repositorios importables, selecciona el repositorio compartido `henrytaby/uyuni-backend-py`.
 4. **Configuración del Proyecto:**
@@ -217,17 +217,17 @@ Puedes desplegar en Vercel utilizando cualquiera de los dos métodos siguientes:
 
    | Variable | Valor | Nota Crítica |
    | :--- | :--- | :--- |
-   | `DATABASE_URL` | `postgresql://usuario:pass@ep-xyz-pooler.us-east-2.aws.neon.tech/novabox-production?sslmode=require` | ⚠️ **Obligatorio usar `-pooler`**: En arquitecturas Serverless, múltiples funciones concurrentes se levantan efímeramente. El endpoint Pooled de Neon (PgBouncer) evita saturar el límite de conexiones de PostgreSQL. |
+   | `DATABASE_URL` | `postgresql://usuario:pass@ep-xyz-pooler.us-east-2.aws.neon.tech/empresa-production?sslmode=require` | ⚠️ **Obligatorio usar `-pooler`**: En arquitecturas Serverless, múltiples funciones concurrentes se levantan efímeramente. El endpoint Pooled de Neon (PgBouncer) evita saturar el límite de conexiones de PostgreSQL. |
    | `SECRET_KEY` | `openssl rand -hex 32` | Tu clave criptográfica para los JWT. |
-   | `PROJECT_NAME` | `"Uyuni ERP - Nova Box Bolivia"` | Nombre comercial de la empresa. |
+   | `PROJECT_NAME` | `"Uyuni ERP"` | Nombre comercial o marca blanca de la empresa. |
    | `ENVIRONMENT` | `production` | Modo producción. |
-   | `BACKEND_CORS_ORIGINS` | `["*"]` | O especifica `["https://admin.novabox.bo", "https://catalogo.novabox.bo"]`. |
+   | `BACKEND_CORS_ORIGINS` | `["*"]` | O especifica `["https://admin.empresa.com", "https://catalogo.empresa.com"]`. |
    | `CLOUDINARY_*` | *(Opcionales si usa fotos)* | `CLOUDINARY_CLOUD_NAME`, `API_KEY`, etc. |
    | `R2_*` | *(Opcionales si usa docs/videos)* | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, etc. |
 
 6. Haz clic en **"Deploy"**.
 7. En 45 a 60 segundos, Vercel compilará las dependencias y generará tu URL pública con SSL automático y CDN mundial:
-   👉 `https://uyuni-backend-novalabs.vercel.app`
+   👉 `https://uyuni-backend-empresa.vercel.app`
 
 ---
 
@@ -244,7 +244,7 @@ Puedes desplegar en Vercel utilizando cualquiera de los dos métodos siguientes:
    ```bash
    vercel login
    ```
-   *(Selecciona continuar con GitHub o ingresa el correo corporativo novabo.app@gmail.com).*
+   *(Selecciona continuar con GitHub o ingresa el correo corporativo de la empresa).*
 
 3. **Vincular el proyecto local con Vercel:**
    Desde la raíz del proyecto (`uyuni-backend-py`):
@@ -252,21 +252,21 @@ Puedes desplegar en Vercel utilizando cualquiera de los dos métodos siguientes:
    vercel link
    ```
    * Responde `Y` para configurar el proyecto.
-   * Selecciona el scope/cuenta del cliente (ej: `novalabs-bo`).
+   * Selecciona el scope/cuenta del cliente (ej: `empresa-app`).
    * Link to existing project? `N`.
-   * Project name: `uyuni-backend-novalabs`.
+   * Project name: `uyuni-backend-empresa`.
    * Directory: `./`.
 
 4. **Configurar las variables de entorno en producción vía CLI:**
    ```bash
    # Base de datos con Pooling activado
-   echo "postgresql://usuario:password@ep-xyz-pooler.us-east-2.aws.neon.tech/novabox-prod?sslmode=require" | vercel env add DATABASE_URL production
+   echo "postgresql://usuario:password@ep-xyz-pooler.us-east-2.aws.neon.tech/empresa-prod?sslmode=require" | vercel env add DATABASE_URL production
 
    # Clave secreta JWT
    echo "$(openssl rand -hex 32)" | vercel env add SECRET_KEY production
 
    # Metadatos del sistema
-   echo "Uyuni ERP - Nova Box Bolivia" | vercel env add PROJECT_NAME production
+   echo "Uyuni ERP" | vercel env add PROJECT_NAME production
    echo "production" | vercel env add ENVIRONMENT production
    echo '["*"]' | vercel env add BACKEND_CORS_ORIGINS production
    ```
@@ -297,11 +297,11 @@ El repositorio ya cuenta con archivos nativos para Render:
 
 ##### Paso a Paso para Desplegar en Render:
 1. Ingresa a **[Render.com](https://render.com)** y haz clic en **"GET STARTED FOR FREE"**.
-2. Selecciona **"Continue with GitHub"** para iniciar sesión con la cuenta de la empresa (`novalabs-bo`).
+2. Selecciona **"Continue with GitHub"** para iniciar sesión con la cuenta de la empresa (`empresa-bo`).
 3. En el panel principal, haz clic en **"New +"** (arriba a la derecha) > **"Web Service"**.
 4. En la sección *Connect a repository*, selecciona el repositorio `henrytaby/uyuni-backend-py`.
 5. **Configuración del Web Service:**
-   * **Name**: `uyuni-backend-novalabs` (o el nombre de la empresa).
+   * **Name**: `uyuni-backend-empresa` (o el nombre de la empresa).
    * **Region**: `Ohio (US East)` (la misma región que tu base de datos de Neon para latencia ultra-baja).
    * **Runtime**: Selecciona **Docker** (Render detectará automáticamente el archivo `Dockerfile`).
    * **Instance Type**: Selecciona **Free** ($0 / mes - 512 MB RAM, 0.1 CPU).
@@ -309,7 +309,7 @@ El repositorio ya cuenta con archivos nativos para Render:
    Haz clic en **"Add Environment Variable"** y añade:
    * `DATABASE_URL` = Cadena de conexión de Neon del cliente (con `?sslmode=require`).
    * `SECRET_KEY` = Tu clave aleatoria segura (ej: `openssl rand -hex 32`).
-   * `PROJECT_NAME` = `"Uyuni ERP - Nova Box Bolivia"`
+   * `PROJECT_NAME` = `"Uyuni ERP"`
    * `ENVIRONMENT` = `production`
    * `BACKEND_CORS_ORIGINS` = `["*"]`
 7. Despliega la sección **"Advanced"**:
@@ -317,14 +317,14 @@ El repositorio ya cuenta con archivos nativos para Render:
 8. Haz clic en **"Deploy Web Service"**.
 
 En aproximadamente 2 minutos, Render compilará el contenedor Docker y te entregará tu URL pública con SSL automático:
-👉 **`https://uyuni-backend-novalabs.onrender.com`**
+👉 **`https://uyuni-backend-empresa.onrender.com`**
 
 > [!TIP]
 > **Keep-Alive 24/7 en Render (Opcional):**
 > En el plan gratuito de Render, el contenedor entra en modo suspensión si no recibe visitas durante 15 minutos.
 > Si deseas que responda siempre en menos de 50 milisegundos sin demoras:
 > 1. Crea una cuenta gratuita en **[UptimeRobot.com](https://uptimerobot.com)**.
-> 2. Crea un monitor tipo HTTP hacia `https://uyuni-backend-novalabs.onrender.com/health` con intervalo de 5 minutos.
+> 2. Crea un monitor tipo HTTP hacia `https://uyuni-backend-empresa.onrender.com/health` con intervalo de 5 minutos.
 > 3. ¡Listo! El contenedor se mantendrá despierto y caliente 24/7 sin ningún costo.
 
 ---
@@ -333,8 +333,8 @@ En aproximadamente 2 minutos, Render compilará el contenedor Docker y te entreg
 1. Entra a Cloudflare con el correo de la empresa.
 2. Conecta el repositorio del frontend (`uyuni-frontend-ng`) en **Workers & Pages > Pages**.
 3. En variables de entorno configura:
-   * `API_URL` = `https://novalabs-bo-api.onrender.com/api` *(o tu URL de Vercel)*
-4. Despliega la aplicación. El frontend quedará publicado en `https://uyuni-admin.pages.dev` o vinculado a su propio dominio (`admin.novabox.bo`).
+   * `API_URL` = `https://uyuni-backend-empresa.onrender.com/api` *(o tu URL de Vercel)*
+4. Despliega la aplicación. El frontend quedará publicado en `https://uyuni-admin.pages.dev` o vinculado a su propio dominio (`admin.empresa.com`).
 
 ---
 

@@ -1,4 +1,4 @@
-# Módulo Commerce (Nova Box Bolivia) — Acceso Rápido
+# Módulo Commerce — Acceso Rápido
 
 La documentación completa, modular y profesional del módulo de **Commerce** se encuentra en la carpeta especializada [`docs/commerce/`](./commerce/README.md).
 
@@ -7,7 +7,7 @@ La documentación completa, modular y profesional del módulo de **Commerce** se
 ## 📚 Documentos Disponibles:
 
 1. **[Guía Maestra y Visión General](./commerce/README.md):**
-   - Contexto del negocio de Nova Box Bolivia y problemas que resuelve.
+   - Contexto del negocio comercial y problemas que resuelve.
    - Resumen de submódulos y stack tecnológico.
 
 2. **[01. Arquitectura y Reglas de Negocio](./commerce/01_ARCHITECTURE.md):**

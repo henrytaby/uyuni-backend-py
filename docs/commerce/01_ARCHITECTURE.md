@@ -12,7 +12,7 @@ El módulo sigue una arquitectura desacoplada y orientada al dominio (DDD-Lite) 
 flowchart TD
     Client["Cliente HTTP (Angular / React PWA)"] --> Routers["Routers Layer (app/modules/commerce/*/routers.py)"]
     
-    subgraph CommerceDomain ["Dominio Commerce (Nova Box Bolivia)"]
+    subgraph CommerceDomain ["Dominio Commerce (Ecosistema Comercial)"]
         Routers --> Services["Services Layer (app/modules/commerce/*/service.py)"]
         Services --> Repositories["Repositories Layer (app/modules/commerce/*/repository.py)"]
         Repositories --> Models["Models Layer (app/modules/commerce/*/models.py)"]
@@ -113,7 +113,7 @@ classDiagram
 
 ### Justificación de Negocio:
 1. **El mismo producto puede llegar en diferentes lotes a diferentes costos:** Por ejemplo, la *Almohadilla Térmica* (#53) llegó tanto en la caja `Digital` (fila 53 del Excel original) como en el lote `Ataúd 2` (fila 165). En el modelo anterior, esto obligaba a duplicar la ficha comercial o a sobreescribir los costos.
-2. **Coherencia con el Repositorio de Marketing:** En `/opt/nova/nova-home-tech/products/`, cada carpeta representa un producto comercial (`053-almohadilla-termica-electrica/`) que almacena fotos WebP, videos, investigación y guiones publicitarios. La tabla `commerce_product_master` es el espejo exacto en base de datos de esta estructura intelectual.
+2. **Coherencia con el Almacén de Medios y Marketing:** En el repositorio o CDN de activos comerciales, cada carpeta o identificador representa un producto comercial (`053-almohadilla-termica-electrica/`) que almacena fotos WebP, videos, investigación y guiones publicitarios. La tabla `commerce_product_master` es el espejo exacto en base de datos de esta estructura intelectual.
 3. **Existencias Consolidadas vs. Trazabilidad Física:** Cuando el cliente consulta el catálogo en la PWA o el streamer revisa su canasta en vivo, le interesa saber que hay **2 unidades disponibles en total** (#53). Cuando el operador empaqueta el pedido en almacén, necesita saber exactamente **de qué caja física extraer la unidad** y cuál fue su costo real.
 
 ---

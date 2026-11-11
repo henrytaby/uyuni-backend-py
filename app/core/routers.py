@@ -17,5 +17,5 @@ router.include_router(Task.router, prefix="/tasks", tags=["Tasks"])
 # Core Domain (Unified Entry Point)
 router.include_router(Core.router)
 
-# Commerce (Nova Box Bolivia)
+# Commerce Domain
 router.include_router(Commerce.router)

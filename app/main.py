@@ -41,7 +41,7 @@ from app.core.routers import router as api_router
 configure_logging()
 
 description = """
-API Transaccional y ERP para Emprendimientos y Comercio (Nova Box Bolivia).
+API Transaccional y ERP para Emprendimientos y Comercio Electrónico.
 
 Funciones:
 - Gestión Integral de Comercio: SKUs, Fichas Maestras, Lotes y Ventas.

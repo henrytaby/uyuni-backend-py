@@ -1,4 +1,4 @@
-# Manual de Despliegue Serverless — Uyuni Backend & Ecosistema Nova Box
+# Manual de Despliegue Serverless — Uyuni Backend (Marca Blanca)
 
 Esta guía detalla el procedimiento paso a paso para desplegar **todo el sistema en la nube moderna (Serverless)**, eliminando por completo la necesidad de mantener, pagar o configurar servidores VPS en Linux.
 
@@ -22,7 +22,7 @@ flowchart TB
     end
 
     subgraph BackendCompute ["⚡ 3. Cómputo Backend (Render / Vercel)"]
-        FASTAPI["FastAPI Engine (Python 3.14)<br/>Render Docker o Vercel Serverless<br/>https://novalabs-bo-api.onrender.com"]
+        FASTAPI["FastAPI Engine (Python 3.14)<br/>Render Docker o Vercel Serverless<br/>https://uyuni-backend-empresa.onrender.com"]
     end
 
     subgraph ManagedData ["🛡️ 4. Datos & Almacenamiento Seguro"]
@@ -115,7 +115,7 @@ Antes de levantar el backend en la nube, inicializaremos la estructura en la bas
        if not admin:
            admin = User(
                username="admin",
-               email="admin@novabox.bo",
+               email="admin@empresa.com",
                password_hash=get_password_hash("TuPasswordSuperSeguro2026!"),
                is_superuser=True,
                is_verified=True,
@@ -158,27 +158,27 @@ El repositorio ya cuenta con archivos nativos para Render:
 2. Haz clic en **"New +"** (arriba a la derecha) > **"Web Service"**.
 3. Conecta tu repositorio `henrytaby/uyuni-backend-py`.
 4. **Configuración del Web Service:**
-   * **Name**: `novalabs-bo-api` (o el nombre que desees).
+   * **Name**: `uyuni-backend-empresa` (o el nombre que desees).
    * **Region**: `Ohio (US East)` (la misma de Neon para mínima latencia).
    * **Runtime**: `Docker`.
    * **Instance Type**: `Free` ($0.00 / mes — 512 MB RAM).
 5. **Variables de Entorno (Environment Variables):**
    * `DATABASE_URL` = Cadena de Neon del cliente con `?sslmode=require`.
    * `SECRET_KEY` = Tu clave segura (`openssl rand -hex 32`).
-   * `PROJECT_NAME` = `"Uyuni ERP - Nova Box Bolivia"`
+   * `PROJECT_NAME` = `"Uyuni ERP"`
    * `ENVIRONMENT` = `production`
    * `BACKEND_CORS_ORIGINS` = `["*"]`
 6. En **"Advanced"**, coloca en **Health Check Path**: `/health`.
 7. Haz clic en **"Deploy Web Service"**.
 8. En 2 minutos obtendrás tu URL pública:
-   👉 **`https://novalabs-bo-api.onrender.com`**
+   👉 **`https://uyuni-backend-empresa.onrender.com`**
 
 #### Mantener Render Despierto 24/7 (Keep-Alive con UptimeRobot):
 En la capa gratuita de Render, el contenedor entra en reposo si no recibe visitas durante 15 minutos:
-1. Entra a **[https://uptimerobot.com](https://uptimerobot.com)** e inicia sesión con Google (`novabo.app@gmail.com`).
+1. Entra a **[https://uptimerobot.com](https://uptimerobot.com)** e inicia sesión con la cuenta de la empresa.
 2. Haz clic en **"+ Add New Monitor"**:
    * **Type**: `HTTP(s)`
-   * **URL**: `https://novalabs-bo-api.onrender.com` (o `/health`)
+   * **URL**: `https://uyuni-backend-empresa.onrender.com` (o `/health`)
    * **Interval**: `Every 5 minutes`
 3. Haz clic en **"Save changes"**.  
 *(Al recibir un ping cada 5 minutos, el contador de 15 minutos de Render se reinicia constantemente y el servidor se mantiene despierto y veloz 24/7/365).*
@@ -217,11 +217,11 @@ Para tu frontend de administración (`uyuni-frontend-ng`):
    * **Build command**: `npm run build`
    * **Build output directory**: `dist/uyuni-frontend-ng/browser` (o la ruta donde tu Angular emite la carpeta compilada).
 6. En **Environment variables**, agrega la URL de tu backend:
-   * `API_URL` = `https://novalabs-bo-api.onrender.com/api` *(o tu URL de Vercel)*
+   * `API_URL` = `https://uyuni-backend-empresa.onrender.com/api` *(o tu URL de Vercel)*
 7. Haz clic en **"Save and Deploy"**.
 
 En 1 minuto tendrás tu frontend publicado en una URL global de alta velocidad:
-👉 **`https://uyuni-frontend.pages.dev`** (al cual le puedes vincular tu dominio como `admin.novabox.bo` con 1 solo clic).
+👉 **`https://uyuni-frontend.pages.dev`** (al cual le puedes vincular tu dominio como `admin.tuempresa.com` con 1 solo clic).
 
 ---
 
@@ -237,7 +237,7 @@ En 1 minuto tendrás tu frontend publicado en una URL global de alta velocidad:
 
 ### 2. Documentos Privados y Videos (Cloudflare R2)
 1. En tu panel de Cloudflare, ve a **R2 Object Storage**.
-2. Haz clic en **"Create bucket"** y nómbralo `novabox-documents`.
+2. Haz clic en **"Create bucket"** y nómbralo `empresa-documents`.
 3. En la pestaña **Settings**, genera un **API Token** con permisos de lectura y escritura.
 4. Obtendrás tus claves S3:
    * `R2_ACCESS_KEY_ID`

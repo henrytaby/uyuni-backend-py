@@ -1,12 +1,12 @@
-# Ecosistema Commerce (Nova Box Bolivia) — Guía Maestra
+# Ecosistema Commerce — Guía Maestra
 
-Bienvenido a la documentación oficial del módulo **Commerce** del sistema **Uyuni Backend**. Este módulo funciona como el motor transaccional, ERP de costos de importación, control de existencias físicas y gestor de catálogo comercial para el ecosistema de **Nova Box Bolivia**.
+Bienvenido a la documentación oficial del módulo **Commerce** del sistema **Uyuni Backend**. Este módulo funciona como el motor transaccional, ERP de costos de importación, control de existencias físicas y gestor de catálogo comercial multicanal (Marca Blanca).
 
 ---
 
 ## 🎯 Propósito del Módulo
 
-Nova Box Bolivia se dedica a la importación y comercialización de lotes de liquidación minorista (Amazon, Walmart, Target), comercializados principalmente a través de remates por streaming en vivo (**TikTok Live**), publicaciones en **Facebook Marketplace**, grupos de **WhatsApp** y entregas locales o nacionales por flota.
+El módulo está diseñado para la importación y comercialización de lotes de productos o liquidaciones minoristas, comercializados a través de remates por streaming en vivo (**TikTok Live**), publicaciones en **Marketplace**, canales de mensajería directa y entregas locales o envíos nacionales.
 
 El módulo `commerce` resuelve los siguientes desafíos críticos de negocio:
 
@@ -39,10 +39,10 @@ El dominio se encuentra estructurado en 8 submódulos desacoplados dentro de `ap
 ```text
 app/modules/commerce/
 ├── rounds/            # Rondas de inversión y capital desembolsado
-├── batches/           # Lotes y cajas importadas (Ataúd 1, Ataúd 2, Amazon Next)
+├── batches/           # Lotes y cajas importadas con control de costos
 ├── categories/        # Categorías generales de catálogo (CAT-01..09)
-├── live_baskets/      # Canastas temáticas para TikTok Live (C1..C4, C+1, FONDO)
-├── channels/          # Canales comerciales (Marketplace, TikTok Live, WhatsApp)
+├── live_baskets/      # Canastas temáticas para Live Streaming (C1..C4, C+1, FONDO)
+├── channels/          # Canales comerciales (Marketplace, Live, Tienda física)
 ├── product_masters/   # Fichas comerciales e intelectuales (#1..242)
 ├── products/          # Inventario físico específico por caja/lote
 ├── sales/             # Transacciones de venta y detalle de ítems vendidos
@@ -56,7 +56,7 @@ Para mantener la barra lateral limpia y ergonómica, el menú de **Comercio** en
 
 | Módulo | Ruta | Icono Lucide | Tipo | Propósito |
 | :--- | :--- | :--- | :--- | :--- |
-| **Productos** | `/commerce/products` | `LucideTag` | Operativo | Catálogo de SKUs NOV-XXX, stock físico y precios. |
+| **Productos** | `/commerce/products` | `LucideTag` | Operativo | Catálogo de SKUs, stock físico y precios. |
 | **Lotes y Cajas** | `/commerce/batches` | `LucideBoxes` | Operativo | Control de costos de cajas y punto de equilibrio. |
 | **Ventas** | `/commerce/sales` | `LucideShoppingCart` | Operativo | Registro instantáneo de pedidos, cobros QR y despachos. |
 | **Catálogo Maestro** | `/commerce/product-masters` | `LucideDatabase` | Maestro | Fichas técnicas maestras, especificaciones y fotos WebP. |

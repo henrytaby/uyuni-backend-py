@@ -90,17 +90,15 @@ Detailed architectural context maintained across sessions:
 
 ---
 
-## 🌐 Dominio Específico: Módulo Commerce (Nova Box Bolivia)
+## 🌐 Dominio Específico: Módulo Commerce (White-Label Retail / E-commerce ERP)
 
-Este backend actúa como motor transaccional y ERP para el ecosistema comercial de **Nova Box Bolivia**:
-- **Documento Maestro de Arquitectura**: Consultar `/opt/nova/nova-home-tech/docs/arquitectura/RFC-001-integracion-uyuni-novabox.md`.
-- **Repositorio Comercial Origen**: `/opt/nova/nova-home-tech` (inventario histórico, fotos WebP, márgenes y manifests `NOV-XXX`).
+Este backend actúa como motor transaccional y ERP de Marca Blanca para empresas de retail, importaciones y e-commerce:
 - **Frontend de Gestión**: `/opt/uyuni/uyuni-frontend-ng` (Angular 21 + PrimeNG 21).
-- **Frontend Público de Clientes**: `/opt/nova/nova-home-tech/apps/catalog-pwa` (React + Vite).
+- **Frontend Público de Clientes**: Aplicación web/móvil para catálogo en tiempo real (React + Vite PWA).
 - **Módulo de Negocio (`app/modules/commerce/`)**:
-  - `products`: Catálogo de SKUs (`NOV-XXX`), estados (`disponible`, `reservado`, `vendido`, `merma`), precio oficial y mínimo (`minimum_price`).
-  - `batches`: Cajas y lotes importados (Ataúd 1, Ataúd 2, Amazon Next) con control de costos y punto de equilibrio.
-  - `sales`: Registro atómico de ventas con métodos de pago bolivianos (QR, efectivo, flota), cliente y cálculo de ganancia neta.
-  - `api/public/catalog`: Endpoint público cacheado para alimentar la PWA de clientes en tiempo real sin rebuilds.
+  - `products`: Catálogo de SKUs (`SKU-XXX`), estados (`disponible`, `reservado`, `vendido`, `merma`), precio oficial y mínimo (`minimum_price`).
+  - `batches`: Cajas y lotes importados con control de costos y punto de equilibrio.
+  - `sales`: Registro atómico de ventas con métodos de pago (QR, efectivo, envíos), cliente y cálculo de ganancia neta.
+  - `api/public/catalog`: Endpoint público cacheado para alimentar aplicaciones de clientes en tiempo real sin rebuilds.
 - **Regla de Negocio Crítica**: En el servicio de ventas, nunca permitir transacciones por debajo del `minimum_price` sin confirmación explícita, y asegurar que el producto se marque como `vendido` en la misma transacción atómica.
 
