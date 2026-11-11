@@ -286,11 +286,13 @@ venv/bin/ruff format app/ tests/
 
 ---
 
-## 🚀 Despliegue en Producción (VPS Ubuntu)
+## 🚀 Opciones de Despliegue en Producción
 
-Para desplegar este backend en un servidor Ubuntu VPS listo para producción con **Systemd**, **Nginx como Reverse Proxy** y certificados SSL de **Let's Encrypt**:
+El proyecto soporta estrategias de despliegue según tus preferencias de infraestructura:
 
-👉 Consulta la **[Guía Completa de Despliegue en VPS Ubuntu](docs/UBUNTU_VPS_DEPLOYMENT_GUIDE.md)**.
+1. ☁️ **[Despliegue Serverless en la Nube (Sin Servidores)](docs/SERVERLESS_DEPLOYMENT_GUIDE.md)**: **Recomendado**. Cero administración de Linux, despliegue continuo con `git push`, base de datos PostgreSQL en **Neon.tech**, backend en **Koyeb/Render**, fotos en **Cloudinary**, documentos en **Cloudflare R2** y frontend en **Cloudflare Pages**. Costo $0.00/mes.
+2. 🏢 **[Manual de Replicación para Nuevas Empresas (Marca Blanca)](docs/CLIENT_REPLICATION_PLAYBOOK.md)**: Guía paso a paso para desplegar instancias independientes y aisladas para nuevas empresas (como **Nova Labs** o futuros clientes) con sus propios correos, cuentas gratuitas y protección de propiedad intelectual.
+3. 🖥️ **[Despliegue Tradicional en Servidor VPS Ubuntu](docs/UBUNTU_VPS_DEPLOYMENT_GUIDE.md)**: Despliegue en tu propio servidor Linux con **Systemd**, **Nginx como Reverse Proxy** y certificados SSL de **Let's Encrypt**.
 
 ---
 
@@ -300,6 +302,9 @@ El proyecto incluye una completa suite de guías técnicas en el directorio [`do
 
 | Documento | Descripción |
 | :--- | :--- |
+| **[Despliegue Serverless (Recomendado)](docs/SERVERLESS_DEPLOYMENT_GUIDE.md)** | Manual completo paso a paso en la nube: Neon + Koyeb + Cloudflare + Cloudinary |
+| **[Replicación para Nuevas Empresas](docs/CLIENT_REPLICATION_PLAYBOOK.md)** | Procedimiento de despliegue dedicado por empresa / marca blanca (Nova Labs y clientes) |
+| **[Despliegue VPS Ubuntu](docs/UBUNTU_VPS_DEPLOYMENT_GUIDE.md)** | Manual paso a paso para servidores privados virtuales con Systemd y Nginx |
 | **[Módulo Commerce (Guía Maestra)](docs/COMMERCE_MODULE_GUIDE.md)** | Visión general del ecosistema comercial, SKUs, lotes y ventas |
 | **[Arquitectura Commerce](docs/commerce/01_ARCHITECTURE.md)** | Diagramas de componentes, flujos transaccionales y entidades |
 | **[Diccionario de Base de Datos](docs/commerce/02_DATABASE_DICTIONARY.md)** | Tablas, campos, restricciones, llaves y tipos de datos de Commerce |

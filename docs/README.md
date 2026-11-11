@@ -3,7 +3,9 @@
 ## Documentación de referencia (FastAPI actual)
 
 Esta carpeta contiene la documentación del proyecto FastAPI actual (legacy):
-- `UBUNTU_VPS_DEPLOYMENT_GUIDE.md` (Guía completa de instalación y despliegue en VPS Ubuntu)
+- `SERVERLESS_DEPLOYMENT_GUIDE.md` (Guía completa de despliegue en la nube Serverless sin VPS: Neon + Koyeb + Cloudflare + Cloudinary)
+- `CLIENT_REPLICATION_PLAYBOOK.md` (Manual de replicación y despliegue para nuevas empresas: modelo single-tenant dedicado y marca blanca)
+- `UBUNTU_VPS_DEPLOYMENT_GUIDE.md` (Guía de instalación y despliegue tradicional en VPS Ubuntu)
 - `COMMERCE_MODULE_GUIDE.md` (y suite completa en [`docs/commerce/`](./commerce/README.md))
 - `RBAC_GUIDE.md`, `AUTHENTICATION_GUIDE.md`, `ALEMBIC_GUIDE.md`, `AUDIT_GUIDE.md`
 - `ASSETS_MODULE_GUIDE.md`, `CORE_MODULE_GUIDE.md`, `QUERY_SYSTEM_GUIDE.md`
