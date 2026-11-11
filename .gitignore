@@ -204,4 +204,7 @@ data/
 *.sqlite
 *.sqlite3
 
+### Production Deploy Scripts (Root-level only) ###
+/deploy.sh
+
 ### End of .gitignore ###

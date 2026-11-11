@@ -417,51 +417,56 @@ sudo certbot renew --dry-run
 
 ---
 
-### Paso 10: Script de Actualización Rápida en Producción (`deploy.sh`)
+### Paso 10: Script de Actualización Rápida en Producción (`scripts/deploy.sh`)
 
-Para que actualizar el backend en el VPS sea cuestión de un solo comando en el futuro, crearemos un script de deploy:
+Para que actualizar el backend en el VPS sea cuestión de un solo comando en el futuro, el proyecto **ya incluye el script oficial en `scripts/deploy.sh`** (y la raíz `/deploy.sh` está protegida en `.gitignore` para que Git nunca lo marque como cambio pendiente ni interfiera con `git pull`).
 
-```bash
-sudo nano /opt/uyuni/uyuni-backend-py/deploy.sh
-```
-
-Pega el siguiente contenido:
+El contenido del script oficial es:
 
 ```bash
 #!/bin/bash
 set -e
 
+# Determinar el directorio raíz del proyecto dinámicamente
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
 echo "🚀 Iniciando despliegue de Uyuni Backend..."
-cd /opt/uyuni/uyuni-backend-py
+cd "$PROJECT_ROOT"
 
 echo "📥 Descargando últimos cambios de Git..."
 git pull origin main
 
-echo "📦 Actualizando dependencias..."
+echo "📦 Actualizando dependencias de Python..."
 venv/bin/pip install -r requirements.txt
 
-echo "🔄 Ejecutando migraciones de base de datos..."
+echo "🔄 Ejecutando migraciones de base de datos (Alembic)..."
 venv/bin/alembic upgrade head
 
-echo "♻️ Reiniciando servicio FastAPI..."
+echo "♻️ Reiniciando servicio FastAPI en Systemd..."
 sudo systemctl restart uyuni-backend
 
 echo "✅ Despliegue completado con éxito!"
 sudo systemctl status uyuni-backend --no-pager
 ```
 
-Hazlo ejecutable y otorga permiso de sudo sin contraseña a `systemctl restart uyuni-backend` para el usuario `deploy`:
-```bash
-sudo chmod +x /opt/uyuni/uyuni-backend-py/deploy.sh
-sudo chown deploy:deploy /opt/uyuni/uyuni-backend-py/deploy.sh
+#### 10.1 Dar permisos de ejecución y configurar `sudoers`:
+Como usuario `root` o con `sudo`:
 
-# Permitir a deploy reiniciar el servicio sin pedir password
+```bash
+# 1. Asegurar permisos de ejecución en el script
+sudo chmod +x /opt/uyuni/uyuni-backend-py/scripts/deploy.sh
+sudo chown deploy:deploy /opt/uyuni/uyuni-backend-py/scripts/deploy.sh
+
+# 2. Permitir al usuario deploy reiniciar el servicio sin pedir contraseña de root
 echo "deploy ALL=(ALL) NOPASSWD: /bin/systemctl restart uyuni-backend, /bin/systemctl status uyuni-backend" | sudo tee /etc/sudoers.d/deploy-uyuni
 ```
 
-A partir de ahora, cada vez que quieras actualizar el backend, solo ejecutas:
+#### 10.2 Cómo actualizar el backend a partir de ahora:
+Cada vez que subas cambios a GitHub y quieras actualizar el VPS, solo ejecutas un comando:
+
 ```bash
-sudo -u deploy /opt/uyuni/uyuni-backend-py/deploy.sh
+sudo -u deploy /opt/uyuni/uyuni-backend-py/scripts/deploy.sh
 ```
 
 ---
