@@ -14,6 +14,7 @@ from app.modules.core.org_units.models import OrgUnit
 from app.modules.core.positions.models import StaffPosition
 from app.modules.core.staff.models import Staff
 
+
 # ==========================================
 # EXTERNAL MODELS (an_core)
 # ==========================================
@@ -38,6 +39,7 @@ class FuncionarioSync(SQLModel, table=True):
     departamento_id: int | None = None
     is_active: bool
 
+
 class UnidadSync(SQLModel, table=True):
     __tablename__ = "unidad_organizacional"
     id: int = Field(primary_key=True)
@@ -48,6 +50,7 @@ class UnidadSync(SQLModel, table=True):
     tipo: str
     is_active: bool
 
+
 class CargoSync(SQLModel, table=True):
     __tablename__ = "cargo"
     id: int = Field(primary_key=True)
@@ -56,6 +59,7 @@ class CargoSync(SQLModel, table=True):
     nombre: str
     tipo_puesto: str
     is_active: bool
+
 
 # ==========================================
 # SYNC LOGIC
@@ -79,7 +83,9 @@ def run_sync():
         print("--- Syncing Cargos (StaffPosition) ---")
         cargos = ext_session.exec(select(CargoSync)).all()
         for cargo in cargos:
-            local_pos = loc_session.exec(select(StaffPosition).where(StaffPosition.external_id == cargo.id)).first()
+            local_pos = loc_session.exec(
+                select(StaffPosition).where(StaffPosition.external_id == cargo.id)
+            ).first()
             if not local_pos:
                 local_pos = StaffPosition(
                     id=uuid.uuid7(),
@@ -88,7 +94,7 @@ def run_sync():
                     name=cargo.nombre,
                     level=cargo.nivel,
                     position_type=cargo.tipo_puesto,
-                    is_active=cargo.is_active
+                    is_active=cargo.is_active,
                 )
                 loc_session.add(local_pos)
             else:
@@ -104,10 +110,12 @@ def run_sync():
         # 2. Sync Unidades Organizacionales
         print("--- Syncing Unidades Organizacionales (OrgUnit) ---")
         unidades = ext_session.exec(select(UnidadSync)).all()
-        
+
         # Pass 1: Upsert all units without parent_id
         for uni in unidades:
-            local_uni = loc_session.exec(select(OrgUnit).where(OrgUnit.external_id == uni.id)).first()
+            local_uni = loc_session.exec(
+                select(OrgUnit).where(OrgUnit.external_id == uni.id)
+            ).first()
             if not local_uni:
                 local_uni = OrgUnit(
                     id=uuid.uuid7(),
@@ -117,7 +125,7 @@ def run_sync():
                     acronym=uni.sigla,
                     general_unit=uni.unidad_general,
                     type=uni.tipo,
-                    is_active=uni.is_active
+                    is_active=uni.is_active,
                 )
                 loc_session.add(local_uni)
             else:
@@ -129,12 +137,16 @@ def run_sync():
                 local_uni.is_active = uni.is_active
                 loc_session.add(local_uni)
         loc_session.commit()
-        
+
         # Pass 2: Map parent_id
         for uni in unidades:
             if uni.parent_id:
-                local_uni = loc_session.exec(select(OrgUnit).where(OrgUnit.external_id == uni.id)).first()
-                parent_uni = loc_session.exec(select(OrgUnit).where(OrgUnit.external_id == uni.parent_id)).first()
+                local_uni = loc_session.exec(
+                    select(OrgUnit).where(OrgUnit.external_id == uni.id)
+                ).first()
+                parent_uni = loc_session.exec(
+                    select(OrgUnit).where(OrgUnit.external_id == uni.parent_id)
+                ).first()
                 if local_uni and parent_uni:
                     local_uni.parent_id = parent_uni.id
                     loc_session.add(local_uni)
@@ -144,29 +156,41 @@ def run_sync():
         # 3. Sync Funcionarios
         print("--- Syncing Funcionarios (Staff) ---")
         funcionarios = ext_session.exec(select(FuncionarioSync)).all()
-        
+
         for func in funcionarios:
             # Resolve Position UUID
             position_uuid = None
             if func.cargo_id:
-                pos = loc_session.exec(select(StaffPosition).where(StaffPosition.external_id == func.cargo_id)).first()
+                pos = loc_session.exec(
+                    select(StaffPosition).where(
+                        StaffPosition.external_id == func.cargo_id
+                    )
+                ).first()
                 if pos:
                     position_uuid = pos.id
-            
+
             # Resolve OrgUnit UUID (Priority: departamento_id, Fallback: gerencia_id)
             org_unit_uuid = None
-            external_unit_id = func.departamento_id if func.departamento_id else func.gerencia_id
+            external_unit_id = (
+                func.departamento_id if func.departamento_id else func.gerencia_id
+            )
             if external_unit_id:
-                uni = loc_session.exec(select(OrgUnit).where(OrgUnit.external_id == external_unit_id)).first()
+                uni = loc_session.exec(
+                    select(OrgUnit).where(OrgUnit.external_id == external_unit_id)
+                ).first()
                 if uni:
                     org_unit_uuid = uni.id
 
             # Only sync if we resolved the required relationships
             if not position_uuid or not org_unit_uuid:
-                print(f"Skipping Funcionario {func.id} due to missing position or org_unit relation in local DB.")
+                print(
+                    f"Skipping Funcionario {func.id} due to missing position or org_unit relation in local DB."
+                )
                 continue
 
-            local_staff = loc_session.exec(select(Staff).where(Staff.external_id == func.id)).first()
+            local_staff = loc_session.exec(
+                select(Staff).where(Staff.external_id == func.id)
+            ).first()
             if not local_staff:
                 local_staff = Staff(
                     id=uuid.uuid7(),
@@ -186,7 +210,7 @@ def run_sync():
                     staff_type=func.tipo,
                     is_active=func.is_active,
                     position_id=position_uuid,
-                    org_unit_id=org_unit_uuid
+                    org_unit_id=org_unit_uuid,
                 )
                 loc_session.add(local_staff)
             else:
@@ -211,6 +235,7 @@ def run_sync():
         loc_session.commit()
         print(f"Synced {len(funcionarios)} funcionarios.")
         print("Data synchronization completed successfully.")
+
 
 if __name__ == "__main__":
     run_sync()

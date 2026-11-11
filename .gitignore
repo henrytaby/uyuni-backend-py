@@ -198,4 +198,10 @@ pip-selfcheck.json
 .kilo/
 .kilocode/
 
+### Local Data & Caches ###
+data/
+*.db
+*.sqlite
+*.sqlite3
+
 ### End of .gitignore ###

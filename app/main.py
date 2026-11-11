@@ -120,6 +120,30 @@ app = FastAPI(
             "description": "Gestión centralizada de Bienes de Uso, "
             "códigos SAF y verificación física.",
         },
+        {
+            "name": "Commerce - Products",
+            "description": "Catálogo de productos, SKUs NOV-XXX y stock.",
+        },
+        {
+            "name": "Commerce - Sales",
+            "description": "Punto de venta y transacciones atómicas.",
+        },
+        {
+            "name": "Commerce - Batches & Boxes",
+            "description": "Lotes de importación y análisis de costos.",
+        },
+        {
+            "name": "Commerce - Investment Rounds",
+            "description": "Control de rondas de inversión y retorno de capital.",
+        },
+        {
+            "name": "Commerce - Categories",
+            "description": "Taxonomía oficial de categorías Nova Box.",
+        },
+        {
+            "name": "Commerce - Live Baskets",
+            "description": "Canastas estratégicas para transmisiones en vivo.",
+        },
     ],
     openapi_url="/openapi.json",
 )

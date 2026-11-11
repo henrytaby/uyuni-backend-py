@@ -26,6 +26,16 @@ from app.modules.assets.groups.models import AssetGroup
 from app.modules.assets.statuses.models import AssetStatus
 from app.modules.assets.acts.models import Act, AssetActLink
 from app.modules.assets.assets.models import FixedAsset
+
+# Commerce Domain (Nova Box Bolivia)
+from app.modules.commerce.rounds.models import InvestmentRound
+from app.modules.commerce.batches.models import Batch
+from app.modules.commerce.categories.models import Category
+from app.modules.commerce.channels.models import SalesChannel
+from app.modules.commerce.live_baskets.models import LiveBasket
+from app.modules.commerce.product_masters.models import ProductMaster
+from app.modules.commerce.products.models import Product
+from app.modules.commerce.sales.models import Sale, SaleItem
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

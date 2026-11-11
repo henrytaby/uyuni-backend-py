@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.auth import routers as Auth
 from app.core.catalogs.routers import router as Catalogs
 from app.modules.assets import routers as Assets
+from app.modules.commerce import routers as Commerce
 from app.modules.core import routers as Core
 from app.modules.tasks import routers as Task
 
@@ -19,3 +20,6 @@ router.include_router(Core.router)
 
 # Assets
 router.include_router(Assets.router)
+
+# Commerce (Nova Box Bolivia)
+router.include_router(Commerce.router)
