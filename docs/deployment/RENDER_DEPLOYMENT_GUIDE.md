@@ -156,3 +156,14 @@ git push origin main
 ```
 Render detectará el commit en GitHub, reconstruirá el contenedor Docker y publicará la nueva versión en producción automáticamente en 60 segundos con cero tiempo de inactividad.
 
+### 🛡️ Migraciones Automáticas de Base de Datos (Neon + Alembic)
+El contenedor Docker y el archivo `render.yaml` están configurados con:
+```bash
+alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2
+```
+**¿Qué significa esto?**
+- En cada despliegue, **Alembic se conecta a tu base de datos de Neon** usando la variable `DATABASE_URL`.
+- Aplica de forma automática e incremental cualquier migración pendiente en `alembic/versions/` (como agregar las columnas de perfil en la tabla `user`).
+- Una vez finalizada la migración con éxito (toma menos de 1 segundo si ya está al día), Uvicorn arranca el servidor.
+- **Tú no necesitas conectarte a Neon manualmente.** Solo debes asegurarte de que el archivo de migración generado en `alembic/versions/` esté incluido en tu commit (`git add .`).
+

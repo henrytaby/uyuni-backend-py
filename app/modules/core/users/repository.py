@@ -9,7 +9,14 @@ from app.models.user import User, UserRole
 
 
 class UserRepository(BaseRepository[User]):
-    searchable_fields = ["username", "email", "first_name", "last_name"]
+    searchable_fields = [
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "phone",
+        "city",
+    ]
 
     def __init__(self, session: Session):
         super().__init__(session, User)

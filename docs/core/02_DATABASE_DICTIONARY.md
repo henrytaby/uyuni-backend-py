@@ -22,6 +22,13 @@ erDiagram
         string email UK "Correo electrónico único"
         string first_name "Nombres del usuario"
         string last_name "Apellidos del usuario"
+        string phone "Teléfono celular / WhatsApp (formato E.164)"
+        string avatar_url "URL pública de imagen de perfil"
+        string country "Código de país ISO (ej. BO)"
+        string city "Ciudad de residencia o sucursal"
+        string address "Dirección física o referencia"
+        string notes "Notas administrativas internas"
+        string timezone "Zona horaria IANA (ej. America/La_Paz)"
         bool is_verified "Si el correo fue verificado"
         bool is_active "Estado activo / inactivo de la cuenta"
         bool is_superuser "Acceso total bypass RBAC"
@@ -123,6 +130,13 @@ Almacena las cuentas de usuario y credenciales del sistema.
 | `email` | `VARCHAR` | No | UK | Correo electrónico principal de la cuenta. |
 | `first_name` | `VARCHAR` | Sí | | Nombres de pila de la persona. |
 | `last_name` | `VARCHAR` | Sí | | Apellidos de la persona. |
+| `phone` | `VARCHAR(30)` | Sí | | Teléfono celular / WhatsApp (formato E.164). |
+| `avatar_url` | `VARCHAR(500)` | Sí | | URL de la imagen de perfil (Cloudinary, R2). |
+| `country` | `VARCHAR(10)` | Sí | | Código de país ISO (Default: `"BO"`). |
+| `city` | `VARCHAR(100)` | Sí | | Ciudad de residencia o sucursal operativa. |
+| `address` | `VARCHAR(255)` | Sí | | Dirección física o referencia de ubicación. |
+| `notes` | `TEXT` | Sí | | Notas administrativas y supervisión interna. |
+| `timezone` | `VARCHAR(50)` | Sí | | Zona horaria IANA (Default: `"America/La_Paz"`). |
 | `password_hash` | `VARCHAR` | No | | Hash seguro bcrypt (nunca retornado en respuestas JSON). |
 | `is_verified` | `BOOLEAN` | No | | `true` si el correo ha sido verificado. Default: `false`. |
 | `is_active` | `BOOLEAN` | No | | `true` si la cuenta puede iniciar sesión. Default: `true`. |

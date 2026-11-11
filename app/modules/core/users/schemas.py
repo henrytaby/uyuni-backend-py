@@ -50,6 +50,23 @@ class UserCreate(SQLModel):
     password: str = Field(
         min_length=6, description="Strong password (min 6 characters)"
     )
+    phone: str | None = Field(
+        default=None, max_length=30, description="Phone / WhatsApp number"
+    )
+    avatar_url: str | None = Field(
+        default=None, max_length=500, description="Avatar image URL"
+    )
+    country: str | None = Field(
+        default="BO", max_length=10, description="Country code (ISO)"
+    )
+    city: str | None = Field(default=None, max_length=100, description="City")
+    address: str | None = Field(
+        default=None, max_length=255, description="Physical address"
+    )
+    notes: str | None = Field(default=None, description="Administrative notes")
+    timezone: str | None = Field(
+        default="America/La_Paz", max_length=50, description="IANA Timezone"
+    )
     is_active: bool = Field(default=True, description="Whether the user is active")
     is_superuser: bool = Field(
         default=False, description="Whether the user has superuser privileges"
@@ -75,9 +92,19 @@ class UserCreate(SQLModel):
     def validate_email(cls, v: EmailStr) -> str:
         return str(v).strip().lower()
 
-    @field_validator("first_name", "last_name")
+    @field_validator(
+        "first_name",
+        "last_name",
+        "phone",
+        "avatar_url",
+        "city",
+        "address",
+        "country",
+        "timezone",
+        "notes",
+    )
     @classmethod
-    def clean_names(cls, v: str | None) -> str | None:
+    def clean_strings(cls, v: str | None) -> str | None:
         if v is not None:
             cleaned = v.strip()
             return cleaned if cleaned else None
@@ -90,6 +117,23 @@ class UserUpdate(SQLModel):
     first_name: str | None = Field(default=None, description="User's first name")
     last_name: str | None = Field(default=None, description="User's last name")
     password: str | None = Field(default=None, description="New strong password")
+    phone: str | None = Field(
+        default=None, max_length=30, description="Phone / WhatsApp number"
+    )
+    avatar_url: str | None = Field(
+        default=None, max_length=500, description="Avatar image URL"
+    )
+    country: str | None = Field(
+        default=None, max_length=10, description="Country code (ISO)"
+    )
+    city: str | None = Field(default=None, max_length=100, description="City")
+    address: str | None = Field(
+        default=None, max_length=255, description="Physical address"
+    )
+    notes: str | None = Field(default=None, description="Administrative notes")
+    timezone: str | None = Field(
+        default=None, max_length=50, description="IANA Timezone"
+    )
     is_active: bool | None = Field(
         default=None, description="Whether the user is active"
     )
@@ -124,9 +168,19 @@ class UserUpdate(SQLModel):
                 raise ValueError("La contraseña debe tener al menos 6 caracteres")
         return v
 
-    @field_validator("first_name", "last_name")
+    @field_validator(
+        "first_name",
+        "last_name",
+        "phone",
+        "avatar_url",
+        "city",
+        "address",
+        "country",
+        "timezone",
+        "notes",
+    )
     @classmethod
-    def clean_names(cls, v: str | None) -> str | None:
+    def clean_strings(cls, v: str | None) -> str | None:
         if v is not None:
             cleaned = v.strip()
             return cleaned if cleaned else None
@@ -139,6 +193,13 @@ class UserRead(SQLModel):
     email: str
     first_name: str | None = None
     last_name: str | None = None
+    phone: str | None = None
+    avatar_url: str | None = None
+    country: str | None = "BO"
+    city: str | None = None
+    address: str | None = None
+    notes: str | None = None
+    timezone: str | None = "America/La_Paz"
     is_verified: bool
     is_active: bool
     is_superuser: bool

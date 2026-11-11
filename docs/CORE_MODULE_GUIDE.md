@@ -52,6 +52,13 @@ erDiagram
         string email UK
         string first_name
         string last_name
+        string phone
+        string avatar_url
+        string country
+        string city
+        string address
+        string notes
+        string timezone
         bool is_verified
         bool is_active
         bool is_superuser
@@ -159,8 +166,10 @@ Al iniciar el servidor o ejecutar el script `seeds/seed_create_modules.py`, el `
 El submódulo `/core/users` soporta de forma nativa la integración con tablas avanzadas:
 1. **Paginación en Servidor**: Parámetros `skip` y `limit`.
 2. **Ordenamiento Dinámico**: Usando `sort_by` y `sort_order` sobre cualquier columna.
-3. **Búsqueda Global Polimórfica**: Filtrado insensible a mayúsculas/minúsculas por `username`, `email`, `first_name`, `last_name`.
+3. **Búsqueda Global Polimórfica**: Filtrado insensible a mayúsculas/minúsculas simultáneamente por `username`, `email`, `first_name`, `last_name`, `phone` y `city`.
 4. **Endpoint de Conteo**: `/core/users/count` para la paginación reactiva.
+5. **Historial de Inicios de Sesión**: `/core/users/{id}/logins` y `/count` para la pestaña de auditoría.
+6. **Catálogos Dinámicos de Roles**: `/api/catalogs/roles` para selectores en tiempo real.
 
 ---
 

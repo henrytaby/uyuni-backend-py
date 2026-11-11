@@ -23,6 +23,15 @@ class User(BaseModel, AuditMixin, table=True):
     is_superuser: bool = Field(default=False)
     password_hash: str = Field(exclude=True)
 
+    # Profile & Contact Fields
+    phone: str | None = Field(default=None, max_length=30)
+    avatar_url: str | None = Field(default=None, max_length=500)
+    country: str | None = Field(default="BO", max_length=10)
+    city: str | None = Field(default=None, max_length=100)
+    address: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None)
+    timezone: str | None = Field(default="America/La_Paz", max_length=50)
+
     # Security & Analytics
     failed_login_attempts: int = Field(default=0)
     locked_until: datetime | None = Field(

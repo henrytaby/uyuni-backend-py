@@ -421,3 +421,33 @@ class AuthService:
             result.append(group_menu)
 
         return result
+
+    def update_profile(
+        self, current_user: User, data: schemas.UserProfileUpdate
+    ) -> User:
+        update_dict = data.model_dump(exclude_unset=True)
+        for key, value in update_dict.items():
+            setattr(current_user, key, value)
+        current_user.updated_at = get_current_time()
+        self.session.add(current_user)
+        self.session.commit()
+        self.session.refresh(current_user)
+        return current_user
+
+    def change_password(
+        self, current_user: User, data: schemas.UserChangePassword
+    ) -> dict[str, str]:
+        if not utils.verify_password(data.current_password, current_user.password_hash):
+            raise BadRequestException(detail="La contraseña actual es incorrecta")
+
+        if data.current_password == data.new_password:
+            raise BadRequestException(
+                detail="La nueva contraseña no puede ser idéntica a la actual"
+            )
+
+        current_user.password_hash = utils.get_password_hash(data.new_password)
+        current_user.updated_at = get_current_time()
+        self.session.add(current_user)
+        self.session.commit()
+        self.session.refresh(current_user)
+        return {"message": "Contraseña actualizada exitosamente"}

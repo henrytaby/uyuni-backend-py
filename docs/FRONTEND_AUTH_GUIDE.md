@@ -295,6 +295,17 @@ export class AuthService {
     return this.http.get<User>(`${this.apiUrl}/me`);
   }
 
+  updateProfile(payload: Partial<User>) {
+    return this.http.patch<User>(`${this.apiUrl}/me`, payload);
+  }
+
+  changePassword(currentPassword: string, newPassword: string) {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/me/change-password`, {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+  }
+
   roles() {
     return this.http.get<RoleInfo[]>(`${this.apiUrl}/me/roles`);
   }

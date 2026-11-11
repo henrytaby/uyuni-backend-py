@@ -350,3 +350,71 @@ def test_user_strict_validation_username_and_email(
         headers=superuser_token_headers,
     )
     assert update_res.status_code == 422
+
+
+def test_user_profile_fields_crud_and_search(
+    client: TestClient, superuser_token_headers: dict
+):
+    # 1. Create user with full profile fields
+    profile_payload = {
+        "username": "streamer_dan",
+        "email": "dan@empresa.com",
+        "password": "danpassword123",
+        "first_name": "Daniel",
+        "last_name": "Rojas",
+        "phone": "+591 70123456",
+        "avatar_url": "https://pub-cdn.empresa.com/avatars/dan.webp",
+        "country": "BO",
+        "city": "Cochabamba",
+        "address": "Av. América 123",
+        "notes": "Streamer titular turno noche TikTok Live",
+        "timezone": "America/La_Paz",
+    }
+    response = client.post(
+        "/api/core/users/", json=profile_payload, headers=superuser_token_headers
+    )
+    assert response.status_code == 200
+    user_data = response.json()
+    assert user_data["username"] == "streamer_dan"
+    assert user_data["phone"] == "+591 70123456"
+    assert user_data["avatar_url"] == "https://pub-cdn.empresa.com/avatars/dan.webp"
+    assert user_data["city"] == "Cochabamba"
+    assert user_data["country"] == "BO"
+    assert user_data["address"] == "Av. América 123"
+    assert user_data["notes"] == "Streamer titular turno noche TikTok Live"
+    assert user_data["timezone"] == "America/La_Paz"
+    user_id = user_data["id"]
+
+    # 2. Update profile fields
+    patch_payload = {
+        "phone": "+591 77998811",
+        "city": "Santa Cruz",
+        "address": "Equipetrol Calle 4",
+    }
+    response = client.patch(
+        f"/api/core/users/{user_id}",
+        json=patch_payload,
+        headers=superuser_token_headers,
+    )
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["phone"] == "+591 77998811"
+    assert updated["city"] == "Santa Cruz"
+    assert updated["address"] == "Equipetrol Calle 4"
+    assert updated["notes"] == "Streamer titular turno noche TikTok Live"
+
+    # 3. Global search by phone
+    response = client.get(
+        "/api/core/users/?search=77998811", headers=superuser_token_headers
+    )
+    assert response.status_code == 200
+    search_results = response.json()
+    assert any(u["id"] == user_id for u in search_results)
+
+    # 4. Global search by city
+    response = client.get(
+        "/api/core/users/?search=Santa Cruz", headers=superuser_token_headers
+    )
+    assert response.status_code == 200
+    search_results = response.json()
+    assert any(u["id"] == user_id for u in search_results)

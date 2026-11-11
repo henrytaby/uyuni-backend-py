@@ -15,7 +15,9 @@ Para ofrecer una experiencia ergonómica de nivel corporativo, la vista o diálo
 │  [ 📝 Datos Generales ]   [ 🛡️ Roles Asignados ]   [ 📜 Historial de Accesos ]│
 ├────────────────────────────────────────────────────────────────────────┤
 │                                                                        │
-│  TAB 1 (Datos): Nombre, Apellido, Username, Email, Password, Estado    │
+│  TAB 1 (Datos): Nombre, Apellido, Username, Email, Password,           │
+│                 Teléfono / WhatsApp, Avatar URL, País, Ciudad,         │
+│                 Dirección, Notas Administrativas, Timezone, Estados    │
 │  TAB 2 (Roles): Selector múltiple <p-multiSelect> y lista de roles     │
 │  TAB 3 (Logs):  Tabla <p-table> de inicios de sesión y auditoría IP    │
 │                                                                        │
@@ -56,6 +58,13 @@ export interface UserDetail {
   email: string;
   first_name?: string | null;
   last_name?: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
+  country?: string | null;
+  city?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  timezone?: string | null;
   is_verified: boolean;
   is_active: boolean;
   is_superuser: boolean;
@@ -74,6 +83,13 @@ export interface UserCreatePayload {
   password: string;
   first_name?: string | null;
   last_name?: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
+  country?: string | null;
+  city?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  timezone?: string | null;
   is_active?: boolean;
   is_superuser?: boolean;
   is_verified?: boolean;
@@ -86,6 +102,13 @@ export interface UserUpdatePayload {
   password?: string;
   first_name?: string | null;
   last_name?: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
+  country?: string | null;
+  city?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  timezone?: string | null;
   is_active?: boolean;
   is_superuser?: boolean;
   is_verified?: boolean;
@@ -117,9 +140,9 @@ GET /api/core/users/?offset=0&limit=15&sort_by=created_at&sort_order=desc&search
 #### Parámetros de Consulta (Query Params):
 - `offset`: Número de registros a omitir (default: `0`).
 - `limit`: Tamaño de la página (default: `100`, sugerido UI: `15`).
-- `sort_by`: Campo para ordenar (`username`, `email`, `created_at`).
+- `sort_by`: Campo para ordenar (`username`, `email`, `created_at`, `city`).
 - `sort_order`: Dirección (`asc` o `desc`).
-- `search`: Texto para búsqueda global en `username`, `email`, `first_name`, `last_name`.
+- `search`: Texto para búsqueda global insensible a mayúsculas en `["username", "email", "first_name", "last_name", "phone", "city"]`.
 - `is_active`: Filtrar por usuarios activos (`true`/`false`).
 - `is_superuser`: Filtrar por superusuarios (`true`/`false`).
 
@@ -132,6 +155,13 @@ GET /api/core/users/?offset=0&limit=15&sort_by=created_at&sort_order=desc&search
     "email": "carlos@empresa.com",
     "first_name": "Carlos",
     "last_name": "Mamani",
+    "phone": "+59170012345",
+    "avatar_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+    "country": "BO",
+    "city": "Santa Cruz",
+    "address": "Av. San Martín #450, Equipetrol",
+    "notes": "Líder de operaciones sucursal Santa Cruz",
+    "timezone": "America/La_Paz",
     "is_verified": true,
     "is_active": true,
     "is_superuser": false,
@@ -145,7 +175,8 @@ GET /api/core/users/?offset=0&limit=15&sort_by=created_at&sort_order=desc&search
         "description": "Acceso administrativo general"
       }
     ],
-    "created_at": "2026-11-10T18:20:00"
+    "created_at": "2026-11-10T18:20:00",
+    "updated_at": "2026-11-11T12:00:00"
   }
 ]
 ```
@@ -163,7 +194,7 @@ GET /api/core/users/count?search=&is_active=true
 ---
 
 ### C. Crear Usuario con Roles (`POST /api/core/users/`)
-Al crear un usuario, puedes enviar directamente la lista de `role_slugs`:
+Al crear un usuario, puedes enviar directamente la lista de `role_slugs` junto con sus datos de perfil:
 
 ```http
 POST /api/core/users/
@@ -176,6 +207,13 @@ Content-Type: application/json
   "first_name": "Lucía",
   "last_name": "Pérez",
   "password": "PasswordSeguro2026*",
+  "phone": "+59171234567",
+  "avatar_url": "https://avatar.iran.liara.run/public/44",
+  "country": "BO",
+  "city": "La Paz",
+  "address": "Calle 21 de Calacoto, Edif. Titanium Of. 402",
+  "notes": "Encargada de ventas presenciales showroom Calacoto",
+  "timezone": "America/La_Paz",
   "is_active": true,
   "is_superuser": false,
   "is_verified": true,
@@ -195,7 +233,7 @@ Content-Type: application/json
 ---
 
 ### D. Actualizar Usuario y Sincronizar Roles (`PATCH /api/core/users/{id}`)
-Para modificar datos o cambiar los roles asignados:
+Para modificar datos, campos de perfil o cambiar los roles asignados:
 
 ```http
 PATCH /api/core/users/01a1cbf8-b99b-7323-8ec2-11ef8412aa01
@@ -204,6 +242,10 @@ Content-Type: application/json
 ```json
 {
   "first_name": "Lucía Elena",
+  "phone": "+59179988776",
+  "city": "Cochabamba",
+  "address": "Av. América Este #120",
+  "notes": "Reubicada a sucursal Cochabamba para expansión",
   "role_slugs": ["admin"]
 }
 ```
@@ -421,5 +463,106 @@ export class UserService {
    } @else {
      <p-tag value="Fallido" severity="danger" icon="pi pi-times"></p-tag>
    }
+   ```
+
+3. **Avatar de Usuario con Fallback de Iniciales (`p-avatar`):**
+   Muestra la foto de perfil o, si no fue cargada, las iniciales del nombre con color corporativo:
+   ```html
+   <p-avatar
+     [image]="user.avatar_url || ''"
+     [label]="!user.avatar_url ? (user.first_name?.[0] || user.username[0] | uppercase) : undefined"
+     shape="circle"
+     size="large"
+     styleClass="bg-teal-50 text-teal-700 font-bold border border-teal-200"
+   ></p-avatar>
+   ```
+
+4. **Acción Rápida de WhatsApp (`phone`):**
+   Si el usuario tiene teléfono registrado, abre directamente el chat de WhatsApp Web/App:
+   ```html
+   @if (user.phone) {
+     <a
+       [href]="'https://wa.me/' + user.phone.replace('+', '').replace(' ', '')"
+       target="_blank"
+       pButton
+       icon="pi pi-whatsapp"
+       class="p-button-rounded p-button-success p-button-sm p-button-text"
+       pTooltip="Contactar por WhatsApp"
+     ></a>
+   }
+   ```
+
+5. **Validación Reactiva de Formulario Espejada con el Backend:**
+   Garantiza que la UI capture los errores antes de enviar la petición HTTP:
+   ```typescript
+   this.userForm = this.fb.group({
+     username: [
+       '',
+       [
+         Validators.required,
+         Validators.minLength(3),
+         Validators.maxLength(30),
+         // Sin espacios, sin símbolos consecutivos, debe iniciar y terminar con alfanumérico
+         Validators.pattern(/^[a-zA-Z0-9](?!.*[._-]{2})[a-zA-Z0-9._-]{1,28}[a-zA-Z0-9]$/)
+       ]
+     ],
+     email: ['', [Validators.required, Validators.email]],
+     password: ['', [Validators.minLength(6)]],
+     first_name: [''],
+     last_name: [''],
+     phone: [''],
+     avatar_url: [''],
+     city: [''],
+     country: ['BO'],
+     address: [''],
+     notes: [''],
+     timezone: ['America/La_Paz'],
+     role_slugs: [[]],
+     is_active: [true],
+     is_verified: [false],
+     is_superuser: [false]
+   });
+   ```
+
+6. **Estructura de Pestañas con PrimeNG (`p-tabs`):**
+   ```html
+   <p-tabs value="0">
+     <p-tablist>
+       <p-tab value="0" icon="pi pi-user">Datos Generales</p-tab>
+       <p-tab value="1" icon="pi pi-shield">
+         Roles y Permisos
+         @if (selectedRoles.length > 0) {
+           <p-badge [value]="selectedRoles.length" severity="info"></p-badge>
+         }
+       </p-tab>
+       <p-tab value="2" icon="pi pi-history">Historial de Accesos</p-tab>
+     </p-tablist>
+     <p-tabpanels>
+       <!-- TAB 1: DATOS GENERALES Y PERFIL -->
+       <p-tabpanel value="0">
+         <!-- Inputs de Nombre, Apellido, Username, Email, Password, Teléfono, Ciudad, Switches -->
+       </p-tabpanel>
+
+       <!-- TAB 2: ROLES ASIGNADOS -->
+       <p-tabpanel value="1">
+         <p-multiSelect
+           [options]="rolesCatalog"
+           optionLabel="label"
+           optionValue="value"
+           formControlName="role_slugs"
+           placeholder="Seleccionar roles asignados"
+           display="chip"
+           class="w-full"
+         ></p-multiSelect>
+       </p-tabpanel>
+
+       <!-- TAB 3: HISTORIAL DE LOGINS -->
+       <p-tabpanel value="2">
+         <p-table [value]="loginHistory" [paginator]="true" [rows]="10" responsiveLayout="scroll">
+           <!-- Columnas: Fecha, IP, Dispositivo / User-Agent, Estado -->
+         </p-table>
+       </p-tabpanel>
+     </p-tabpanels>
+   </p-tabs>
    ```
 

@@ -8,6 +8,7 @@ services:
     plan: free
     region: ohio
     healthCheckPath: /health
+    preDeployCommand: alembic upgrade head
     envVars:
       - key: ENVIRONMENT
         value: production

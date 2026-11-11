@@ -18,13 +18,14 @@ El dominio `core` resuelve los siguientes desafíos arquitecturales de nivel emp
 
 ## 📚 Índice de la Documentación
 
-La documentación se encuentra organizada en 3 volúmenes especializados:
+La documentación se encuentra organizada en 4 volúmenes especializados:
 
 | Documento | Audiencia | Contenido Principal |
 | :--- | :--- | :--- |
 | **[01. Arquitectura y Seguridad](./01_ARCHITECTURE.md)** | Arquitectos, Tech Leads, Backend Devs | Patrón DDD-Lite, flujo de autenticación, ciclo de vida de usuarios, validaciones y sincronización de permisos. |
 | **[02. Diccionario de Base de Datos](./02_DATABASE_DICTIONARY.md)** | DBAs, Fullstack Devs, Auditores | Diagrama Entidad-Relación (ERD) en estricto singular y descripción de las 7 tablas de identidad y seguridad. |
-| **[03. Guía de Integración Frontend](./03_FRONTEND_INTEGRATION_GUIDE.md)** | Frontend Devs (Angular, PrimeNG) | Arquitectura de UI con pestañas (`p-tabs`), contratos TypeScript, consumo de endpoints REST, payloads JSON y buenas prácticas. |
+| **[03. Guía de Integración Frontend (Usuarios)](./03_FRONTEND_INTEGRATION_GUIDE.md)** | Frontend Devs (Angular, PrimeNG) | Arquitectura de UI con pestañas (`p-tabs`), contratos TypeScript, consumo de endpoints REST de administración (`/api/core/users`). |
+| **[04. Guía de Integración Frontend (Mi Perfil)](./04_SELF_SERVICE_PROFILE_GUIDE.md)** | Frontend Devs (Angular, PrimeNG) | Endpoints de autoservicio (`/api/auth/me`), cambio de contraseña (`change-password`), contratos TypeScript y diseño de tarjetas. |
 
 ---
 

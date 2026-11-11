@@ -38,9 +38,13 @@ flowchart TD
 
 ## 📋 Requisitos Previos
 
-1. **VPS:** Mínimo 1 vCPU y 1 GB de RAM (recomendado 2 vCPU y 2 GB de RAM o activar swap de 2 GB).
+1. **VPS:** Mínimo 1 vCPU y 1 GB de RAM (recomendado 2 vCPU y 2 GB de RAM o activar swap de 2 GB). Compatible con **Oracle Cloud Always Free Tier** (instancias ARM Ampere de hasta 4 OCPU / 24 GB RAM o AMD Micro), DigitalOcean, Hetzner, AWS EC2, Linode o Contabo.
 2. **Sistema Operativo:** Ubuntu 22.04 LTS o 24.04 LTS con acceso `sudo` o `root`.
 3. **Dominio o Subdominio (Opcional pero recomendado para SSL):** Un registro DNS tipo `A` que apunte la IP pública de tu VPS a tu dominio (ej: `api.tudominio.com`). Si no tienes dominio, puedes usar la IP pública temporalmente.
+
+> [!TIP]
+> **Despliegues y Migraciones en Oracle Cloud (OCI):**
+> Para conocer el procedimiento de actualización continua y cómo configurar las reglas de firewall (`iptables` e Ingress Rules de la VCN) en Oracle Cloud, consulta la **[Guía de Actualizaciones y Migraciones en Producción](./PRODUCTION_UPDATES_AND_MIGRATIONS_GUIDE.md)**.
 
 ---
 

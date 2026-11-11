@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from pydantic import ConfigDict, EmailStr, field_validator
 from sqlmodel import Field, SQLModel
@@ -55,10 +56,76 @@ class UserResponse(SQLModel):
     email: str = Field(description="User email")
     first_name: str | None = Field(default=None, description="User's first name")
     last_name: str | None = Field(default=None, description="User's last name")
+    phone: str | None = Field(default=None, description="Phone number / WhatsApp")
+    avatar_url: str | None = Field(default=None, description="Avatar image URL")
+    country: str | None = Field(default="BO", description="Country ISO code")
+    city: str | None = Field(default=None, description="City or branch")
+    address: str | None = Field(default=None, description="Physical address")
+    timezone: str | None = Field(
+        default="America/La_Paz", description="Timezone (IANA)"
+    )
     is_verified: bool = Field(
         default=False, description="Whether the email is verified"
     )
-    model_config = ConfigDict(extra="forbid", from_attributes=True)  # type: ignore
+    is_active: bool = Field(default=True, description="Account active status")
+    created_at: datetime | None = Field(default=None, description="Creation timestamp")
+    updated_at: datetime | None = Field(
+        default=None, description="Last update timestamp"
+    )
+    model_config = ConfigDict(extra="ignore", from_attributes=True)  # type: ignore
+
+
+class UserProfileUpdate(SQLModel):
+    first_name: str | None = Field(default=None, description="User's first name")
+    last_name: str | None = Field(default=None, description="User's last name")
+    phone: str | None = Field(
+        default=None, max_length=30, description="Phone number / WhatsApp"
+    )
+    avatar_url: str | None = Field(
+        default=None, max_length=500, description="Avatar image URL"
+    )
+    country: str | None = Field(
+        default=None, max_length=10, description="Country code (ISO)"
+    )
+    city: str | None = Field(default=None, max_length=100, description="City or branch")
+    address: str | None = Field(
+        default=None, max_length=255, description="Physical address"
+    )
+    timezone: str | None = Field(
+        default=None, max_length=50, description="Timezone (IANA)"
+    )
+    model_config = ConfigDict(extra="forbid")  # type: ignore
+
+    @field_validator(
+        "first_name",
+        "last_name",
+        "phone",
+        "city",
+        "address",
+        "country",
+        "timezone",
+    )
+    @classmethod
+    def clean_strings(cls, v: str | None) -> str | None:
+        if v is not None:
+            cleaned = v.strip()
+            return cleaned if cleaned else None
+        return None
+
+
+class UserChangePassword(SQLModel):
+    current_password: str = Field(min_length=1, description="Current password")
+    new_password: str = Field(
+        min_length=6, description="New strong password (min 6 characters)"
+    )
+    model_config = ConfigDict(extra="forbid")  # type: ignore
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("La nueva contraseña debe tener al menos 6 caracteres")
+        return v
 
 
 class Token(SQLModel):

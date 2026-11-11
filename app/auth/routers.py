@@ -23,8 +23,32 @@ async def login_for_access_token(
 
 
 @router.get("/me", response_model=schemas.UserResponse)
-async def read_users_me(current_user: schemas.User = Depends(utils.get_current_user)):
+async def read_users_me(current_user: UserModel = Depends(utils.get_current_user)):
     return current_user
+
+
+@router.patch("/me", response_model=schemas.UserResponse)
+async def update_users_me(
+    data: schemas.UserProfileUpdate,
+    current_user: UserModel = Depends(utils.get_current_user),
+    service: AuthService = Depends(get_auth_service),
+):
+    """
+    Update personal profile information for the authenticated user.
+    """
+    return service.update_profile(current_user, data)
+
+
+@router.post("/me/change-password", response_model=dict[str, str])
+async def change_password_me(
+    data: schemas.UserChangePassword,
+    current_user: UserModel = Depends(utils.get_current_user),
+    service: AuthService = Depends(get_auth_service),
+):
+    """
+    Change password for the authenticated user. Requires verifying current password.
+    """
+    return service.change_password(current_user, data)
 
 
 @router.post("/refresh", response_model=schemas.Token)
