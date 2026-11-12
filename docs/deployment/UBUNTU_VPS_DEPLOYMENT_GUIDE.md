@@ -336,7 +336,7 @@ User=deploy
 Group=deploy
 WorkingDirectory=/opt/uyuni/uyuni-backend-py
 EnvironmentFile=/opt/uyuni/uyuni-backend-py/.env
-ExecStart=/opt/uyuni/uyuni-backend-py/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 3 --loop uvloop --http httptools
+ExecStart=/opt/uyuni/uyuni-backend-py/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 3 --loop uvloop --http httptools --proxy-headers --forwarded-allow-ips='*'
 Restart=always
 RestartSec=5
 StandardOutput=journal

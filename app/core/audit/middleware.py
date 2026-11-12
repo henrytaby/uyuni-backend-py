@@ -7,6 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.auth.utils import decode_token
 from app.core.config import settings
+from app.core.network import get_client_ip
 from app.models.audit import AuditLog
 
 from .context import set_audit_context
@@ -64,7 +65,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
                 pass  # Use anonymous if token is invalid
 
         # 3. Set ContextVars for CDC Hooks
-        ip_address = request.client.host if request.client else "unknown"
+        ip_address = get_client_ip(request)
         user_agent = request.headers.get("user-agent")
         set_audit_context(user_id, ip_address, username, user_agent)
 

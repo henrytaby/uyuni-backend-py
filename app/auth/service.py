@@ -17,6 +17,7 @@ from app.core.exceptions import (
     NotFoundException,
     UnauthorizedException,
 )
+from app.core.network import get_client_ip
 from app.core.storage.cloudinary_service import cloudinary_service
 from app.models.module import ModuleGroup
 from app.models.role import Role
@@ -51,7 +52,7 @@ class AuthService:
         form_data: OAuth2PasswordRequestForm,
         request: Request,
     ):
-        ip_address = request.client.host if request and request.client else "unknown"
+        ip_address = get_client_ip(request)
         user_agent = (
             request.headers.get("user-agent", "unknown") if request else "unknown"
         )
