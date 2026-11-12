@@ -39,6 +39,17 @@ async def update_users_me(
     return service.update_profile(current_user, data)
 
 
+@router.delete("/me/avatar", response_model=schemas.UserResponse)
+async def delete_avatar_me(
+    current_user: UserModel = Depends(utils.get_current_user),
+    service: AuthService = Depends(get_auth_service),
+):
+    """
+    Remove current user's avatar from Cloudinary and reset avatar_url to None.
+    """
+    return service.remove_avatar(current_user)
+
+
 @router.post("/me/change-password", response_model=dict[str, str])
 async def change_password_me(
     data: schemas.UserChangePassword,

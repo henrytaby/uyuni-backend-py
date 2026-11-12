@@ -23,7 +23,7 @@ flowchart TD
 
     subgraph ManagedData ["🛡️ 3. Datos & Archivos"]
         NEON[("Neon.tech PostgreSQL 16<br/>1 GB SSD NVMe")]
-        CLOUDINARY["Cloudinary (Fotos de Catálogo)"]
+        CLOUDINARY["Cloudinary (Fotos de Perfil y Catálogo)"]
         R2["Cloudflare R2 (Facturas y Documentos)"]
     end
 
@@ -101,6 +101,9 @@ Haz clic en **"Add Environment Variable"** y añade una por una:
 | `PROJECT_NAME` | `Uyuni ERP` |
 | `ENVIRONMENT` | `production` |
 | `BACKEND_CORS_ORIGINS` | `["*"]` *(o el dominio de tu frontend)* |
+| `CLOUDINARY_CLOUD_NAME` | Nombre de tu nube (ej: `novalabs-bo`) |
+| `CLOUDINARY_API_KEY` | Tu API Key de Cloudinary |
+| `CLOUDINARY_API_SECRET` | Tu API Secret de Cloudinary |
 
 ---
 

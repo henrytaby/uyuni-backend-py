@@ -67,6 +67,16 @@ export interface UserChangePasswordPayload {
   current_password: string;
   new_password: string;
 }
+
+// --- Respuesta de subida de imagen (POST /api/core/media/upload) ---
+export interface MediaUploadResponse {
+  url: string;
+  public_id: string;
+  format: string;
+  bytes: number;
+  width: number;
+  height: number;
+}
 ```
 
 ---
@@ -168,6 +178,51 @@ Content-Type: application/json
 
 ---
 
+### D. Subir Foto / Avatar a la Nube (Cloudinary) (`POST /api/core/media/upload?folder=avatars`)
+Sube una imagen física desde el navegador a la nube corporativa de Cloudinary, con optimización y compresión automática a formato WebP.
+
+```http
+POST /api/core/media/upload?folder=avatars
+Content-Type: multipart/form-data
+```
+- **Parámetro `folder` (Query Param):** `avatars` (para fotos de perfil), `products` (para catálogo), `categories` o `general`.
+- **Form Data:** Clave `file` con los bytes binarios de la imagen (JPG, PNG, WEBP, GIF, máx. 5 MB).
+
+#### Respuesta de Ejemplo (200 OK):
+```json
+{
+  "url": "https://res.cloudinary.com/novalabs-bo/image/upload/v1794440964/uyuni/avatars/file_xyrq22.webp",
+  "public_id": "uyuni/avatars/file_xyrq22",
+  "format": "webp",
+  "bytes": 45120,
+  "width": 800,
+  "height": 800
+}
+```
+
+> [!TIP]
+> **Flujo de 2 Pasos en Frontend:**
+> 1. Al seleccionar la foto en el formulario, el frontend la sube con `POST /api/core/media/upload?folder=avatars`.
+> 2. Recibe la `url` en la respuesta y actualiza el usuario mediante `PATCH /api/auth/me` enviando `{"avatar_url": response.url}`.
+
+---
+
+### E. Eliminar Mi Avatar (`DELETE /api/auth/me/avatar`)
+Permite al usuario quitar su foto de perfil. El backend se encarga de:
+1. Eliminar físicamente el archivo en Cloudinary (cero basura residual).
+2. Resetear `avatar_url` a `null` en la base de datos.
+3. Retornar el perfil actualizado para que el frontend muestre el avatar por defecto con las iniciales (`p-avatar`).
+
+```http
+DELETE /api/auth/me/avatar
+```
+
+#### Respuesta de Ejemplo (200 OK):
+Retorna el objeto `UserProfileResponse` con `"avatar_url": null`.
+
+
+---
+
 ## 💻 4. Ejemplo de Servicio Angular (`ProfileService`)
 
 ```typescript
@@ -178,12 +233,14 @@ import {
   UserProfileResponse,
   UserProfileUpdatePayload,
   UserChangePasswordPayload,
+  MediaUploadResponse,
 } from '../models/profile.model';
 
 @Injectable({ providedIn: 'root' })
 export class ProfileService {
   private http = inject(HttpClient);
   private authUrl = '/api/auth';
+  private mediaUrl = '/api/core/media';
 
   // 1. Obtener datos del perfil actual
   getMyProfile(): Observable<UserProfileResponse> {
@@ -198,6 +255,18 @@ export class ProfileService {
   // 3. Cambiar contraseña
   changeMyPassword(payload: UserChangePasswordPayload): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.authUrl}/me/change-password`, payload);
+  }
+
+  // 4. Subir avatar a Cloudinary
+  uploadAvatar(file: File): Observable<MediaUploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<MediaUploadResponse>(`${this.mediaUrl}/upload?folder=avatars`, formData);
+  }
+
+  // 5. Eliminar foto de perfil (resetea a iniciales y borra de Cloudinary)
+  deleteAvatar(): Observable<UserProfileResponse> {
+    return this.http.delete<UserProfileResponse>(`${this.authUrl}/me/avatar`);
   }
 }
 ```

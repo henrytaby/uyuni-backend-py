@@ -306,6 +306,16 @@ export class AuthService {
     });
   }
 
+  deleteAvatar() {
+    return this.http.delete<User>(`${this.apiUrl}/me/avatar`);
+  }
+
+  uploadAvatar(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ url: string }>(`/api/core/media/upload?folder=avatars`, formData);
+  }
+
   roles() {
     return this.http.get<RoleInfo[]>(`${this.apiUrl}/me/roles`);
   }

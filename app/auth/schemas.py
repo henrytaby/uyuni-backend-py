@@ -100,6 +100,7 @@ class UserProfileUpdate(SQLModel):
         "first_name",
         "last_name",
         "phone",
+        "avatar_url",
         "city",
         "address",
         "country",

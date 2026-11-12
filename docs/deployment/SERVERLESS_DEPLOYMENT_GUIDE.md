@@ -168,6 +168,9 @@ El repositorio ya cuenta con archivos nativos para Render:
    * `PROJECT_NAME` = `"Uyuni ERP"`
    * `ENVIRONMENT` = `production`
    * `BACKEND_CORS_ORIGINS` = `["*"]`
+   * `CLOUDINARY_CLOUD_NAME` = Nombre de tu nube Cloudinary (ej: `novalabs-bo`).
+   * `CLOUDINARY_API_KEY` = Tu API Key de Cloudinary.
+   * `CLOUDINARY_API_SECRET` = Tu API Secret de Cloudinary.
 6. En **"Advanced"**, coloca en **Health Check Path**: `/health`.
 7. Haz clic en **"Deploy Web Service"**.
 8. En 2 minutos obtendrás tu URL pública:
@@ -199,6 +202,9 @@ En la capa gratuita de Render, el contenedor entra en reposo si no recibe visita
    * `PROJECT_NAME` = `"Uyuni ERP"`
    * `ENVIRONMENT` = `production`
    * `BACKEND_CORS_ORIGINS` = `["*"]`
+   * `CLOUDINARY_CLOUD_NAME` = Nombre de tu nube Cloudinary (ej: `novalabs-bo`).
+   * `CLOUDINARY_API_KEY` = Tu API Key de Cloudinary.
+   * `CLOUDINARY_API_SECRET` = Tu API Secret de Cloudinary.
 5. Haz clic en **"Deploy"**. En 60 segundos obtendrás:
    👉 **`https://uyuni-backend-tu-usuario.vercel.app`**
 
@@ -227,13 +233,14 @@ En 1 minuto tendrás tu frontend publicado en una URL global de alta velocidad:
 
 ## 🚀 PASO 5: Multimedia (Cloudinary para Fotos y Cloudflare R2 para Documentos)
 
-### 1. Fotos de Productos (Cloudinary)
-1. Crea tu cuenta en **[Cloudinary.com](https://cloudinary.com)**.
+### 1. Fotos de Perfil (Avatares) y Catálogo de Productos (Cloudinary)
+1. Crea tu cuenta gratuita en **[Cloudinary.com](https://cloudinary.com)**.
 2. En tu Dashboard copia tus tres credenciales:
-   * `CLOUDINARY_CLOUD_NAME`
+   * `CLOUDINARY_CLOUD_NAME` (ej: `novalabs-bo`)
    * `CLOUDINARY_API_KEY`
    * `CLOUDINARY_API_SECRET`
-3. Agrégalas como variables de entorno en Render o Vercel.
+3. Agrégalas como variables de entorno en Render, Vercel o tu VPS.
+*(El backend optimiza automáticamente cada imagen al subirla convirtiéndola a WebP/AVIF, reduciendo su peso hasta en un 80% y organizándola en carpetas como `uyuni/avatars/` y `uyuni/products/`).*
 
 ### 2. Documentos Privados y Videos (Cloudflare R2)
 1. En tu panel de Cloudflare, ve a **R2 Object Storage**.

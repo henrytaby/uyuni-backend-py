@@ -9,6 +9,7 @@ Este documento describe la arquitectura, el modelo de datos y la implementación
 > - **[01. Arquitectura y Reglas de Negocio](./core/01_ARCHITECTURE.md)**
 > - **[02. Diccionario de Base de Datos](./core/02_DATABASE_DICTIONARY.md)**
 > - **[03. Guía de Integración Frontend (Pestañas, Roles y Logins)](./core/03_FRONTEND_INTEGRATION_GUIDE.md)**
+> - **[04. Guía de Integración Frontend (Mi Perfil y Autoservicio)](./core/04_SELF_SERVICE_PROFILE_GUIDE.md)**
 
 ---
 

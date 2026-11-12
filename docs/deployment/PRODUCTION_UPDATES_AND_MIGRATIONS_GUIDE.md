@@ -70,6 +70,14 @@ git push origin main
 4. Luego arranca Uvicorn y el servicio pasa el `/health` check.
 5. **Cero comandos manuales.** Todo queda sincronizado en ~90 segundos.
 
+> [!NOTE]
+> **Si la actualización introduce nuevas variables de entorno (ej: Cloudinary):**  
+> Antes o después del `git push`, ve a tu Dashboard en **Render > Environment Variables** y añade las nuevas claves:
+> * `CLOUDINARY_CLOUD_NAME` = Nombre de tu nube (ej: `novalabs-bo`).
+> * `CLOUDINARY_API_KEY` = Tu API Key de Cloudinary.
+> * `CLOUDINARY_API_SECRET` = Tu API Secret de Cloudinary.  
+> Render aplicará las nuevas variables automáticamente en el siguiente despliegue.
+
 ---
 
 ## 🟠 3. Escenario B: Despliegue en VPS Propio (Oracle Cloud / Ubuntu / Nginx / Systemd)
@@ -122,6 +130,18 @@ sudo -u deploy /opt/uyuni/uyuni-backend-py/scripts/deploy.sh
 2. **`venv/bin/pip install -r requirements.txt`**: Instala cualquier librería nueva si se agregó alguna.
 3. **`venv/bin/alembic upgrade head`**: Conecta a la base de datos (PostgreSQL local del VPS o Neon) y aplica las nuevas columnas de forma segura.
 4. **`sudo systemctl restart uyuni-backend`**: Reinicia el demonio de FastAPI con cero interrupciones perceptibles.
+
+> [!NOTE]
+> **Si la actualización requiere nuevas variables de entorno (ej: Cloudinary):**  
+> Edita el archivo `.env` en tu servidor antes de reiniciar el demonio:
+> ```bash
+> nano /opt/uyuni/uyuni-backend-py/.env
+> # Añade:
+> # CLOUDINARY_CLOUD_NAME=novalabs-bo
+> # CLOUDINARY_API_KEY=tu_api_key
+> # CLOUDINARY_API_SECRET=tu_api_secret
+> sudo systemctl restart uyuni-backend
+> ```
 
 ---
 

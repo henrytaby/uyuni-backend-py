@@ -222,7 +222,9 @@ Puedes desplegar en Vercel utilizando cualquiera de los dos métodos siguientes:
    | `PROJECT_NAME` | `"Uyuni ERP"` | Nombre comercial o marca blanca de la empresa. |
    | `ENVIRONMENT` | `production` | Modo producción. |
    | `BACKEND_CORS_ORIGINS` | `["*"]` | O especifica `["https://admin.empresa.com", "https://catalogo.empresa.com"]`. |
-   | `CLOUDINARY_*` | *(Opcionales si usa fotos)* | `CLOUDINARY_CLOUD_NAME`, `API_KEY`, etc. |
+   | `CLOUDINARY_CLOUD_NAME` | `novalabs-bo` (o nombre del cliente) | Nombre de la nube en Cloudinary para fotos de perfil y catálogo. |
+   | `CLOUDINARY_API_KEY` | Tu API Key | Credencial de Cloudinary. |
+   | `CLOUDINARY_API_SECRET` | Tu API Secret | Clave secreta de Cloudinary. |
    | `R2_*` | *(Opcionales si usa docs/videos)* | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, etc. |
 
 6. Haz clic en **"Deploy"**.
@@ -269,6 +271,11 @@ Puedes desplegar en Vercel utilizando cualquiera de los dos métodos siguientes:
    echo "Uyuni ERP" | vercel env add PROJECT_NAME production
    echo "production" | vercel env add ENVIRONMENT production
    echo '["*"]' | vercel env add BACKEND_CORS_ORIGINS production
+
+   # Almacenamiento multimedia (Cloudinary)
+   echo "novalabs-bo" | vercel env add CLOUDINARY_CLOUD_NAME production
+   echo "tu_api_key_de_cloudinary" | vercel env add CLOUDINARY_API_KEY production
+   echo "tu_api_secret_de_cloudinary" | vercel env add CLOUDINARY_API_SECRET production
    ```
 
 5. **Desplegar directamente a producción:**
@@ -312,6 +319,9 @@ El repositorio ya cuenta con archivos nativos para Render:
    * `PROJECT_NAME` = `"Uyuni ERP"`
    * `ENVIRONMENT` = `production`
    * `BACKEND_CORS_ORIGINS` = `["*"]`
+   * `CLOUDINARY_CLOUD_NAME` = Nombre de tu nube Cloudinary (ej: `novalabs-bo`).
+   * `CLOUDINARY_API_KEY` = Tu API Key de Cloudinary.
+   * `CLOUDINARY_API_SECRET` = Tu API Secret de Cloudinary.
 7. Despliega la sección **"Advanced"**:
    * **Health Check Path**: Escribe `/health` (así Render sabe cuando el backend está listo para recibir tráfico).
 8. Haz clic en **"Deploy Web Service"**.
@@ -364,6 +374,8 @@ Neon DATABASE_URL:       [postgresql://...]
 URL Backend (Render/Vercel): [https://api-cliente.onrender.com o .vercel.app]
 URL Frontend (Pages):    [https://admin.cliente.bo]
 Cloudinary Cloud Name:   [cliente-media]
+Cloudinary API Key:      [cliente-api-key]
+Cloudinary API Secret:   [cliente-api-secret]
 Cloudflare R2 Bucket:    [cliente-documentos]
 Admin Username:          admin
 Admin Password:          [PasswordSeguroGenerado]

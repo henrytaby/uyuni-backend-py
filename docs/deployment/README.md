@@ -32,7 +32,7 @@ flowchart TD
         GH1["GitHub: cliente1-bo (Solo Lectura)"]
         NEON1[("Neon Postgres (1 GB Dedicado)")]
         SERVER1["Render Docker o Vercel<br/>(cliente1-api)"]
-        CLD1["Cloudinary (Fotos de Catálogo)"]
+        CLD1["Cloudinary (Fotos de Perfil y Catálogo)"]
         R2_1["Cloudflare R2 (Facturas y Documentos)"]
         PAGES1["Cloudflare Pages (Frontend Admin)"]
     end

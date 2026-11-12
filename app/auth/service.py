@@ -17,6 +17,7 @@ from app.core.exceptions import (
     NotFoundException,
     UnauthorizedException,
 )
+from app.core.storage.cloudinary_service import cloudinary_service
 from app.models.module import ModuleGroup
 from app.models.role import Role
 from app.models.user import User, UserLogLogin, UserRevokedToken
@@ -426,12 +427,31 @@ class AuthService:
         self, current_user: User, data: schemas.UserProfileUpdate
     ) -> User:
         update_dict = data.model_dump(exclude_unset=True)
+
+        # Si se actualiza o remueve avatar_url y existía uno previo en Cloudinary,
+        # eliminamos el archivo anterior para evitar acumulación de imágenes huérfanas
+        if "avatar_url" in update_dict:
+            old_avatar = current_user.avatar_url
+            new_avatar = update_dict["avatar_url"]
+            if old_avatar and old_avatar != new_avatar:
+                cloudinary_service.delete_image_by_url(old_avatar)
+
         for key, value in update_dict.items():
             setattr(current_user, key, value)
         current_user.updated_at = get_current_time()
         self.session.add(current_user)
         self.session.commit()
         self.session.refresh(current_user)
+        return current_user
+
+    def remove_avatar(self, current_user: User) -> User:
+        if current_user.avatar_url:
+            cloudinary_service.delete_image_by_url(current_user.avatar_url)
+            current_user.avatar_url = None
+            current_user.updated_at = get_current_time()
+            self.session.add(current_user)
+            self.session.commit()
+            self.session.refresh(current_user)
         return current_user
 
     def change_password(

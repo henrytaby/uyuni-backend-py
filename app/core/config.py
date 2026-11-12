@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     # Methods to audit (Default includes GET for safety, but can be restricted in .env)
     AUDIT_LOG_INCLUDED_METHODS: list[str] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 
+    # Cloudinary Media Storage
+    CLOUDINARY_CLOUD_NAME: str | None = None
+    CLOUDINARY_API_KEY: str | None = None
+    CLOUDINARY_API_SECRET: str | None = None
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

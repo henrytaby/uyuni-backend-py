@@ -13,6 +13,7 @@ flowchart TD
     Internet["Internet (Clientes / Frontends)"] -->|HTTPS 443| Nginx["Nginx (Reverse Proxy + SSL Let's Encrypt)"]
     Nginx -->|HTTP 8000| Uvicorn["Uvicorn ASGI Workers (Systemd Daemon)"]
     Uvicorn -->|SQLModel / SQLAlchemy| Postgres[("PostgreSQL Local 5432")]
+    Uvicorn -->|Upload / Delete Media| Cloudinary["Cloudinary (Fotos de Perfil y Catálogo)"]
     
     subgraph Host ["Servidor Ubuntu VPS (Linux)"]
         Nginx
@@ -25,12 +26,14 @@ flowchart TD
     classDef proxyNode fill:#002b49,stroke:#00c2cb,stroke-width:2px,color:#ffffff,font-weight:bold;
     classDef appNode fill:#003865,stroke:#00b4d8,stroke-width:2px,color:#ffffff,font-weight:bold;
     classDef dbNode fill:#004889,stroke:#38bdf8,stroke-width:2.5px,color:#ffffff,font-weight:bold;
+    classDef mediaNode fill:#004889,stroke:#38bdf8,stroke-width:2px,color:#ffffff;
     classDef sysNode fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px,color:#334155;
 
     class Internet clientNode;
     class Nginx proxyNode;
     class Uvicorn appNode;
     class Postgres dbNode;
+    class Cloudinary mediaNode;
     class Systemd sysNode;
 ```
 
@@ -41,6 +44,7 @@ flowchart TD
 1. **VPS:** Mínimo 1 vCPU y 1 GB de RAM (recomendado 2 vCPU y 2 GB de RAM o activar swap de 2 GB). Compatible con **Oracle Cloud Always Free Tier** (instancias ARM Ampere de hasta 4 OCPU / 24 GB RAM o AMD Micro), DigitalOcean, Hetzner, AWS EC2, Linode o Contabo.
 2. **Sistema Operativo:** Ubuntu 22.04 LTS o 24.04 LTS con acceso `sudo` o `root`.
 3. **Dominio o Subdominio (Opcional pero recomendado para SSL):** Un registro DNS tipo `A` que apunte la IP pública de tu VPS a tu dominio (ej: `api.tudominio.com`). Si no tienes dominio, puedes usar la IP pública temporalmente.
+4. **Cuenta en Cloudinary (Gratuita):** Para almacenamiento optimizado (WebP/AVIF) de fotos de perfil y catálogo comercial. Copia tus claves: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET`.
 
 > [!TIP]
 > **Despliegues y Migraciones en Oracle Cloud (OCI):**
@@ -234,6 +238,14 @@ ACCESS_LOGS_ONLY_ERRORS=True
 AUDIT_EXCLUDED_PATHS='["/docs", "/redoc", "/openapi.json", "GET:/health", "/"]'
 AUDIT_LOG_EXCLUDE_STATUS_CODES='[404]'
 AUDIT_LOG_INCLUDED_METHODS='["POST", "PUT", "PATCH", "DELETE"]'
+
+# ==========================================
+# Almacenamiento Multimedia en la Nube (Cloudinary)
+# ==========================================
+# Para fotos de perfil de usuarios y productos del catálogo
+CLOUDINARY_CLOUD_NAME=novalabs-bo
+CLOUDINARY_API_KEY=tu_api_key_de_cloudinary
+CLOUDINARY_API_SECRET=tu_api_secret_de_cloudinary
 ```
 Guarda con `Ctrl + O`, `Enter` y sal con `Ctrl + X`.
 
