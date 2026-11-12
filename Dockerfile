@@ -29,5 +29,5 @@ COPY . .
 EXPOSE 8000
 
 # Ejecutar migraciones automáticas de Alembic y levantar Uvicorn
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2 --proxy-headers --forwarded-allow-ips='*'"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2 --loop uvloop --http httptools --proxy-headers --forwarded-allow-ips='*'"]
 
