@@ -26,29 +26,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
-        # 1. Check Global Disable
-        if not settings.ENABLE_ACCESS_AUDIT:
-            return await call_next(request)
-
-        path = request.url.path
-        method = request.method
-        for excluded in settings.AUDIT_EXCLUDED_PATHS:
-            # Case 1: "METHOD:/path"
-            if ":" in excluded:
-                ex_method, ex_path = excluded.split(":", 1)
-                if method.upper() == ex_method.upper() and path.startswith(ex_path):
-                    return await call_next(request)
-            # Case 2: "/path" (All methods)
-            elif path.startswith(excluded):
-                # Special handling for root "/" to avoid matching everything
-                if excluded == "/":
-                    if path == "/":
-                        return await call_next(request)
-                else:
-                    return await call_next(request)
-
-        # 2. Extract User ID from Token (Manual decode to avoid interfering
-        # with Auth Dependencies)
+        # 1. Extract User ID from Token for context tracking
         user_id: uuid.UUID | None = None
         username: str = "Anonymous"
 
@@ -64,12 +42,34 @@ class AuditMiddleware(BaseHTTPMiddleware):
             except Exception:
                 pass  # Use anonymous if token is invalid
 
-        # 3. Set ContextVars for CDC Hooks
+        # 2. Set ContextVars for CDC Hooks (ensures DB hooks capture user & IP
+        # even when HTTP access logging to database is disabled)
         ip_address = get_client_ip(request)
         user_agent = request.headers.get("user-agent")
         set_audit_context(user_id, ip_address, username, user_agent)
 
         response = await call_next(request)
+
+        # 3. Check if HTTP Access Auditing is enabled
+        if not settings.ENABLE_ACCESS_AUDIT:
+            return response
+
+        path = request.url.path
+        method = request.method
+        for excluded in settings.AUDIT_EXCLUDED_PATHS:
+            # Case 1: "METHOD:/path"
+            if ":" in excluded:
+                ex_method, ex_path = excluded.split(":", 1)
+                if method.upper() == ex_method.upper() and path.startswith(ex_path):
+                    return response
+            # Case 2: "/path" (All methods)
+            elif path.startswith(excluded):
+                # Special handling for root "/" to avoid matching everything
+                if excluded == "/":
+                    if path == "/":
+                        return response
+                else:
+                    return response
 
         # 4. Check Status Code Exclusion
         if response.status_code in settings.AUDIT_LOG_EXCLUDE_STATUS_CODES:

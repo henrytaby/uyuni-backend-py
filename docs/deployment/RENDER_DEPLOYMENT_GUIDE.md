@@ -96,11 +96,11 @@ Haz clic en **"Add Environment Variable"** y añade una por una:
 
 | Key (Nombre) | Value (Valor) |
 | :--- | :--- |
-| `DATABASE_URL` | Tu cadena de Neon con `?sslmode=require` (ej: `postgresql://empresa_owner:pass@ep-xyz.us-east-2.aws.neon.tech/empresa-production?sslmode=require`) |
+| `DATABASE_URL` | Tu cadena de Neon con **`-pooler`** y `?sslmode=require` (ej: `postgresql://empresa_owner:pass@ep-xyz-pooler.us-east-1.aws.neon.tech/empresa-production?sslmode=require`). ⚠️ **Obligatorio usar `-pooler`**: Activa PgBouncer en Neon, eliminando la sobrecarga del handshake SSL y reutilizando conexiones eficientemente. |
 | `SECRET_KEY` | Tu clave aleatoria segura de 64 caracteres hex (`openssl rand -hex 32`) |
 | `PROJECT_NAME` | `Uyuni ERP` |
 | `ENVIRONMENT` | `production` |
-| `BACKEND_CORS_ORIGINS` | `["*"]` *(o el dominio de tu frontend)* |
+| `BACKEND_CORS_ORIGINS` | `["*"]` *(o el dominio de tu frontend: `["https://novalabs-bo.onrender.com"]`)* |
 | `CLOUDINARY_CLOUD_NAME` | Nombre de tu nube (ej: `novalabs-bo`) |
 | `CLOUDINARY_API_KEY` | Tu API Key de Cloudinary |
 | `CLOUDINARY_API_SECRET` | Tu API Secret de Cloudinary |
@@ -169,4 +169,44 @@ alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
 - Aplica de forma automática e incremental cualquier migración pendiente en `alembic/versions/` (como agregar las columnas de perfil en la tabla `user`).
 - Una vez finalizada la migración con éxito (toma menos de 1 segundo si ya está al día), Uvicorn arranca el servidor.
 - **Tú no necesitas conectarte a Neon manualmente.** Solo debes asegurarte de que el archivo de migración generado en `alembic/versions/` esté incluido en tu commit (`git add .`).
+
+---
+
+## 🎨 Despliegue del Frontend (Angular 21) como Static Site en Render
+
+Para desplegar la aplicación SPA de frontend (`uyuni-frontend-ng`) en Render con máximo rendimiento:
+
+1. En el Dashboard de Render, haz clic en **"New +"** (arriba a la derecha) > **"Static Site"**.
+   > [!IMPORTANT]
+   > Selecciona **Static Site**, NO Web Service. Los Static Sites en Render son 100% gratuitos de por vida, **nunca se suspenden ni se duermen**, utilizan CDN global de alta velocidad y aplican compresión **Brotli (`br`)** y **Gzip** de forma automática.
+2. Conecta tu repositorio del frontend `henrytaby/uyuni-frontend-ng`.
+3. **Configuración de Compilación:**
+   * **Name**: `uyuni-frontend-empresa` (ej: `novalabs-bo`).
+   * **Branch**: `main`.
+   * **Build Command**: `npm run build`
+   * **Publish Directory**: `dist/uyuni-frontend-ng/browser`
+4. **Regla de Reescritura Obligatoria para Angular SPA (Redirects/Rewrites):**  
+   Para evitar errores **404 Not Found** cuando los usuarios recarguen la página (`F5`) o compartan enlaces directos (ej: `/commerce/products` o `/perfil`):
+   * En el menú lateral izquierdo de tu Static Site, ve a **Redirects/Rewrites**.
+   * Haz clic en **"Add Rule"** y configura:
+     - **Source**: `/*`
+     - **Destination**: `/index.html`
+     - **Action**: `Rewrite`
+   * Haz clic en **"Save Changes"**.
+5. En ~60 segundos tu frontend estará en vivo en:  
+   👉 **`https://uyuni-frontend-empresa.onrender.com`**
+
+---
+
+## ⚡ Rendimiento, Compresión y Extracción de IP Real
+
+### 1. Compresión Automática en Frontend y Backend
+- **Frontend (Static Site):** La CDN de Render entrega todos los archivos `.js` y `.css` comprimidos con **Brotli (`br`)** y **Gzip**, reduciendo el tamaño de descarga en más de un 80%.
+- **Backend (FastAPI):** El backend tiene activo `GZipMiddleware(minimum_size=1000)` en [`app/main.py`](../../app/main.py), comprimiendo al vuelo respuestas JSON grandes (catálogos, listados).
+- **Motor Asíncrono en C:** El contenedor Docker ejecuta Uvicorn con `--loop uvloop --http httptools` duplicando el rendimiento de entrada/salida.
+
+### 2. Extracción de la IP Real del Cliente (`get_client_ip`)
+En Render, los clientes se conectan al balanceador de carga externo y este redirige el tráfico al contenedor mediante IPs privadas internas (`10.x.x.x`).  
+El backend incluye la utilidad [`app/core/network.py`](../../app/core/network.py) y Uvicorn con `--proxy-headers --forwarded-allow-ips='*'`. Esto permite extraer automáticamente la IP pública real del usuario (desde la cabecera `X-Forwarded-For`) para los registros de **Historial de Inicios de Sesión** (`UserLogLogin`) y **Auditoría CDC** (`AuditLog`).
+
 

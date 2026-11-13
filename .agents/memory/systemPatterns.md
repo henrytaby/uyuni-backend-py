@@ -105,15 +105,18 @@ Features:
 - **MANDATORY UI/UX STANDARD**: Low-frequency reference data / lookups (e.g. Categories, Sales Channels, Live Baskets, Investment Rounds) must NEVER clutter the sidebar as separate menu buttons ("menú sábana").
 - Instead, consolidate them into a single `Catálogos` module route (e.g., `/commerce/catalogs`) rendered with PrimeNG tabs ("cejas" via `p-tabs`), leaving the sidebar strictly focused on daily high-frequency transactional workflows (Sales, Products, Batches, Product Masters). All AI agents must replicate this pattern across future modules.
 
-### Audit System
+### Audit System (CDC & Observability)
 ```
-Request → Middleware (capture context) → SQLAlchemy Hooks → Audit Entry
+Request → Middleware (sets ContextVars user/IP) → Business Logic → SQLAlchemy Hooks (CDC) → audit_log
 ```
 
 Architecture:
-- **Access Logging**: Logs User, IP, Path, Status Code for every request
-- **CDC (Change Data Capture)**: Logs `old` vs `new` values for `INSERT`, `UPDATE`, `DELETE`
-- **Cold Storage**: Script to archive and prune old logs (`scripts/archive_audit.py`)
+- **Zero-Noise CDC Filter**: `app/core/audit/hooks.py` records granular `old` vs `new` diffs on `INSERT`, `UPDATE`, and `DELETE`. Updates without effective attribute changes (`changes: null`) are automatically discarded.
+- **Excluded Framework Entities**: Internal system tables (`Module`, `ModuleGroup`, `RoleModule`, `UserLogLogin`, `UserRevokedToken`, `AuditLog`) are omitted from CDC to avoid noise on startup manifest syncs.
+- **ContextVars Continuity**: `AuditMiddleware` always sets request context (`user_id`, `ip_address`, `username`, `user_agent`), ensuring all data mutations have full attribution even when HTTP access logging is disabled.
+- **Separation of Concerns**: HTTP access logging to the database table is disabled by default (`ENABLE_ACCESS_AUDIT=False`) to protect relational database backups and performance, leaving network traffic to structured stdout logging (`structlog` / Nginx).
+- **Cold Storage**: Script to archive and prune old logs (`scripts/archive_audit.py`).
+- **Singular Table Convention**: Table name is strictly `audit_log`.
 
 ## Data Models
 

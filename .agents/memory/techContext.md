@@ -79,8 +79,8 @@ venv/bin/uvicorn app.main:app --reload
 | `SECURITY_LOGIN_MAX_ATTEMPTS` | Failed attempts before lockout | `5` |
 | `SECURITY_LOCKOUT_MINUTES` | Account lockout duration (minutes) | `15` |
 | `TIME_ZONE` | UTC offset | **Required** |
-| `ENABLE_ACCESS_AUDIT` | Enable access audit logging | `True` |
-| `ENABLE_DATA_AUDIT` | Enable CDC audit logging | `True` |
+| `ENABLE_ACCESS_AUDIT` | Enable HTTP access logging to database (`audit_log`) | `False` |
+| `ENABLE_DATA_AUDIT` | Enable CDC audit logging for data mutations | `True` |
 | `ENABLE_ACCESS_LOGS` | Master switch for access logging | `True` |
 | `ACCESS_LOGS_ONLY_ERRORS` | Only log 4xx/5xx responses | `False` |
 

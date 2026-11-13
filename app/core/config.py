@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     )
 
     # Audit
-    ENABLE_ACCESS_AUDIT: bool = True
+    ENABLE_ACCESS_AUDIT: bool = False
     ENABLE_DATA_AUDIT: bool = True
 
     # Log Controls
@@ -57,6 +57,7 @@ class Settings(BaseSettings):
         "/openapi.json",
         "GET:/health",
         "/",  # Landing page
+        "/api/catalogs",
     ]
 
     AUDIT_LOG_EXCLUDE_STATUS_CODES: list[int] = [404]

@@ -3,9 +3,6 @@ from typing import Any
 from sqlalchemy import event, inspect
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
-
-# Import models you want to track to ensure they are loaded
-# Or track generic SQLModel
 from sqlmodel import SQLModel
 
 from app.core.config import settings
@@ -17,6 +14,16 @@ from .context import (
     get_audit_user_id,
     get_audit_username,
 )
+
+# Entidades internas del sistema que no deben generar ruido en audit_log
+EXCLUDED_AUDIT_ENTITIES = {
+    "AuditLog",
+    "UserLogLogin",
+    "UserRevokedToken",
+    "Module",
+    "ModuleGroup",
+    "RoleModule",
+}
 
 
 def register_audit_hooks(engine: Engine):
@@ -59,17 +66,17 @@ def audit_changes(session: Session, flush_context: Any) -> None:
 
     # Iterate over new, changed, and deleted objects
     for obj in session.new:
-        if isinstance(obj, AuditLog):
+        if obj.__class__.__name__ in EXCLUDED_AUDIT_ENTITIES:
             continue
         create_log(session, obj, "CREATE", user_id, ip_address, username, user_agent)
 
     for obj in session.dirty:
-        if isinstance(obj, AuditLog):
+        if obj.__class__.__name__ in EXCLUDED_AUDIT_ENTITIES:
             continue
         create_log(session, obj, "UPDATE", user_id, ip_address, username, user_agent)
 
     for obj in session.deleted:
-        if isinstance(obj, AuditLog):
+        if obj.__class__.__name__ in EXCLUDED_AUDIT_ENTITIES:
             continue
         create_log(session, obj, "DELETE", user_id, ip_address, username, user_agent)
 
@@ -86,13 +93,16 @@ def create_log(
     if not isinstance(obj, SQLModel):
         return
 
+    entity_type = obj.__class__.__name__
+    if entity_type in EXCLUDED_AUDIT_ENTITIES:
+        return
+
     state = inspect(obj)
     if not state or not state.mapper:
         return
     mapper = state.mapper
     pk = mapper.primary_key[0]
     entity_id = getattr(obj, pk.name)
-    entity_type = obj.__class__.__name__
 
     changes = {}
 
@@ -105,6 +115,10 @@ def create_log(
                 new_val = history.added[0] if history.added else None
                 if old_val != new_val:
                     changes[attr.key] = {"old": str(old_val), "new": str(new_val)}
+
+        # CRÍTICO: Si no hubo cambios reales en ningún atributo, descartar el log
+        if not changes:
+            return
 
     elif action == "CREATE":
         # Log initial values for CREATE

@@ -2,90 +2,71 @@
 
 ## 1. Introducción
 
-El **Sistema de Auditoría** de `uyuni-backend` es un componente crítico de nivel empresarial diseñado para proporcionar visibilidad completa sobre **quién** hizo **qué**, **cuándo** y **con qué resultado**.
+El **Sistema de Auditoría** de `uyuni-backend` es un componente de nivel empresarial diseñado para proporcionar visibilidad completa sobre **quién** hizo **qué**, **cuándo** y **con qué resultado**.
 
-Este sistema cumple con estándares de seguridad y cumplimiento (compliance) al registrar tanto el acceso a los recursos (Access Logs) como los cambios en los datos (Data Audit / CDC).
+Este sistema cumple con estándares de seguridad y cumplimiento (compliance) al registrar de forma estructurada los cambios en los datos (**Data Audit / CDC**) y, opcionalmente, accesos a rutas HTTP (**Access Logging**).
 
 ---
 
-## 2. Arquitectura Teórica
+## 2. Arquitectura de Auditoría en Producción
 
-El sistema opera en tres niveles complementarios:
+En sistemas empresariales de producción con alto tráfico, registrar cada petición HTTP en la base de datos relacional genera una saturación rápida (el backup de la base de datos termina pesando gigabytes solo en logs). Por ello, el sistema implementa una **separación de responsabilidades clara**:
 
-### Nivel 1: Auditoría de Acceso (Access Logging)
-*   **Componente**: `app/core/audit/middleware.py`
-*   **Responsabilidad**: Registrar cada petición HTTP que llega al servidor.
-*   **Datos Capturados**: Usuario (ID/Username), IP, Endpoint, Método HTTP (GET, POST, etc.), User Agent y Código de Estado (200, 403, 500).
-*   **Propósito**: Seguridad y Trazabilidad de uso. Detecta intentos de acceso no autorizado o patrones de uso anómalos.
-*   **Almacenamiento**: Tabla `audit_logs` (Acción: `ACCESS`).
+```mermaid
+flowchart TD
+    REQ["HTTP Request"] --> MW["AuditMiddleware"]
+    MW --> CTX["Set Audit ContextVars\n(user_id, ip_address, username, user_agent)"]
+    
+    subgraph ObservabilityLayer ["1. Nivel de Observabilidad (Stdout / Logs Estructurados)"]
+        CTX --> STRUCTLOG["structlog (Consola / Datadog / CloudWatch / Nginx)"]
+    end
+    
+    subgraph DBLayer ["2. Nivel de Base de Datos (Tabla singular: audit_log)"]
+        CTX --> HANDLER["Endpoints & Services"]
+        HANDLER --> DB_MUTATION["SQLModel / SQLAlchemy DB Mutation"]
+        DB_MUTATION --> HOOKS["after_flush Hooks (CDC)"]
+        HOOKS --> ZERO_NOISE{"¿Hubo cambios reales?\n¿Es entidad excluida?"}
+        ZERO_NOISE -- "No (diff vacío o entidad de sistema)" --> DISCARD["Descartar (Zero Noise)"]
+        ZERO_NOISE -- "Sí (CREATE, UPDATE real, DELETE)" --> AUDIT_TABLE[("audit_log (PostgreSQL)")]
+    end
+```
 
-### Nivel 2: Auditoría de Datos (Data Audit / CDC)
+### Nivel 1: Auditoría de Datos de Negocio (Data Audit / CDC) - **RECOMENDADO Y ACTIVO POR DEFECTO**
 *   **Componente**: `app/core/audit/hooks.py`
-*   **Responsabilidad**: Detectar cambios en la base de datos (INSERT, UPDATE, DELETE) de manera automática.
+*   **Responsabilidad**: Detectar cambios transaccionales en la base de datos (INSERT, UPDATE, DELETE) de manera automática.
 *   **Tecnología**: SQLAlchemy Event Hooks (`after_flush`).
-*   **Datos Capturados**:
+*   **Filtro Zero-Noise**:
     *   **CREATE**: Captura el snapshot inicial del objeto.
-    *   **UPDATE**: Captura el "Diff" (Valor Anterior vs Valor Nuevo) solo de los campos modificados.
-    *   **DELETE**: Registra qué entidad fue eliminada.
-*   **Propósito**: Integridad de datos e historial de cambios. Permite responder "¿Quién cambió el estado de este activo?" o "¿Cuál era el valor antes?".
-*   **Almacenamiento**: Tabla `audit_logs` (Acción: `CREATE`, `UPDATE`, `DELETE`).
+    *   **UPDATE**: Captura el "Diff" (`old` vs `new`) **únicamente** si hubo cambios reales en las columnas. Si un registro se marca como dirty sin cambios en sus atributos, el hook **lo descarta automáticamente** (evitando filas con `changes: null`).
+    *   **DELETE**: Registra el estado previo de la entidad antes de eliminarse.
+    *   **Entidades Excluidas (`EXCLUDED_AUDIT_ENTITIES`)**: Entidades internas de navegación y tokens del sistema (`Module`, `ModuleGroup`, `RoleModule`, `UserLogLogin`, `UserRevokedToken`, `AuditLog`) se excluyen del CDC para no generar ruido innecesario en cada sincronización de inicio.
+*   **Almacenamiento**: Tabla `audit_log` (Acción: `CREATE`, `UPDATE`, `DELETE`).
+*   **Variable de Entorno**: `ENABLE_DATA_AUDIT=True`.
+
+### Nivel 2: Auditoría de Acceso HTTP (Access Logging en BD) - **OPCIONAL**
+*   **Componente**: `app/core/audit/middleware.py`
+*   **Responsabilidad**: Registrar peticiones HTTP directamente en la base de datos `audit_log`.
+*   **Configuración Recomendada en Producción**: `ENABLE_ACCESS_AUDIT=False`.
+    *   *¿Por qué?*: En entornos de producción reales, los accesos HTTP se delegan al servidor web (Nginx, Caddy, Cloudflare) o a logging estructurado (`ENABLE_ACCESS_LOGS=True` con `structlog`), evitando que consultas masivas (como autocompletados o `/api/catalogs/bulk`) colapsen el almacenamiento de la base de datos relacional.
+    *   **Preservación de Contexto**: Aunque `ENABLE_ACCESS_AUDIT=False`, el middleware **siempre inicializa el contexto** (`user_id`, `ip_address`, `username`, `user_agent`). De esta forma, cualquier transacción que altere datos (ej. crear una venta, editar un producto) sabrá con exactitud qué usuario y qué IP ejecutaron la acción.
+*   **Exclusión de Rutas (`AUDIT_EXCLUDED_PATHS`)**:
+    *   `/docs`, `/redoc`, `/openapi.json`, `GET:/health`, `/`, `/api/catalogs`.
 
 ### Nivel 3: Almacenamiento en Frío (Cold Storage)
 *   **Componente**: `scripts/archive_audit.py`
 *   **Responsabilidad**: Mantener la base de datos ligera y performante.
-*   **Funcionamiento**: Mueve registros antiguos (ej. > 90 días) de la base de datos principal a archivos comprimidos (`.json.gz`) para almacenamiento a largo plazo.
+*   **Funcionamiento**: Mueve registros antiguos (ej. > 90 días) de la tabla `audit_log` a archivos comprimidos (`.json.gz`) para auditorías a largo plazo.
 
 ---
 
 ## 3. Guía para Desarrolladores
 
-### 3.1. Creando Nuevos Endpoints
-Por defecto, **todo nuevo endpoint está auditado**. No necesitas hacer nada extra.
-El `AuditMiddleware` interceptará automáticamente las peticiones y registrará el acceso.
-
-### 3.2. Excluyendo Endpoints (No Auditar)
-A veces, ciertos endpoints generan demasiado ruido y no aportan valor de seguridad (ej. `healthcheck`, endpoints de métricas, o búsquedas autocompletadas masivas). Tienes dos formas de excluirlos:
-
-#### A. Exclusión Global (Vía `.env`)
-Ideal para rutas estáticas o prefijos completos.
-Edita `AUDIT_EXCLUDED_PATHS` en tu archivo `.env`:
-
-```json
-AUDIT_EXCLUDED_PATHS='["/docs", "/openapi.json", "GET:/api/public-data", "/"]'
-```
-*   `/docs`: Excluye todo lo que empiece por `/docs`.
-*   `GET:/api/public-data`: Excluye solo el método GET en esa ruta.
-*   `/`: Excluye la Landing Page (home).
-
-#### B. Exclusión por Código de Estado (Vía `.env`)
-Útil para evitar "ruido" de escaneos automáticos o errores comunes (ej. 404).
-Edita `AUDIT_LOG_EXCLUDE_STATUS_CODES` en tu archivo `.env`:
-
-```json
-AUDIT_LOG_EXCLUDE_STATUS_CODES='[404]'
-```
-Esto evitará que cualquier respuesta con status 404 se guarde en la base de datos `audit_logs`, aunque la petición haya llegado al servidor.
-
-#### C. Exclusión Puntual (Vía Código)
-Ideal para lógica específica dentro de un router. Usa la dependencia `skip_access_audit`.
-
-```python
-from app.core.audit import skip_access_audit
-from fastapi import APIRouter, Depends
-
-router = APIRouter()
-
-@router.get("/heavy-traffic", dependencies=[Depends(skip_access_audit)])
-async def heavy_traffic_endpoint():
-    return {"msg": "No auditado"}
-```
-
-### 3.3. Nuevos Modelos de Base de Datos
+### 3.1. Nuevos Modelos de Base de Datos
 Al crear un nuevo modelo con `SQLModel`, la auditoría de datos (Hooks) funcionará automáticamente siempre que uses la `Session` estándar de la aplicación.
 
 **Requisito Importante**: Asegúrate de que tu modelo herede de `SQLModel` y sea parte de la metadata importada en `alembic/env.py`.
 
-### 3.4. Auditoría de Usuarios (AuditMixin)
+### 3.2. Auditoría de Usuarios (AuditMixin)
 Para rastrear automáticamente **quién creó** o **actualizó** un registro, tu modelo debe heredar de `AuditMixin`.
 
 ```python
@@ -95,29 +76,50 @@ class Task(BaseModel, AuditMixin, table=True):
     # ... campos ...
 ```
 
-**Beneficio**:
-*   `created_at` / `updated_at`: Se manejan solos (Default Factory).
-*   `created_by_id` / `updated_by_id`: Un Hook de SQLAlchemy (`before_flush`) intercepta el guardado e inyecta el ID del usuario actual automáticamente.
-*   **No necesitas pasar el usuario en el Service**.
+**Beneficios**:
+*   `created_at` / `updated_at`: Se manejan automáticamente (Default Factory en hora local/UTC).
+*   `created_by_id` / `updated_by_id`: Un Hook de SQLAlchemy (`before_flush`) intercepta el guardado e inyecta el ID del usuario autenticado automáticamente sin necesidad de pasarlo manualmente en el Service.
+
+### 3.3. Configuración en `.env`
+
+```ini
+# Auditoría de Datos en Base de Datos (CDC para Ventas, Productos, Usuarios, etc.)
+ENABLE_DATA_AUDIT=True
+
+# Auditoría de Peticiones HTTP en Base de Datos (False recomendado para producción)
+ENABLE_ACCESS_AUDIT=False
+
+# Logging Estructurado a Consola/Stdout (Recomendado en Producción)
+ENABLE_ACCESS_LOGS=True
+ACCESS_LOGS_ONLY_ERRORS=False
+
+# Rutas Excluidas
+AUDIT_EXCLUDED_PATHS='["/docs", "/redoc", "/openapi.json", "GET:/health", "/", "/api/catalogs"]'
+AUDIT_LOG_EXCLUDE_STATUS_CODES='[404]'
+AUDIT_LOG_INCLUDED_METHODS='["POST", "PUT", "PATCH", "DELETE"]'
+```
 
 ---
 
-## 4. Estructura de la Base de Datos (`audit_logs`)
+## 4. Estructura de la Base de Datos (`audit_log`)
+
+> [!NOTE]
+> Siguiendo el estándar de arquitectura obligatorio de Uyuni Backend, el nombre de la tabla es estrictamente **singular**: `audit_log`.
 
 | Columna | Tipo | Descripción |
 | :--- | :--- | :--- |
-| `id` | UUID | Identificador único (UUIDv7). |
+| `id` | UUID | Identificador único (UUIDv7 secuencial). |
 | `user_id` | UUID | ID del usuario que realizó la acción (o NULL si es Anónimo/Sistema). |
-| `username` | String | Username capturado en el momento ( redundancia útil por si el user se borra). |
-| `action` | String | `ACCESS`, `CREATE`, `UPDATE`, `DELETE`. |
-| `entity_type` | String | Nombre del Modelo (ej. `Task`, `Product`) o `Endpoint` para accesos. |
+| `username` | String | Username capturado en el momento (redundancia útil si el usuario se elimina). |
+| `action` | String | `CREATE`, `UPDATE`, `DELETE`, `ACCESS`. |
+| `entity_type` | String | Nombre del Modelo (ej. `CommerceSale`, `CommerceProduct`, `User`) o `Endpoint`. |
 | `entity_id` | String | ID de la entidad afectada o Path del endpoint. |
-| `changes` | JSON | Diff de cambios (`old` vs `new`) o metadatos del request. |
-| `ip_address` | String | Dirección IP del cliente. |
+| `changes` | JSON | Diff de cambios (`old` vs `new`) o metadatos de la operación. |
+| `ip_address` | String | Dirección IP real del cliente (resolviendo proxies y Cloudflare). |
 | `user_agent` | String | Navegador o cliente HTTP utilizado. |
-| `timestamp` | Datetime | Fecha y hora exacta (UTC recomendado). |
+| `timestamp` | Datetime | Fecha y hora exacta de la transacción. |
 
-**Ejemplo de JSON en `changes` (UPDATE):**
+**Ejemplo de JSON en `changes` (UPDATE real):**
 ```json
 {
   "price": {
@@ -125,66 +127,39 @@ class Task(BaseModel, AuditMixin, table=True):
     "new": "120.50"
   },
   "status": {
-    "old": "active",
-    "new": "archived"
+    "old": "disponible",
+    "new": "vendido"
   }
 }
 ```
 
 ---
 
-## 5. Pros y Contras
+## 5. Mantenimiento y Depuración de Datos
 
-### Pros
-*   **Cumplimiento Total**: Trazabilidad completa de acciones y datos.
-*   **Diagnóstico**: Facilita enormemente el debugging de "quién rompió esto".
-*   **Desacoplado**: Los desarrolladores no necesitan escribir código de "log" en sus servicios; sucede "mágicamente".
+### 5.1. Limpieza de Registros Residuales (Zero-Noise Cleanup)
+Si una base de datos contiene registros históricos antiguos sin valor (como `UPDATE Module null` o peticiones `ACCESS` a catálogos), se puede ejecutar la siguiente consulta SQL de saneamiento:
 
-### Contras
-*   **Volumen de Datos**: La tabla `audit_log` crece MUY rápido (aprox. 2-5x el volumen de transacciones + accesos).
-    *   *Solución*: Configurar correctamente el script de archivado (`Cold Storage`).
-*   **Performance**: Hay un ligero overhead en cada escritura (Hooks) y lectura (Middleware). En la mayoría de aplicaciones empresariales es imperceptible, pero en sistemas de *high-frequency trading*, se debería revisar.
+```sql
+DELETE FROM audit_log 
+WHERE changes IS NULL 
+   OR changes::text = 'null'
+   OR action = 'ACCESS'
+   OR entity_type IN ('AuditLog', 'UserLogLogin', 'UserRevokedToken', 'Module', 'ModuleGroup', 'RoleModule');
+```
 
----
-
-## 6. Mantenimiento y Operaciones
-
-### Archivo de Logs (Cold Storage)
-Se debe configurar un **Cron Job** (tarea programada) en el servidor para ejecutar el script de limpieza periódicamente (ej. cada noche a las 3 AM).
+### 5.2. Archivo a Frío (Cold Storage)
+Se recomienda configurar un **Cron Job** semanal o mensual en el servidor para archivar registros de más de 90 días a disco comprimido:
 
 ```bash
-# Ejemplo de ejecución manual (archivar logs de más de 30 días)
-./venv/bin/python scripts/archive_audit.py --days 30 --dir /mnt/backups/audit
+# Archivar registros mayores a 90 días hacia almacenamiento persistente
+venv/bin/python scripts/archive_audit.py --days 90 --dir /var/backups/uyuni/audit
 ```
 
 ---
 
-## 7. Solución de Problemas (Troubleshooting)
+## 6. Buenas Prácticas en Producción
 
-### Problema: El usuario aparece como `N/A` o `None` en los Logs de Datos (Hooks)
-*   **Causa**: Los Hooks de SQLAlchemy corren en un nivel profundo del ORM y a veces pierden el contexto de la petición web, especialmente en tareas asíncronas o scripts fuera de FastAPI.
-*   **Solución**: El sistema usa `ContextVars` (en `app/core/audit/context.py`) para propagar el usuario. Asegúrate de que la operación de escritura ocurra dentro del ciclo de vida de una petición (request) donde el `AuditMiddleware` haya corrido. Si es un script manual (como un seed), el usuario será `None` por diseño a menos que lo inyectes manualmente.
-
-### Problema: La base de datos está muy lenta
-*   **Causa**: La tabla `audit_log` tiene millones de registros.
-*   **Solución**: Ejecuta el script de `archive_audit.py` inmediatamente para mover datos viejos. Considera añadir particionamiento a la tabla `audit_log` en PostgreSQL si el volumen es extremo.
-
----
-
-## 8. Recomendaciones de Seguridad y Producción
-
-Para complementar el sistema de auditoría y evitar que la base de datos se llene de "basura" (ataques de fuerza bruta o escaneadores), se recomienda encarecidamente implementar las siguientes medidas **fuera** de la aplicación (en el nivel de infraestructura):
-
-### 8.1. Rate Limiting (Nivel Aplicación o Proxy)
-Limita el número de peticiones por IP para endpoints sensibles como `/api/auth/login`.
-
-### 8.2. Fail2Ban (Nivel Servidor)
-Configura **Fail2Ban** en tu servidor Linux.
-*   **Funcionamiento**: Analiza los logs (de Nginx/Traefik o de la propia aplicación si se vuelcan a un archivo) buscando patrones de error repetidos (ej. muchos 401 o 404 desde la misma IP).
-*   **Acción**: Bloquea la IP en el firewall (iptables/ufw) temporalmente.
-*   **Beneficio**: El tráfico malicioso ni siquiera llega a tu aplicación Python, ahorrando CPU y conexiones a la BD.
-
-### 8.3. WAF (Web Application Firewall)
-Usa servicios como **Cloudflare** (capa gratuita muy efectiva).
-*   Filtran tráfico de bots conocidos, ataques DDoS y escáneres de vulnerabilidades antes de que toquen tu servidor.
-*   Configura reglas para desafiar (Captcha) o bloquear peticiones sospechosas.
+1. **Mantener `ENABLE_DATA_AUDIT=True`**: Garantiza trazabilidad de cada cambio en inventario, ventas y permisos.
+2. **Mantener `ENABLE_ACCESS_AUDIT=False`**: Evita la inflación innecesaria de la base de datos relacional y los backups.
+3. **Monitorear vía Nginx / Logs**: Los análisis de tráfico web, bots y latencias deben realizarse desde los logs del servidor web (Nginx/Traefik) o Cloudflare, no desde la tabla `audit_log`.

@@ -242,8 +242,8 @@ SHEETS_CONFIG = {
     "canastas_live": "Canastas_Live!A1:Z50",
     "rondas_inversion": "Rondas_Inversion!A1:Z50",
     "cajas_lotes": "Cajas_Lotes!A1:Z50",
-    "inventario_general": "Inventario_General!A1:Z500",
-    "ventas": "Ventas!A1:Z500",
+    "inventario_general": "Inventario_General!A1:Z1000",
+    "ventas": "Ventas!A1:Z1000",
 }
 
 

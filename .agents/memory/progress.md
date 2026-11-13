@@ -54,12 +54,16 @@
 - [x] Fixed mypy type errors in repository.py and service.py
 - [x] Created Memory Bank documentation
 
-### Recent Improvements (May 2026)
-- [x] Upgraded to Python 3.14.6 (recreated venv with `python3.14 -m venv venv`)
-- [x] Updated all AI agent config files to enforce venv usage (`venv/bin/<tool>`)
-- [x] Updated all memory-bank files to reflect Python 3.14
-- [x] Implemented ETL Data Synchronization script (`sync_siger.py`) with UPSERT and Soft-Delete capabilities from external `an_core` DB.
-- [x] Extended `core` domain models (`Staff`, `StaffPosition`, `OrgUnit`) to support external integer mappings (`external_id`, `item_number`, `external_parent_id`) and `is_active` soft-deletes.
+### Recent Improvements (November 2026)
+- [x] Saneamiento y optimización del sistema de auditoría (`audit_log`):
+  - Implementación del filtro **Zero-Noise**: se descartan automáticamente updates sin cambios reales (`changes: null`).
+  - Exclusión de entidades internas de sistema (`Module`, `ModuleGroup`, `RoleModule`, `UserLogLogin`, `UserRevokedToken`) en hooks CDC.
+  - Configuración de `ENABLE_ACCESS_AUDIT=False` por defecto y en `.env` para prevenir inflación masiva de backups con peticiones HTTP (`/api/catalogs/bulk`, etc.), delegando tráfico a stdout estructurado.
+  - Preservación íntegra de `ContextVars` (usuario, IP, User-Agent) para que todas las mutaciones transaccionales de negocio (ventas, stock, usuarios) conserven atribución total.
+  - Purga controlada de 1,836 registros basura en Local y 322 en VPS PostgreSQL (`172.23.51.247/uyuni_prod`).
+- [x] Sincronización y migración completa del catálogo desde Google Sheets (240 fichas maestras, 242 productos, 127 ventas, lotes, canales y categorías) tanto en base de datos Local como en VPS.
+- [x] Actualización de guías de despliegue para Render (SPA rewrites, Brotli, IP extraction) y VPS Ubuntu (Certbot rate limit mitigation, Cloudflare, ZeroSSL).
+- [x] Actualización de `docs/AUDIT_GUIDE.md` y Memory Bank con la arquitectura de auditoría optimizada.
 
 ### In Progress
 - [ ] Rate limiting for authentication endpoints

@@ -435,6 +435,19 @@ sudo certbot --nginx -d api.tudominio.com
 ```
 *Sigue las instrucciones en pantalla ingresando tu correo electrónico. Certbot configurará automáticamente la redirección HTTPS permanente.*
 
+> [!TIP]
+> **¿Usas dominios de DNS dinámico gratuito (ej: `*.v6.rocks`, `*.duckdns.org`) y te sale error *"too many certificates (50) already issued"*?**  
+> Let's Encrypt limita a 50 certificados nuevos por semana para todo el dominio compartido entre todos los usuarios del mundo. Si te ocurre:
+> 1. **Opción A (ZeroSSL sin límites vía Certbot):** Regístrate gratis en [zerossl.com/developer](https://app.zerossl.com/developer), genera tus credenciales ACME (EAB) y ejecuta:
+>    ```bash
+>    sudo certbot --nginx --server https://acme.zerossl.com/v2/DV90 --eab-kid "TU_EAB_KID" --eab-hmac-key "TU_EAB_HMAC_KEY" --email tu@correo.com --agree-tos -d tu.dominio.v6.rocks
+>    ```
+> 2. **Opción B (Certificado unificado Frontend + Backend):** Genera un solo certificado que incluya ambos dominios consumiendo un solo cupo:
+>    ```bash
+>    sudo certbot --nginx -d app.tudominio.v6.rocks -d api.app.tudominio.v6.rocks
+>    ```
+> 3. **Opción C (Recomendada para Producción / Marca Blanca):** Utiliza un dominio propio (.com, .bo) conectado a **Cloudflare (Plan Gratis)**, obteniendo certificados SSL universales automáticos e ilimitados.
+
 3. **Verificar la renovación automática:**
 ```bash
 sudo certbot renew --dry-run

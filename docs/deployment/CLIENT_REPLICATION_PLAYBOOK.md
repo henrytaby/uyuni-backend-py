@@ -314,7 +314,7 @@ El repositorio ya cuenta con archivos nativos para Render:
    * **Instance Type**: Selecciona **Free** ($0 / mes - 512 MB RAM, 0.1 CPU).
 6. **Variables de Entorno (Environment Variables):**
    Haz clic en **"Add Environment Variable"** y añade:
-   * `DATABASE_URL` = Cadena de conexión de Neon del cliente (con `?sslmode=require`).
+   * `DATABASE_URL` = Cadena de conexión de Neon del cliente con **`-pooler`** y `?sslmode=require` (ej: `postgresql://empresa_owner:pass@ep-xyz-pooler.us-east-1.aws.neon.tech/empresa-prod?sslmode=require`).
    * `SECRET_KEY` = Tu clave aleatoria segura (ej: `openssl rand -hex 32`).
    * `PROJECT_NAME` = `"Uyuni ERP"`
    * `ENVIRONMENT` = `production`
@@ -339,12 +339,25 @@ En aproximadamente 2 minutos, Render compilará el contenedor Docker y te entreg
 
 ---
 
-### Paso 6: Desplegar el Frontend (Angular 21) en Cloudflare Pages
+### Paso 6: Desplegar el Frontend (Angular 21) en Cloudflare Pages o Render (Static Site)
+
+Puedes alojar el frontend en cualquiera de estas dos opciones gratuitas de alta velocidad:
+
+#### Opción 6.A: Cloudflare Pages (Recomendada por CDN en Sudamérica)
 1. Entra a Cloudflare con el correo de la empresa.
 2. Conecta el repositorio del frontend (`uyuni-frontend-ng`) en **Workers & Pages > Pages**.
 3. En variables de entorno configura:
    * `API_URL` = `https://uyuni-backend-empresa.onrender.com/api` *(o tu URL de Vercel)*
 4. Despliega la aplicación. El frontend quedará publicado en `https://uyuni-admin.pages.dev` o vinculado a su propio dominio (`admin.empresa.com`).
+
+#### Opción 6.B: Render (Static Site)
+1. En Render, haz clic en **"New +"** > **"Static Site"** (nunca Web Service para el frontend).
+2. Conecta el repositorio `uyuni-frontend-ng` con build command `npm run build` y directorio `dist/uyuni-frontend-ng/browser`.
+3. **Regla de Reescritura Obligatoria para Angular SPA:** En el menú **Redirects/Rewrites**, añade la regla:
+   - **Source:** `/*`
+   - **Destination:** `/index.html`
+   - **Action:** `Rewrite`
+4. Guarda y despliega. Tendrás tu frontend en vivo con compresión Brotli/Gzip automática 24/7 sin suspensiones.
 
 ---
 

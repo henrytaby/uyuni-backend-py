@@ -49,3 +49,70 @@ def test_audit_exclude_method(
     settings.AUDIT_LOG_INCLUDED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 
     assert len(final_count) == len(initial_count)
+
+
+def test_audit_exclude_catalog_path(
+    client: TestClient, session: Session, superuser_token_headers
+):
+    # Enable access audit explicitly
+    settings.ENABLE_ACCESS_AUDIT = True
+    session.expire_all()
+    initial_count = len(session.exec(select(AuditLog)).all())
+
+    # Request to excluded catalog path
+    _ = client.get("/api/catalogs/status", headers=superuser_token_headers)
+
+    session.expire_all()
+    final_count = len(session.exec(select(AuditLog)).all())
+
+    # Even with ENABLE_ACCESS_AUDIT=True, /api/catalogs is in AUDIT_EXCLUDED_PATHS
+    assert final_count == initial_count
+
+
+def test_audit_exclude_system_entities_and_noop_updates(
+    client: TestClient, session: Session, superuser_token_headers
+):
+    from app.models.module import Module
+    from app.modules.tasks.models import Task
+
+    settings.ENABLE_DATA_AUDIT = True
+
+    # 1. System entity (Module) creation should not create an AuditLog
+    mod = Module(
+        name="Test Audit Module",
+        slug="test-audit-module",
+        icon="pi pi-box",
+        route="/test-audit",
+    )
+    session.add(mod)
+    session.commit()
+
+    session.expire_all()
+    module_log = session.exec(
+        select(AuditLog).where(
+            AuditLog.entity_type == "Module",
+            AuditLog.entity_id == str(mod.id),
+        )
+    ).first()
+    assert module_log is None
+
+    # 2. No-op update on Task should NOT create an audit log with changes=None
+    task = Task(title="Noop Test", description="Testing noop")
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+
+    session.expire_all()
+    task_logs_query = select(AuditLog).where(AuditLog.entity_id == str(task.id))
+    logs_before = len(session.exec(task_logs_query).all())
+
+    # Mark as dirty without changing any column value
+    task.title = "Noop Test"
+    session.add(task)
+    session.commit()
+
+    session.expire_all()
+    logs_after = len(session.exec(task_logs_query).all())
+    # Count should not increase because there were no actual attribute changes
+    assert logs_after == logs_before
+
