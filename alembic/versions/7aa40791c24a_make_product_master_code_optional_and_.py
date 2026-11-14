@@ -50,7 +50,8 @@ def upgrade() -> None:
             CREATE SEQUENCE IF NOT EXISTS commerce_product_master_item_number_seq;
             SELECT setval(
                 'commerce_product_master_item_number_seq',
-                COALESCE((SELECT MAX(item_number) FROM commerce_product_master), 0)
+                GREATEST(COALESCE((SELECT MAX(item_number) FROM commerce_product_master), 1), 1),
+                (SELECT MAX(item_number) FROM commerce_product_master) IS NOT NULL
             );
             ALTER TABLE commerce_product_master
             ALTER COLUMN item_number

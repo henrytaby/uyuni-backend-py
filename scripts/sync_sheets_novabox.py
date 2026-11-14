@@ -1022,8 +1022,9 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
                     "WHERE sequencename = "
                     "'commerce_product_master_item_number_seq') THEN "
                     "PERFORM setval('commerce_product_master_item_number_seq', "
-                    "COALESCE((SELECT MAX(item_number) "
-                    "FROM commerce_product_master), 0)); "
+                    "GREATEST(COALESCE((SELECT MAX(item_number) "
+                    "FROM commerce_product_master), 1), 1), "
+                    "(SELECT MAX(item_number) FROM commerce_product_master) IS NOT NULL); "
                     "END IF; END $$;"
                 )
                 session.execute(text(calib_sql))

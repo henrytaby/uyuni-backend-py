@@ -281,5 +281,5 @@ Para evitar cualquier posibilidad de colisión, duplicados o errores cuando múl
 3. **Inmutabilidad Absoluta:**
    - Ni en `POST` ni en `PUT` el usuario puede definir o alterar `item_number`. Ambos endpoints descartan cualquier valor manual recibido y delegan la numeración a PostgreSQL.
 4. **Hook de Auto-Calibración en Arranque (`main.py`):**
-   - Al iniciar la aplicación, un hook ejecuta `SELECT setval('commerce_product_master_item_number_seq', COALESCE(MAX(item_number), 0))` para asegurar sincronía perfecta incluso tras restauraciones con Navicat o backups manuales de base de datos.
+   - Al iniciar la aplicación, un hook ejecuta `SELECT setval('commerce_product_master_item_number_seq', GREATEST(COALESCE(MAX(item_number), 1), 1), MAX(item_number) IS NOT NULL)` para asegurar sincronía perfecta incluso tras restauraciones con Navicat o backups manuales de base de datos sin errores de rango cuando la tabla está vacía.
 
