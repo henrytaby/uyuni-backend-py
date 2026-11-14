@@ -93,7 +93,7 @@ Detailed architectural context maintained across sessions:
 ## 🌐 Dominio Específico: Módulo Commerce (White-Label Retail / E-commerce ERP)
 
 Este backend actúa como motor transaccional y ERP de Marca Blanca para empresas de retail, importaciones y e-commerce:
-- **Frontend de Gestión**: `/opt/uyuni/uyuni-frontend-ng` (Angular 21 + PrimeNG 21).
+- **Frontend de Gestión**: Repositorio hermano `../uyuni-frontend-ng` (Angular 21 + PrimeNG 21).
 - **Frontend Público de Clientes**: Aplicación web/móvil para catálogo en tiempo real (React + Vite PWA).
 - **Módulo de Negocio (`app/modules/commerce/`)**:
   - `products`: Catálogo de SKUs (`SKU-XXX`), estados (`disponible`, `reservado`, `vendido`, `merma`), precio oficial y mínimo (`minimum_price`).

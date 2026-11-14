@@ -136,34 +136,34 @@ GRANT ALL ON SCHEMA public TO uyuni_user;
 
 ### Paso 3: Crear Usuario de Sistema y Estructura de Directorios
 
-Por seguridad, nunca ejecutes aplicaciones web como usuario `root`. Crearemos un usuario dedicado llamado `deploy` y la estructura de carpetas en `/opt/uyuni` (diseñada para albergar ordenadamente el backend, el frontend y futuros módulos):
+Por seguridad, nunca ejecutes aplicaciones web como usuario `root`. Crearemos un usuario dedicado llamado `deploy` y la estructura de carpetas para el proyecto (ej: `/opt/app`, diseñada para albergar ordenadamente el backend, el frontend y futuros módulos):
 
 ```bash
 # 1. Crear usuario de sistema deploy
 sudo adduser --disabled-password --gecos "" deploy
 
-# 2. Crear la carpeta raíz /opt/uyuni con permisos para deploy
-sudo mkdir -p /opt/uyuni
-sudo chown -R deploy:deploy /opt/uyuni
+# 2. Crear la carpeta raíz del proyecto (ej: /opt/app o la ruta de tu preferencia)
+sudo mkdir -p /opt/app
+sudo chown -R deploy:deploy /opt/app
 ```
 
-Ahora cambia al usuario `deploy` y clona el repositorio del backend en su carpeta dedicada `/opt/uyuni/uyuni-backend-py`:
+Ahora cambia al usuario `deploy` y clona el repositorio del backend:
 ```bash
 sudo -u deploy -i
-cd /opt/uyuni
+cd /opt/app
 
-# Clonar el backend en su propia subcarpeta dedicada
-git clone https://github.com/TU_USUARIO/uyuni-backend-py.git uyuni-backend-py
+# Clonar el backend
+git clone https://github.com/TU_USUARIO/uyuni-backend-py.git backend
 
 # Entrar al directorio del backend
-cd /opt/uyuni/uyuni-backend-py
+cd backend
 ```
 
 ---
 
 ### Paso 4: Crear el Entorno Virtual con Python 3.14 e Instalar Dependencias
 
-Aún como usuario `deploy` dentro de `/opt/uyuni/uyuni-backend-py`:
+Aún como usuario `deploy` dentro del directorio del proyecto (`./`):
 ```bash
 # Crear virtualenv asegurando explícitamente el uso del intérprete Python 3.14
 python3.14 -m venv venv
@@ -188,9 +188,9 @@ openssl rand -hex 32
 ```
 *Copia el valor generado (ej: `8a7b9c0d1e2f3a4b...`).*
 
-Crea el archivo `.env`:
+Crea el archivo `.env` en la raíz del proyecto:
 ```bash
-nano /opt/uyuni/uyuni-backend-py/.env
+nano .env
 ```
 
 Pega la siguiente configuración y ajusta la contraseña de PostgreSQL, el dominio de tu frontend y la clave secreta:
@@ -243,7 +243,7 @@ AUDIT_LOG_INCLUDED_METHODS='["POST", "PUT", "PATCH", "DELETE"]'
 # Almacenamiento Multimedia en la Nube (Cloudinary)
 # ==========================================
 # Para fotos de perfil de usuarios y productos del catálogo
-CLOUDINARY_CLOUD_NAME=novalabs-bo
+CLOUDINARY_CLOUD_NAME=tu_cloud_name
 CLOUDINARY_API_KEY=tu_api_key_de_cloudinary
 CLOUDINARY_API_SECRET=tu_api_secret_de_cloudinary
 ```
@@ -251,7 +251,7 @@ Guarda con `Ctrl + O`, `Enter` y sal con `Ctrl + X`.
 
 Protege el archivo `.env` para que solo el usuario `deploy` pueda leerlo:
 ```bash
-chmod 600 /opt/uyuni/uyuni-backend-py/.env
+chmod 600 .env
 ```
 
 ---
@@ -334,9 +334,9 @@ Wants=postgresql.service
 Type=simple
 User=deploy
 Group=deploy
-WorkingDirectory=/opt/uyuni/uyuni-backend-py
-EnvironmentFile=/opt/uyuni/uyuni-backend-py/.env
-ExecStart=/opt/uyuni/uyuni-backend-py/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 3 --loop uvloop --http httptools --proxy-headers --forwarded-allow-ips='*'
+WorkingDirectory=/opt/app/backend
+EnvironmentFile=/opt/app/backend/.env
+ExecStart=/opt/app/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 3 --loop uvloop --http httptools --proxy-headers --forwarded-allow-ips='*'
 Restart=always
 RestartSec=5
 StandardOutput=journal
@@ -346,6 +346,7 @@ LimitNOFILE=65536
 [Install]
 WantedBy=multi-user.target
 ```
+*(Nota: Systemd requiere rutas absolutas; reemplaza `/opt/app/backend` si elegiste otra ruta de instalación).*
 
 Habilita y arranca el servicio:
 ```bash
@@ -492,19 +493,19 @@ sudo systemctl status uyuni-backend --no-pager
 Como usuario `root` o con `sudo`:
 
 ```bash
-# 1. Asegurar permisos de ejecución en el script
-sudo chmod +x /opt/uyuni/uyuni-backend-py/scripts/deploy.sh
-sudo chown deploy:deploy /opt/uyuni/uyuni-backend-py/scripts/deploy.sh
+# 1. Asegurar permisos de ejecución en el script (desde el directorio del proyecto)
+chmod +x ./scripts/deploy.sh
 
 # 2. Permitir al usuario deploy reiniciar el servicio sin pedir contraseña de root
 echo "deploy ALL=(ALL) NOPASSWD: /bin/systemctl restart uyuni-backend, /bin/systemctl status uyuni-backend" | sudo tee /etc/sudoers.d/deploy-uyuni
 ```
 
 #### 10.2 Cómo actualizar el backend a partir de ahora:
-Cada vez que subas cambios a GitHub y quieras actualizar el VPS, solo ejecutas un comando:
+Cada vez que subas cambios a GitHub y quieras actualizar el VPS, ejecutas el script relativo:
 
 ```bash
-sudo -u deploy /opt/uyuni/uyuni-backend-py/scripts/deploy.sh
+# Dentro del directorio del proyecto:
+./scripts/deploy.sh
 ```
 
 ---

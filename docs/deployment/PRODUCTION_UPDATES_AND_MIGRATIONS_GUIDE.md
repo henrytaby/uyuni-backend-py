@@ -117,7 +117,7 @@ flowchart TD
     DEV["👨‍💻 Desarrollador Local"] -->|git push origin main| GH["GitHub"]
     
     subgraph VPS ["Servidor Ubuntu VPS (Oracle Cloud / DigitalOcean)"]
-        DEPLOY_SCRIPT["/opt/uyuni/uyuni-backend-py/scripts/deploy.sh"]
+        DEPLOY_SCRIPT["scripts/deploy.sh"]
         GIT_PULL["1. git pull origin main"]
         PIP_INSTALL["2. venv/bin/pip install -r requirements.txt"]
         ALEMBIC["3. venv/bin/alembic upgrade head"]
@@ -145,13 +145,14 @@ ssh -i ~/.ssh/tu_clave_oracle ubuntu@IP_PUBLICA_ORACLE
 ```
 
 #### Paso 3: Ejecuta el script de despliegue automatizado
-El proyecto ya cuenta con el script oficial [`scripts/deploy.sh`](../../scripts/deploy.sh). Solo ejecutas:
+El proyecto ya cuenta con el script oficial [`scripts/deploy.sh`](../../scripts/deploy.sh). Navega al directorio del proyecto y ejecútalo:
 
 ```bash
-sudo -u deploy /opt/uyuni/uyuni-backend-py/scripts/deploy.sh
+cd /opt/<tu-proyecto>/backend   # O tu ruta de instalación configurada
+sudo -u deploy ./scripts/deploy.sh
 ```
 
-*(O si ejecutas como tu propio usuario con sudo: `cd /opt/uyuni/uyuni-backend-py && git pull origin main && venv/bin/alembic upgrade head && sudo systemctl restart uyuni-backend`)*.
+*(O si ejecutas como tu propio usuario con sudo: `git pull origin main && venv/bin/alembic upgrade head && sudo systemctl restart uyuni-backend`)*.
 
 **¿Qué hace este comando automáticamente?**
 1. **`git pull origin main`**: Descarga los nuevos archivos (incluyendo la migración `alembic/versions/e976c6814a87_add_profile_fields_to_user.py`).
@@ -163,9 +164,9 @@ sudo -u deploy /opt/uyuni/uyuni-backend-py/scripts/deploy.sh
 > **Si la actualización requiere nuevas variables de entorno (ej: Cloudinary):**  
 > Edita el archivo `.env` en tu servidor antes de reiniciar el demonio:
 > ```bash
-> nano /opt/uyuni/uyuni-backend-py/.env
+> nano .env
 > # Añade:
-> # CLOUDINARY_CLOUD_NAME=novalabs-bo
+> # CLOUDINARY_CLOUD_NAME=tu_cloud_name
 > # CLOUDINARY_API_KEY=tu_api_key
 > # CLOUDINARY_API_SECRET=tu_api_secret
 > sudo systemctl restart uyuni-backend
