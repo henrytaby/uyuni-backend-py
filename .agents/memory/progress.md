@@ -117,10 +117,13 @@
   - Adición de la columna `costing_method` a `commerce_batch` con valores soportados: `WEIGHTED_RETAIL`, `SPECIFIC_ITEM`, `FLAT_AVERAGE`.
   - Migración Alembic `b712823239b1` aplicada exitosamente en Local y Neon PostgreSQL.
   - Implementación del costeo Top-Down ponderado (`allocate_relative_costs`) basado en `published_price` con absorción de mermas y reconciliación de centavos.
-  - Implementación del costeo Bottom-Up (`recalculate_from_products`) para compras bajo demanda / mayoristas donde el lote totaliza a partir del `cost_price` individual.
+  - Implementación del costeo Bottom-Up (`recalculate_from_products`) para compras bajo demanda, bazar familiar y mayoristas donde el lote totaliza a partir del `cost_price` individual.
   - Auto-sincronización de Rondas de Inversión (`recalculate_round`): actualización atómica de `capital_invested = sum(batch.total_cost)` y seguimiento de punto de equilibrio (`IN_RECOVERY` → `NEAR_BREAKEVEN` → `RECOVERED` → `LIQUIDATED`) vinculado a ventas reales.
   - Endpoints de métricas financieras de ronda (`GET /api/commerce/rounds/{id}/metrics`) y recálculo manual (`POST /api/commerce/rounds/{id}/recalculate`).
-  - Cobertura completa de tests unitarios e integrados (110 tests pasando al 100%, Ruff y Mypy en verde).
+  - Protección de integridad referencial en eliminación: `InvestmentRoundService.delete` bloquea con `BadRequestException` (HTTP 400) si la ronda tiene $\ge 1$ lotes vinculados.
+  - Soporte de lotes a costo cero / nominal para bazar familiar y artículos propios o en consignación.
+  - Cobertura completa de tests unitarios e integrados (111 tests pasando al 100%, Ruff y Mypy en verde).
+  - Guía completa de integración frontend (`03_FRONTEND_INTEGRATION_GUIDE.md`) y flujo operativo (`04_OPERATIONAL_WORKFLOW.md`) actualizados.
 
 ### In Progress
 - [ ] Rate limiting for authentication endpoints
