@@ -1870,3 +1870,64 @@ def test_personal_used_items_consignment_and_handmade_flow(
     assert m["sold_items"] == 3
     assert m["is_break_even"] is True
     assert m["status"] == "LIQUIDATED"
+
+
+def test_delete_investment_round_integrity(
+    session: Session, client: TestClient, superuser_token_headers: dict
+):
+    round_service = InvestmentRoundService(session)
+    batch_service = BatchService(session)
+
+    # 1. Ronda sin lotes asociados: debe permitir eliminar limpiamente
+    ronda_vacia = round_service.create(
+        InvestmentRound(
+            code="RND-EMPTY",
+            name="Ronda de Prueba Vacía",
+            capital_invested=0.0,
+            status="ACTIVE",
+        )
+    )
+    res_del_ok = client.delete(
+        f"/api/commerce/rounds/{ronda_vacia.id}",
+        headers=superuser_token_headers,
+    )
+    assert res_del_ok.status_code == 200
+    assert "deleted successfully" in res_del_ok.json()["message"]
+    assert round_service.get_by_id(ronda_vacia.id) is None
+
+    # 2. Ronda con lotes asociados: debe rechazar la eliminación (HTTP 400)
+    ronda_con_lote = round_service.create(
+        InvestmentRound(
+            code="RND-WITH-BATCH",
+            name="Ronda con Lotes Asociados",
+            capital_invested=500.0,
+            status="ACTIVE",
+        )
+    )
+    batch = batch_service.create(
+        Batch(
+            code="BATCH-RND-TEST",
+            name="Lote Asociado a Ronda",
+            investment_round_id=ronda_con_lote.id,
+            purchase_price=500.0,
+        )
+    )
+
+    res_del_blocked = client.delete(
+        f"/api/commerce/rounds/{ronda_con_lote.id}",
+        headers=superuser_token_headers,
+    )
+    assert res_del_blocked.status_code == 400
+    detail = res_del_blocked.json()["detail"]
+    assert "No se puede eliminar la ronda" in detail
+    assert "1 lote(s) asociado(s)" in detail
+
+    # 3. Desvincular el lote y reintentar eliminar: ahora sí debe permitir
+    batch_service.update(batch.id, {"investment_round_id": None})
+    res_del_after_unlink = client.delete(
+        f"/api/commerce/rounds/{ronda_con_lote.id}",
+        headers=superuser_token_headers,
+    )
+    assert res_del_after_unlink.status_code == 200
+    assert round_service.get_by_id(ronda_con_lote.id) is None
+

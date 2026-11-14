@@ -3,6 +3,7 @@ from uuid import UUID
 
 from sqlmodel import Session, col, func, select
 
+from app.core.exceptions import BadRequestException
 from app.modules.commerce.rounds.models import InvestmentRound
 from app.modules.commerce.rounds.repository import InvestmentRoundRepository
 
@@ -32,6 +33,26 @@ class InvestmentRoundService:
         return self.repository.update(id, data)
 
     def delete(self, id: UUID) -> bool:
+        from app.modules.commerce.batches.models import Batch
+
+        round_obj = self.repository.get_by_id(id)
+        if not round_obj:
+            return False
+
+        # Validar si tiene lotes/cajas asociadas
+        batches_count = self.session.exec(
+            select(func.count(col(Batch.id))).where(Batch.investment_round_id == id)
+        ).one()
+
+        if batches_count > 0:
+            raise BadRequestException(
+                detail=(
+                    f"No se puede eliminar la ronda '{round_obj.name}' "
+                    f"({round_obj.code}) porque tiene {batches_count} "
+                    "lote(s) asociado(s). Desvincule o elimine los lotes primero."
+                )
+            )
+
         return self.repository.delete(id)
 
     def count(self, search: str | None = None) -> int:
