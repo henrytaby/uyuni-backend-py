@@ -113,6 +113,11 @@
   - Exposición dinámica en `ProductMasterRead`: `marketplace_url` (retrocompatible con el primario de marketplace), `external_info_url` (primario de referencia), `reference_links`, `marketplace_links`, y sus contadores independientes.
   - Filtro por tipo en el endpoint `GET /api/commerce/product-masters/{id}/links?link_type=MARKETPLACE`.
   - Cobertura completa de tests en `tests/test_commerce.py` (88/88 tests pasando, Ruff y Mypy en 100% verde).
+- [x] Resiliencia de Despliegue en Render y Replicación Total en Neon Cloud PostgreSQL:
+  - Resolución del error `psycopg2.errors.NumericValueOutOfRange` en despliegues limpios de Render/Neon mediante calibración segura con `GREATEST(COALESCE(MAX, 1), 1)` y flag `is_called = (MAX IS NOT NULL)` tanto en Alembic (`7aa40791c24a`), como en `app/main.py` y `scripts/sync_sheets_novabox.py`.
+  - Creación del script de migración idempotente `scripts/replicate_local_to_neon.py` con manejo de orden topológico de foreign keys, autorreferencias de `user`, serialización JSON para `audit_log` y verificación de integridad.
+  - Replicación exitosa del 100% de tablas y datos desde Local hacia Neon Cloud (`uyuni_prod`): 240 fichas maestras, 242 productos, 127 ventas, 248 enlaces externos, 7 imágenes multimedia y secuencia atómica calibrada en 242.
+  - Verificación del ciclo de vida de arranque (`lifespan`) de FastAPI conectado directamente a Neon, confirmando sincronización de manifiestos y 0 excepciones.
 
 ### In Progress
 - [ ] Rate limiting for authentication endpoints

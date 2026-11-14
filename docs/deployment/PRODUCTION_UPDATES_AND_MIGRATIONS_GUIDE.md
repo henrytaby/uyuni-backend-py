@@ -70,6 +70,34 @@ git push origin main
 4. Luego arranca Uvicorn y el servicio pasa el `/health` check.
 5. **Cero comandos manuales.** Todo queda sincronizado en ~90 segundos.
 
+### 🛡️ Calibración de Secuencias y Clonación Local → Nube (Neon)
+
+#### 1. Prevención del error `NumericValueOutOfRange (setval: value 0)`
+En PostgreSQL, las secuencias atómicas tienen por defecto un límite mínimo de `1`. Si se ejecuta un `setval` con `COALESCE(MAX(col), 0)` en una base de datos vacía o recién inicializada, PostgreSQL falla con `NumericValueOutOfRange`.
+
+El estándar corporativo implementado en Alembic (`7aa40791c24a`), en `app/main.py` y en scripts ETL es:
+```sql
+SELECT setval(
+    'commerce_product_master_item_number_seq',
+    GREATEST(COALESCE((SELECT MAX(item_number) FROM commerce_product_master), 1), 1),
+    (SELECT MAX(item_number) FROM commerce_product_master) IS NOT NULL
+);
+```
+- **Tabla vacía (`0` filas)**: Se calibra en `1` con `is_called = false`. El primer ítem creado obtendrá automáticamente el `#1` sin errores de despliegue.
+- **Tabla con registros**: Se calibra en `MAX(item_number)` con `is_called = true`. El próximo ítem recibirá `MAX + 1`.
+
+#### 2. Replicación Idempotente Local a Neon (`scripts/replicate_local_to_neon.py`)
+Para subir o sincronizar todo el catálogo de desarrollo local (fichas maestras, productos, ventas, usuarios y roles) hacia la base de datos de Neon en la nube:
+```bash
+venv/bin/python scripts/replicate_local_to_neon.py
+```
+El script gestiona automáticamente:
+- Limpieza previa en orden inverso de dependencias (`TRUNCATE CASCADE`).
+- Inserción respetando el orden topológico de foreign keys.
+- Resolución de autorreferencias de usuario (`created_by_id`, `updated_by_id`).
+- Serialización de campos JSON/dict para psycopg2.
+- Recalibración atómica de secuencias y tabla comparativa de verificación de integridad al 100%.
+
 > [!NOTE]
 > **Si la actualización introduce nuevas variables de entorno (ej: Cloudinary):**  
 > Antes o después del `git push`, ve a tu Dashboard en **Render > Environment Variables** y añade las nuevas claves:
