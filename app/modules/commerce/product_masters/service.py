@@ -1,7 +1,10 @@
+import urllib.parse
+import urllib.request
 from typing import Any, Sequence
 from urllib.parse import urlparse
 from uuid import UUID
 
+import structlog
 from sqlalchemy import text
 from sqlmodel import Session, col, func, select
 
@@ -18,8 +21,13 @@ from app.modules.commerce.product_masters.schemas import (
     ProductImageUpdate,
     ProductMasterExternalLinkReorderItem,
     ProductMasterExternalLinkUpdate,
+    ScrapedImageCandidate,
+    ScrapedImagesResponse,
 )
+from app.modules.commerce.product_masters.scraper import media_scraper
 from app.modules.commerce.products.models import Product
+
+logger = structlog.get_logger(__name__)
 
 ALLOWED_IMAGE_MIME_TYPES = {
     "image/jpeg",
@@ -595,6 +603,108 @@ class ProductMasterService:
         self.session.commit()
         self.session.refresh(img)
         return img
+
+    def scrape_external_images(self, url: str) -> ScrapedImagesResponse:
+        res = media_scraper.scrape(url)
+        return ScrapedImagesResponse(
+            source_url=res.source_url,
+            platform=res.platform,
+            images=[
+                ScrapedImageCandidate(
+                    url=item.url,
+                    thumbnail_url=item.thumbnail_url,
+                    width=item.width,
+                    height=item.height,
+                    alt=item.alt,
+                )
+                for item in res.images
+            ],
+            warning=res.warning,
+        )
+
+    def import_external_images(
+        self,
+        master_id: UUID,
+        image_urls: list[str],
+        image_type: str = "CATALOG",
+        set_first_as_cover: bool = True,
+    ) -> list[ProductImage]:
+        master = self.get_by_id(master_id)
+        if not master:
+            raise NotFoundException(f"Ficha maestra {master_id} no encontrada")
+
+        clean_urls = [
+            u.strip()
+            for u in image_urls
+            if (u or "").strip().startswith(("http://", "https://"))
+        ]
+        if not clean_urls:
+            raise BadRequestException(
+                "No se proporcionaron URLs válidas de imágenes para importar"
+            )
+
+        if len(clean_urls) > 20:
+            raise BadRequestException(
+                "No se pueden importar más de 20 imágenes por lote"
+            )
+
+        files_data: list[dict[str, Any]] = []
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            ),
+            "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        }
+
+        for idx, img_url in enumerate(clean_urls):
+            try:
+                req = urllib.request.Request(img_url, headers=headers)
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    data = resp.read()
+                    content_type = resp.headers.get("Content-Type", "")
+                    parsed_path = urllib.parse.urlparse(img_url).path
+                    if "/" in parsed_path:
+                        base_filename = parsed_path.rsplit("/", 1)[-1]
+                    else:
+                        base_filename = f"image_{idx + 1}.jpg"
+
+                    if not base_filename or "." not in base_filename:
+                        ext = "jpg"
+                        if "png" in content_type:
+                            ext = "png"
+                        elif "webp" in content_type:
+                            ext = "webp"
+                        base_filename = f"image_{idx + 1}.{ext}"
+
+                    files_data.append(
+                        {
+                            "content": data,
+                            "filename": base_filename,
+                            "content_type": content_type or "image/jpeg",
+                            "title": f"{master.name} - Foto {idx + 1}",
+                        }
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "download_external_image_failed",
+                    url=img_url,
+                    error=str(exc),
+                )
+
+        if not files_data:
+            raise BadRequestException(
+                "No se pudo descargar ninguna de las imágenes proporcionadas. "
+                "Verifica que los enlaces sean accesibles o arrastra las fotos "
+                "directamente a la galería."
+            )
+
+        return self.add_images(
+            master_id=master_id,
+            files_data=files_data,
+            image_type=image_type,
+            is_cover=set_first_as_cover,
+        )
 
     # =========================================================================
     # ENLACES EXTERNOS MULTI-PORTAL (AMAZON, EBAY, ALIBABA, ETC.)

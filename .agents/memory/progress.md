@@ -68,6 +68,14 @@
   - Inmutabilidad estricta y autogeneración por el backend de `item_number` (cero intervención manual del cliente).
   - Flexibilización de `code` como campo opcional (`NULL` / código de barras) sin `UNIQUE` global, dejando la arquitectura 100% preparada para Multi-Tenancy.
   - Limpieza de datos en Local y VPS: `code = NULL` y `features` con el detalle extendido en Markdown.
+- [x] Copiloto IA de Comercio (`app/modules/commerce/assistant/`):
+  - Arquitectura multi-proveedor con fallback inteligente: Groq (`openai/gpt-oss-120b`) → Mistral (`ministral-8b-latest`) → Gemini (`gemini-3.5-flash`).
+  - Motor de búsqueda semántica con expansión de sinónimos (`domotica`, `auto`, `celular`, etc.) y filtrado exhaustivo de stop words / verbos de consulta.
+  - Pool de candidatos ampliado a 35 ítems para consultas por categoría, permitiendo que la IA evalúe la pertinencia funcional completa del inventario real.
+  - Sincronización 1:1 entre citas en Markdown de la IA y tarjetas interactivas del frontend (`matched_products`).
+  - Implementación del modelo de Tri-Precio Comercial (`published_price`, `minimum_price`, `official_price`) con cálculo dinámico de margen de regateo y detección de Precio Fijo.
+  - Integración completa con el drawer interactivo en Angular 21 + PrimeNG 21 (`commerce-assistant-drawer`).
+  - Suite de 16 pruebas unitarias específicas y 109 pruebas globales pasando al 100%.
   - Hook de auto-calibración en el arranque del servidor (`main.py` lifespan) y en scripts ETL para evitar desfasajes tras restauraciones de backups o migraciones con Navicat.
   - Actualización de documentación de integración frontend (`03_FRONTEND_INTEGRATION_GUIDE.md`).
 - [x] Motor de Multi-Fotografías y Galería Multimedia para Fichas Maestras (`commerce_product_image`):

@@ -252,9 +252,9 @@ La ficha comercial e intelectual del producto. Es la entidad central de mercadot
 | `live_basket_id` | `UUID` | Sí | `NULL` | FK -> `commerce_live_basket.id`, Index | Canasta temática para TikTok Live. |
 | `brand` | `VARCHAR(150)` | Sí | `NULL` | — | Marca del fabricante (ej: `Anker`, `Logitech`, `Genérico`). |
 | `model` | `VARCHAR(150)` | Sí | `NULL` | — | Modelo comercial del producto. |
-| `official_price` | `DOUBLE PRECISION`| No | `0.0` | — | Precio de lista oficial de venta al público. |
-| `minimum_price` | `DOUBLE PRECISION`| No | `0.0` | — | Piso mínimo de regateo protegido (no reducible sin autorización). |
-| `published_price` | `DOUBLE PRECISION`| No | `0.0` | — | Precio mostrado en artes publicitarios y Marketplace. |
+| `official_price` | `DOUBLE PRECISION`| No | `0.0` | — | **P. Lista (Mercado)**: Precio de referencia promedio investigado en el mercado local (Bolivia). Sirve como ancla referencial de ahorro frente a la competencia. |
+| `published_price` | `DOUBLE PRECISION`| Sí | `NULL` | — | **P. Publicado (Venta Cliente)**: **Precio oficial de venta al público** anunciado en Marketplace y redes. Monto principal cotizado de entrada al cliente. |
+| `minimum_price` | `DOUBLE PRECISION`| No | `0.0` | — | **Piso Regateo (Mínimo Protegido)**: Límite mínimo de venta autorizado para cerrar trato si el cliente pide rebaja. Si es igual al publicado, el producto es de Precio Fijo. |
 | `currency` | `VARCHAR(3)` | No | `'BOB'` | — | Moneda de comercialización (`BOB`). |
 | `cover_image_url` | `VARCHAR(500)` | Sí | `NULL` | — | URL de la foto principal WebP para catálogos y PWA. |
 | `features` | `VARCHAR(2000)`| Sí | `NULL` | — | Características técnicas viñeteadas para el cliente. |

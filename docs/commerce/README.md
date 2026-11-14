@@ -29,6 +29,7 @@ La documentación se encuentra organizada en 4 volúmenes especializados según 
 | **[02. Diccionario de Base de Datos](./02_DATABASE_DICTIONARY.md)** | DBAs, Fullstack Devs, Auditores | Diagrama Entidad-Relación (ERD) completo y descripción detallada campo por campo de las 10 tablas, tipos, índices y claves foráneas. |
 | **[03. Guía de Integración Frontend](./03_FRONTEND_INTEGRATION_GUIDE.md)** | Frontend Devs (Angular, React) | Consumo de la API REST, autenticación, carga masiva de catálogos (`/api/catalogs/bulk`), subida masiva de fotos, galería multimedia, filtros y ejemplos de payloads JSON. |
 | **[04. Flujo Operativo y Ciclo de Vida](./04_OPERATIONAL_WORKFLOW.md)** | Operadores, Gestores de Almacén, Devs | Ciclo de vida didáctico paso a paso: desde el desempaque de una caja de liquidación, inspección y merma, hasta la venta en live y el cierre de lote. |
+| **[05. Asistente de IA e Inventario](./05_AI_ASSISTANT_GUIDE.md)** | Frontend Devs, Backend Devs | Asistente de chat comercial con RAG ligero, inyección de stock en tiempo real, arquitectura multi-proveedor (Groq, Mistral), modelos TypeScript y especificación de endpoints. |
 
 ---
 
@@ -38,6 +39,7 @@ El dominio se encuentra estructurado en 8 submódulos desacoplados dentro de `ap
 
 ```text
 app/modules/commerce/
+├── assistant/         # Asistente de IA comercial (Groq / Mistral / RAG stock)
 ├── rounds/            # Rondas de inversión y capital desembolsado
 ├── batches/           # Lotes y cajas importadas con control de costos
 ├── categories/        # Categorías generales de catálogo (CAT-01..09)

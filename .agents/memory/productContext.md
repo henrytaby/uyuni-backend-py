@@ -57,6 +57,20 @@ Uyuni Backend provides a high-performance RESTful API that enables:
 2. System verifies price is at or above `minimum_price`
 3. In a single atomic transaction: records sale, sale items, calculates net margin, and transitions product status to `vendido`
 
+### Commercial Tri-Pricing Strategy & Margins
+- **P. Publicado (`published_price`)**: Primary customer-facing sale price advertised on Marketplace / social channels. This is the initial quote given to prospects.
+- **Piso Regateo (`minimum_price`)**: Strict floor price protecting minimum operational margin.
+  - $\text{Negotiation Margin} = \text{P. Publicado} - \text{Piso Regateo}$.
+  - **Fixed Price Rule**: If $\text{P. Publicado} == \text{Piso Regateo}$, the item is flagged as **Precio Fijo** (no discounts permitted).
+- **P. Lista (`official_price`)**: Local market benchmark price in Bolivia. Used as external anchoring to demonstrate customer savings.
+
+### Commerce AI Assistant Flow (Copiloto Uyuni)
+1. User asks question in natural language (e.g. stock, pricing, specific item, or category like "domótica").
+2. Query intent and item numbers are extracted; query verbs and stop words are stripped.
+3. System fetches a wide candidate pool (up to 35 items) with real stock and semantic synonym expansion.
+4. LLM analyzes candidates, filters by functional intent, and formats an executive markdown table highlighting `P. Publicado`, `Piso Regateo` (with margin or fixed price alert), and `P. Lista`.
+5. Backend synchronizes interactive UI cards with only the specific item numbers cited by the AI.
+
 ### Audit Logging Flow
 1. Request enters audit middleware
 2. Middleware captures request metadata (user, path, method, IP, user agent)

@@ -70,6 +70,22 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str | None = None
     CLOUDINARY_API_SECRET: str | None = None
 
+    # AI Commercial Assistant (Multi-Provider: Groq, Mistral, Gemini)
+    AI_DEFAULT_PROVIDER: str = "groq"
+    AI_ENABLE_FALLBACK: bool = True
+
+    # 1. Groq (OpenAI GPT OSS 120B / 20B)
+    GROQ_API_KEY: str | None = None
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
+
+    # 2. Mistral AI (Ministral 8B)
+    MISTRAL_API_KEY: str | None = None
+    MISTRAL_MODEL: str = "ministral-8b-latest"
+
+    # 3. Google Gemini (Gemini 3.5 Flash)
+    GEMINI_API_KEY: str | None = None
+    GEMINI_MODEL: str = "gemini-3.5-flash"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 

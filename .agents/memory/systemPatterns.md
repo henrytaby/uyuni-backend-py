@@ -105,6 +105,26 @@ Features:
 - **MANDATORY UI/UX STANDARD**: Low-frequency reference data / lookups (e.g. Categories, Sales Channels, Live Baskets, Investment Rounds) must NEVER clutter the sidebar as separate menu buttons ("menú sábana").
 - Instead, consolidate them into a single `Catálogos` module route (e.g., `/commerce/catalogs`) rendered with PrimeNG tabs ("cejas" via `p-tabs`), leaving the sidebar strictly focused on daily high-frequency transactional workflows (Sales, Products, Batches, Product Masters). All AI agents must replicate this pattern across future modules.
 
+### Commerce AI Assistant Pattern (Copiloto Uyuni)
+```
+POST /api/commerce/assistant/chat
+  → extract_item_numbers & extract_search_terms (stripping inquiry verbs & stop words)
+  → semantic expansion (SYNONYM_GROUPS: domotica, auto, celular, etc.)
+  → search_relevant_products (evaluates up to 35 candidates with available stock in DB)
+  → build_system_prompt (tri-pricing: P. Publicado, Piso Regateo con margen/precio fijo, P. Lista)
+  → call_llm (Multi-provider fallback: Groq → Mistral → Gemini)
+  → extract_cited_item_numbers (tolerates bold, hashes, tables)
+  → ui_products filtered to only cited items
+  → ChatAssistantResponse
+```
+Key Principles:
+1. **Tri-Pricing Protocol**:
+   - `published_price` (`P. Publicado`): Primary selling price quoted to customers.
+   - `minimum_price` (`Piso Regateo`): Minimum break-even floor. If `published_price == minimum_price`, alert "Precio Fijo (Sin regateo)".
+   - `official_price` (`P. Lista`): External market benchmark in Bolivia for savings arguments.
+2. **Context-Rich Semantic Pool**: Queries retrieve a broader candidate pool (35 items) so the LLM evaluates genuine domain relevance rather than truncating on raw substring matches.
+3. **Card Synchronization**: UI cards in the frontend drawer strictly render products cited by the LLM response, avoiding polluting cards with discarded candidates.
+
 ### Audit System (CDC & Observability)
 ```
 Request → Middleware (sets ContextVars user/IP) → Business Logic → SQLAlchemy Hooks (CDC) → audit_log

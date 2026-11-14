@@ -97,9 +97,18 @@ Este backend actúa como motor transaccional y ERP de Marca Blanca para empresas
 - **Frontend Público de Clientes**: Aplicación web/móvil para catálogo en tiempo real (React + Vite PWA).
 - **Módulo de Negocio (`app/modules/commerce/`)**:
   - `products`: Catálogo de SKUs (`SKU-XXX`), estados (`disponible`, `reservado`, `vendido`, `merma`), precio oficial y mínimo (`minimum_price`).
-  - `product_masters` & `product_images`: Fichas maestras con secuencia atómica (`item_number`), código de barras opcional (`code`) y galería multi-foto en Cloudinary (`uyuni/products/{item_number}/{image_type}/`).
+  - `product_masters` & `product_images`: Fichas maestras con secuencia atómica (`item_number`), código de barras opcional (`code`), precio publicado (`published_price`) y galería multi-foto en Cloudinary (`uyuni/products/{item_number}/{image_type}/`).
   - `batches`: Cajas y lotes importados con control de costos y punto de equilibrio.
   - `sales`: Registro atómico de ventas con métodos de pago (QR, efectivo, envíos), cliente y cálculo de ganancia neta.
+  - `assistant`: Copiloto IA de inventario y ventas multi-proveedor (Groq, Mistral, Gemini) con fallback automático (`/api/commerce/assistant/chat`).
   - `api/public/catalog`: Endpoint público cacheado para alimentar aplicaciones de clientes en tiempo real sin rebuilds.
-- **Regla de Negocio Crítica**: En el servicio de ventas, nunca permitir transacciones por debajo del `minimum_price` sin confirmación explícita, y asegurar que el producto se marque como `vendido` en la misma transacción atómica.
+- **Estrategia Comercial de Precios (Tri-Precio de Negocio)**:
+  - **`P. Publicado` (`published_price`)**: **PRECIO OFICIAL DE VENTA AL PÚBLICO** anunciado en Marketplace o redes sociales. Es el monto principal que se le cotiza de entrada al cliente.
+  - **`Piso Regateo` (`minimum_price`)**: Límite mínimo de venta autorizado (piso protegido para no perder margen de rentabilidad).
+    - $\text{Margen de Rebaja} = \text{P. Publicado} - \text{Piso Regateo}$.
+    - **Regla de Precio Fijo**: Si $\text{P. Publicado} == \text{Piso Regateo}$ ($\text{margen} = 0$), el producto es de **Precio Fijo / Sin margen de rebaja** (no se admite descuento).
+  - **`P. Lista` (`official_price`)**: Precio de referencia promedio investigado en el mercado local (Bolivia). Sirve como ancla referencial para argumentar ahorro al cliente frente a la competencia.
+- **Reglas de Negocio Críticas**:
+  1. En el servicio de ventas, nunca permitir transacciones por debajo del `minimum_price` sin confirmación explícita, y asegurar que el producto se marque como `vendido` en la misma transacción atómica.
+  2. En el Copiloto IA, las consultas de búsqueda por concepto evalúan un pool amplio de hasta 35 candidatos con stock real y expansión de sinónimos (`domotica`, `auto`, etc.), sincronizando las tarjetas interactivas únicamente con las fichas citadas y aprobadas por la IA.
 

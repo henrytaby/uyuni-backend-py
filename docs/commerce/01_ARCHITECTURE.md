@@ -152,9 +152,22 @@ classDiagram
 
 ## ⚖️ Reglas de Negocio Críticas
 
-### 1. Piso Mínimo de Regateo (`minimum_price`)
-- **Regla:** En Bolivia, la venta por Marketplace y streaming implica una alta tasa de regateo por parte de los clientes. Cada producto maestro tiene un `official_price` (precio de lista), un `published_price` (precio en publicidad) y un `minimum_price` (piso absoluto de seguridad que garantiza margen neto positivo).
-- **Control en `SaleService`:**
+### 1. Estrategia Comercial de Precios (Tri-Precio de Negocio)
+En el modelo comercial minorista y de importaciones de Uyuni ERP, cada ficha maestra (`ProductMaster`) implementa una estructura de **Tri-Precio** diseñada para el mercado de venta directa, redes sociales y Marketplace en Bolivia:
+
+1. **`P. Publicado` (`published_price`) — PRECIO OFICIAL DE VENTA AL CLIENTE:**
+   - Es el precio de catálogo anunciado en Marketplace, campañas de Facebook y catálogo de WhatsApp.
+   - Es el monto principal que el vendedor u operador le cotiza de entrada al cliente.
+2. **`Piso Regateo` (`minimum_price`) — PISO MÍNIMO PROTEGIDO:**
+   - Límite inferior infranqueable de venta que protege el margen neto y punto de equilibrio de la caja.
+   - **Margen de Negociación:** $\text{Margen de Rebaja} = \text{P. Publicado} - \text{Piso Regateo}$.
+   - **Regla de Precio Fijo:** Si $\text{P. Publicado} == \text{Piso Regateo}$ ($\text{margen} = 0$), el producto se considera **Precio Fijo / Sin margen de rebaja** (no se admite descuento comercial).
+3. **`P. Lista` (`official_price`) — ANCLA DE REFERENCIA DE MERCADO:**
+   - Precio promedio investigado en el mercado local (Bolivia) o tiendas de la competencia.
+   - Sirve como argumento persuasivo de venta para ilustrar el ahorro del cliente:  
+     $$\text{Ahorro Cliente} = \text{P. Lista} - \text{P. Publicado}$$
+
+- **Control Estricto en `SaleService`:**
   ```python
   if product.minimum_price > 0 and item_data.unit_price < product.minimum_price and not data.allow_below_minimum:
       raise BadRequestException(

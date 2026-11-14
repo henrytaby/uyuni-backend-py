@@ -28,3 +28,9 @@ La documentación completa, modular y profesional del módulo de **Commerce** se
 5. **[04. Flujo Operativo y Ciclo de Vida](./commerce/04_OPERATIONAL_WORKFLOW.md):**
    - Ciclo de vida didáctico paso a paso: financiamiento, importación, pruebas en mesa, mermas, publicación en TikTok Live y Facebook Marketplace, cobro por QR, despacho por flota y punto de equilibrio (*Break-Even*).
 
+6. **[05. Asistente de IA e Inventario](./commerce/05_AI_ASSISTANT_GUIDE.md):**
+   - Arquitectura multi-proveedor (Groq, Mistral, Gemini) con fallback automático.
+   - Búsqueda semántica con expansión de sinónimos (`domotica`, `auto`, etc.) y pool amplio de 35 candidatos.
+   - Estrategia comercial de Tri-Precio (`P. Publicado`, `Piso Regateo` y `P. Lista`) con margen de negociación dinámico y detección de Precio Fijo.
+   - Sincronización 1:1 entre respuestas citadas en Markdown y tarjetas interactivas de frontend.
+

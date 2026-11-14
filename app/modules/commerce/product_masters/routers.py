@@ -14,6 +14,7 @@ from app.modules.commerce.product_masters.models import (
     ProductMasterExternalLink,
 )
 from app.modules.commerce.product_masters.schemas import (
+    ImportExternalImagesRequest,
     ProductImageRead,
     ProductImageReorderItem,
     ProductImageUpdate,
@@ -24,6 +25,8 @@ from app.modules.commerce.product_masters.schemas import (
     ProductMasterExternalLinkUpdate,
     ProductMasterRead,
     ProductMasterUpdate,
+    ScrapedImagesResponse,
+    ScrapeImagesRequest,
 )
 from app.modules.commerce.product_masters.service import ProductMasterService
 
@@ -399,6 +402,63 @@ async def upload_product_images(
         image_type=image_type,
         is_cover=is_cover,
         product_id=product_id,
+    )
+    return [ProductImageRead.model_validate(img) for img in created]
+
+
+@router.post(
+    "/{id}/images/scrape-preview",
+    response_model=ScrapedImagesResponse,
+    summary="Previsualizar extracción de fotos desde una URL externa",
+    description=(
+        "Escanea la página del producto externo (Amazon, eBay, Alibaba o web) "
+        "y extrae imágenes en alta resolución disponibles antes de importar."
+    ),
+)
+def scrape_product_images_preview(
+    session: SessionDep,
+    id: UUID,
+    data: ScrapeImagesRequest,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
+        )
+    ),
+) -> ScrapedImagesResponse:
+    service = ProductMasterService(session)
+    master = service.get_by_id(id)
+    if not master:
+        raise NotFoundException("Ficha maestra no encontrada")
+    return service.scrape_external_images(data.url)
+
+
+@router.post(
+    "/{id}/images/import-external",
+    response_model=list[ProductImageRead],
+    summary="Importar lote de imágenes externas a Cloudinary para esta Ficha Maestra",
+    description=(
+        "Descarga servidor-a-servidor las imágenes seleccionadas, "
+        "las optimiza y sube a Cloudinary en: uyuni/products/{item_number}/"
+    ),
+)
+def import_external_product_images(
+    session: SessionDep,
+    id: UUID,
+    data: ImportExternalImagesRequest,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.UPDATE,
+        )
+    ),
+) -> list[ProductImageRead]:
+    service = ProductMasterService(session)
+    created = service.import_external_images(
+        master_id=id,
+        image_urls=data.image_urls,
+        image_type=data.image_type,
+        set_first_as_cover=data.set_first_as_cover,
     )
     return [ProductImageRead.model_validate(img) for img in created]
 

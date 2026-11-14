@@ -172,3 +172,31 @@ class ProductMasterRead(ProductMasterBase):
     reference_links_count: int = 0
     marketplace_links: list[ProductMasterExternalLinkRead] = []
     marketplace_links_count: int = 0
+
+
+# =========================================================================
+# Schemas para Extracción e Importación de Imágenes Externas
+# =========================================================================
+class ScrapedImageCandidate(BaseModel):
+    url: str
+    thumbnail_url: str | None = None
+    width: int | None = None
+    height: int | None = None
+    alt: str | None = None
+
+
+class ScrapedImagesResponse(BaseModel):
+    source_url: str
+    platform: str
+    images: list[ScrapedImageCandidate]
+    warning: str | None = None
+
+
+class ScrapeImagesRequest(BaseModel):
+    url: str
+
+
+class ImportExternalImagesRequest(BaseModel):
+    image_urls: list[str]
+    image_type: str = "CATALOG"
+    set_first_as_cover: bool = True

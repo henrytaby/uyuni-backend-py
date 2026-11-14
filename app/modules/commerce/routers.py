@@ -6,6 +6,7 @@ canastas para live, productos y transacciones de venta.
 
 from fastapi import APIRouter
 
+from app.modules.commerce.assistant import router as assistant_router
 from app.modules.commerce.batches import routers as batches_router
 from app.modules.commerce.categories import routers as categories_router
 from app.modules.commerce.channels import routers as channels_router
@@ -18,6 +19,7 @@ from app.modules.commerce.sales import routers as sales_router
 router = APIRouter(prefix="/commerce")
 
 # Agregación de submódulos de Commerce
+router.include_router(assistant_router)
 router.include_router(rounds_router.router)
 router.include_router(batches_router.router)
 router.include_router(categories_router.router)
