@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 
 class BatchBase(BaseModel):
-    code: str
+    code: str | None = None
     name: str
     investment_round_id: UUID | None = None
     provider: str | None = None

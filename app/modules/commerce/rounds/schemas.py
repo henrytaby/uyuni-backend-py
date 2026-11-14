@@ -5,12 +5,12 @@ from pydantic import BaseModel
 
 
 class InvestmentRoundBase(BaseModel):
-    code: str
+    code: str | None = None
     name: str
     disbursement_date: date | None = None
     capital_invested: float = 0.0
     currency: str = "BOB"
-    status: str = "active"
+    status: str = "ACTIVE"
     observations: str | None = None
 
 

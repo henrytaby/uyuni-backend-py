@@ -14,6 +14,11 @@ class InvestmentRoundService:
         self.repository = InvestmentRoundRepository(session)
 
     def create(self, data: InvestmentRound) -> InvestmentRound:
+        if not data.code or not data.code.strip():
+            count = self.session.exec(select(func.count(col(InvestmentRound.id)))).one()
+            data.code = f"RONDA-{int(count) + 1:02d}"
+        else:
+            data.code = data.code.strip().upper()
         return self.repository.create(data)
 
     def get_all(
@@ -30,7 +35,27 @@ class InvestmentRoundService:
         return self.repository.get_by_id(id)
 
     def update(self, id: UUID, data: dict) -> InvestmentRound | None:
-        return self.repository.update(id, data)
+        from app.modules.commerce.batches.models import Batch
+
+        round_obj = self.repository.get_by_id(id)
+        if not round_obj:
+            return None
+
+        # Si la ronda tiene lotes asociados, capital_invested y status NO deben
+        # sobreescribirse manualmente para proteger la integridad financiera.
+        batches_count = self.session.exec(
+            select(func.count(col(Batch.id))).where(Batch.investment_round_id == id)
+        ).one()
+
+        if batches_count > 0:
+            data.pop("capital_invested", None)
+            data.pop("status", None)
+
+        updated = self.repository.update(id, data)
+        if updated and batches_count > 0:
+            # Asegurar sincronización exacta con lotes y ventas
+            return self.recalculate_round(id)
+        return updated
 
     def delete(self, id: UUID) -> bool:
         from app.modules.commerce.batches.models import Batch

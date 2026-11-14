@@ -1,7 +1,7 @@
 from typing import Sequence
 from uuid import UUID
 
-from sqlmodel import Session, func, select
+from sqlmodel import Session, col, func, select
 
 from app.modules.commerce.batches.models import Batch
 from app.modules.commerce.batches.repository import BatchRepository
@@ -19,6 +19,13 @@ class BatchService:
             InvestmentRoundService(self.session).recalculate_round(round_id)
 
     def create(self, data: Batch) -> Batch:
+        # Autogenerar código secuencial si no se ingresó
+        if not data.code or not data.code.strip():
+            count = self.session.exec(select(func.count(col(Batch.id)))).one()
+            data.code = f"CAJA-{int(count) + 1:02d}"
+        else:
+            data.code = data.code.strip().upper()
+
         # Calculate derived fields automatically on creation
         data.total_cost = round(data.purchase_price + data.freight_cost, 2)
         data.sellable_items_count = max(
@@ -28,6 +35,10 @@ class BatchService:
             data.unit_cost = round(data.total_cost / data.sellable_items_count, 2)
         else:
             data.unit_cost = 0.0
+
+        if not data.financial_status:
+            data.financial_status = "EN_RECUPERACION"
+
         created = self.repository.create(data)
         if created.investment_round_id:
             self._sync_round(created.investment_round_id)
@@ -53,9 +64,53 @@ class BatchService:
 
         old_round_id = batch.investment_round_id
 
+        from app.modules.commerce.products.models import Product
+
+        # Verificar si el lote ya tiene productos físicos asociados
+        prods_count = self.session.exec(
+            select(func.count(col(Product.id))).where(Product.batch_id == id)
+        ).one()
+
+        if prods_count > 0:
+            # Los conteos se derivan de los productos, no se sobreescriben a mano
+            data.pop("initial_items_count", None)
+            data.pop("merma_items_count", None)
+            data.pop("sellable_items_count", None)
+            data.pop("unit_cost", None)
+            data.pop("financial_status", None)
+
+            # Si el costeo es específico (bazar, compras a pedido),
+            # purchase_price se suma de los productos
+            costing_method = data.get("costing_method", batch.costing_method)
+            if costing_method in ("SPECIFIC_ITEM", "ON_DEMAND", "WHOLESALE"):
+                data.pop("purchase_price", None)
+
+        # total_cost es siempre estrictamente calculado (purchase_price + freight_cost)
+        data.pop("total_cost", None)
+
         # Apply update dictionary
         for key, value in data.items():
             setattr(batch, key, value)
+
+        # Sincronizar cantidades y costos de productos si ya existen
+        if prods_count > 0:
+            stmt = select(
+                func.coalesce(func.sum(Product.initial_quantity), 0),
+                func.coalesce(func.sum(Product.merma_quantity), 0),
+            ).where(Product.batch_id == id)
+            t_initial, t_merma = self.session.exec(stmt).one()
+            batch.initial_items_count = int(t_initial)
+            batch.merma_items_count = int(t_merma)
+
+            if batch.costing_method in ("SPECIFIC_ITEM", "ON_DEMAND", "WHOLESALE"):
+                prods_stmt = select(Product).where(Product.batch_id == id)
+                prods = list(self.session.exec(prods_stmt).all())
+                items_cost = sum(
+                    (p.cost_price or 0.0) * (p.available_quantity + p.sold_quantity)
+                    for p in prods
+                )
+                if items_cost > 0:
+                    batch.purchase_price = round(items_cost, 2)
 
         # Recalculate totals
         batch.total_cost = round(batch.purchase_price + batch.freight_cost, 2)
@@ -71,6 +126,9 @@ class BatchService:
         self.session.commit()
         self.session.refresh(batch)
 
+        # Sincronizar estado financiero del lote
+        self.sync_financial_status(batch.id)
+
         if batch.investment_round_id:
             self._sync_round(batch.investment_round_id)
         if old_round_id and old_round_id != batch.investment_round_id:
@@ -79,9 +137,27 @@ class BatchService:
         return batch
 
     def delete(self, id: UUID) -> bool:
+        from app.core.exceptions import BadRequestException
+        from app.modules.commerce.products.models import Product
+
         batch = self.repository.get_by_id(id)
         if not batch:
             return False
+
+        # Protección: Validar si tiene productos asociados
+        prods_count = self.session.exec(
+            select(func.count(col(Product.id))).where(Product.batch_id == id)
+        ).one()
+
+        if prods_count > 0:
+            raise BadRequestException(
+                detail=(
+                    f"No se puede eliminar la caja/lote '{batch.name}' ({batch.code}) "
+                    f"porque tiene {prods_count} producto(s) asociado(s). "
+                    "Desvincule o elimine los productos primero."
+                )
+            )
+
         round_id = batch.investment_round_id
         deleted = self.repository.delete(id)
         if deleted and round_id:
@@ -164,10 +240,49 @@ class BatchService:
         if revalue_sales:
             self.revalue_batch_sales(batch_id, batch.unit_cost)
 
+        # Sincronizar estado financiero del lote
+        self.sync_financial_status(batch_id)
+
         if batch.investment_round_id:
             self._sync_round(batch.investment_round_id)
 
         return batch
+
+    def sync_financial_status(self, batch_id: UUID) -> str:
+        """
+        Calcula y actualiza automáticamente el estado financiero del lote
+        (EN_RECUPERACION, CASI_TABLAS, RECUPERADO) según las ventas registradas.
+        """
+        batch = self.repository.get_by_id(batch_id)
+        if not batch:
+            return "EN_RECUPERACION"
+
+        from app.modules.commerce.products.models import Product
+        from app.modules.commerce.sales.models import SaleItem
+
+        sales_stmt = (
+            select(func.coalesce(func.sum(SaleItem.total_price), 0.0))
+            .join(Product)
+            .where(Product.batch_id == batch_id)
+        )
+        total_collected = float(self.session.exec(sales_stmt).one())
+
+        if batch.total_cost == 0:
+            status = "RECUPERADO" if total_collected > 0 else "EN_RECUPERACION"
+        elif total_collected >= batch.total_cost:
+            status = "RECUPERADO"
+        elif total_collected >= (0.8 * batch.total_cost):
+            status = "CASI_TABLAS"
+        else:
+            status = "EN_RECUPERACION"
+
+        if batch.financial_status != status:
+            batch.financial_status = status
+            self.session.add(batch)
+            self.session.commit()
+            self.session.refresh(batch)
+
+        return batch.financial_status
 
     def revalue_batch_sales(self, batch_id: UUID, new_unit_cost: float) -> int:
         """

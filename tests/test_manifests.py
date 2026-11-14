@@ -32,10 +32,11 @@ def test_manifest_sync_populates_database(session: Session):
 
     # Verificar módulos de Comercio
     for slug in [
-        "products",
+        "investment-rounds",
         "batches",
-        "sales",
+        "products",
         "product-masters",
+        "sales",
         "commerce-catalogs",
     ]:
         mod = session.exec(select(Module).where(Module.slug == slug)).first()

@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
@@ -1931,3 +1933,156 @@ def test_delete_investment_round_integrity(
     assert res_del_after_unlink.status_code == 200
     assert round_service.get_by_id(ronda_con_lote.id) is None
 
+
+def test_investment_round_autogenerate_code_and_field_protection(
+    session: Session, client: TestClient, superuser_token_headers: dict
+):
+    round_service = InvestmentRoundService(session)
+    batch_service = BatchService(session)
+
+    # 1. Crear ronda sin código: backend debe autogenerar "RONDA-XX"
+    res_create = client.post(
+        "/api/commerce/rounds/",
+        headers=superuser_token_headers,
+        json={"name": "Ronda Sin Código Manual"},
+    )
+    assert res_create.status_code == 200
+    ronda_data = res_create.json()
+    assert ronda_data["code"].startswith("RONDA-")
+
+    ronda_id = uuid.UUID(ronda_data["id"])
+
+    # 2. Asociar un lote con costo de 1000 Bs
+    batch_service.create(
+        Batch(
+            code="BATCH-PROT-01",
+            name="Caja Protección",
+            investment_round_id=ronda_id,
+            purchase_price=1000.0,
+            freight_cost=0.0,
+        )
+    )
+
+    ronda_synced = round_service.get_by_id(ronda_id)
+    assert ronda_synced.capital_invested == 1000.0
+
+    # 3. Intentar alterar capital_invested y status manualmente mediante PUT
+    res_update = client.put(
+        f"/api/commerce/rounds/{ronda_id}",
+        headers=superuser_token_headers,
+        json={
+            "name": "Ronda Nombre Actualizado",
+            "capital_invested": 99999.0,  # Intento de vulnerar capital
+            "status": "closed",  # Intento de alterar estado financiero
+            "observations": "Acuerdo entre socios",
+        },
+    )
+    assert res_update.status_code == 200
+    updated_data = res_update.json()
+    assert updated_data["name"] == "Ronda Nombre Actualizado"
+    assert updated_data["observations"] == "Acuerdo entre socios"
+    # El backend debe haber preservado la verdad matemática de los lotes:
+    assert updated_data["capital_invested"] == 1000.0
+    assert updated_data["status"] != "closed"
+
+
+def test_batch_integrity_and_financial_status_flow(
+    session: Session, client: TestClient, superuser_token_headers: dict
+):
+    batch_service = BatchService(session)
+    product_service = ProductService(session)
+    sale_service = SaleService(session)
+
+    # 1. Crear lote sin código: backend debe autogenerar "CAJA-XX"
+    res_create = client.post(
+        "/api/commerce/batches/",
+        headers=superuser_token_headers,
+        json={
+            "name": "Caja Prueba Integridad",
+            "costing_method": "WEIGHTED_RETAIL",
+            "purchase_price": 500.0,
+            "freight_cost": 50.0,
+        },
+    )
+    assert res_create.status_code == 200
+    b_data = res_create.json()
+    assert b_data["code"].startswith("CAJA-")
+    assert b_data["total_cost"] == 550.0  # 500 + 50
+    assert b_data["financial_status"] == "EN_RECUPERACION"
+
+    batch_id = uuid.UUID(b_data["id"])
+
+    # 2. Agregar productos físicos al lote
+    m = make_master(
+        session, 991, "Item Lote Test", published_price=300.0, minimum_price=250.0
+    )
+    p = product_service.create(
+        Product(
+            master_product_id=m.id,
+            batch_id=batch_id,
+            initial_quantity=2,
+            cost_price=275.0,
+        )
+    )
+
+    # Verificar que el lote sincronizó conteos
+    b_after_p = batch_service.get_by_id(batch_id)
+    assert b_after_p.initial_items_count == 2
+    assert b_after_p.sellable_items_count == 2
+
+    # 3. Intentar sobreescribir initial_items_count, total_cost a mano vía PUT
+    res_put = client.put(
+        f"/api/commerce/batches/{batch_id}",
+        headers=superuser_token_headers,
+        json={
+            "name": "Caja Nombre Modificado",
+            "initial_items_count": 999,  # Intento de alterar conteo
+            "total_cost": 10.0,  # Intento de alterar costo total
+            "freight_cost": 100.0,  # Cambio real permitido de flete
+        },
+    )
+    assert res_put.status_code == 200
+    b_put_data = res_put.json()
+    assert b_put_data["name"] == "Caja Nombre Modificado"
+    assert b_put_data["initial_items_count"] == 2  # Protegido por los productos reales
+    assert b_put_data["total_cost"] == 600.0  # 500 + 100
+
+    # 4. Proteger eliminación: con productos vinculados, DELETE rechaza (HTTP 400)
+    res_del_fail = client.delete(
+        f"/api/commerce/batches/{batch_id}",
+        headers=superuser_token_headers,
+    )
+    assert res_del_fail.status_code == 400
+    assert "No se puede eliminar la caja/lote" in res_del_fail.json()["detail"]
+    assert "producto(s) asociado(s)" in res_del_fail.json()["detail"]
+
+    # 5. Venta parcial: Vender 1 unidad a 500 Bs (Costo caja = 600 Bs -> CASI_TABLAS)
+    sale_service.create(
+        SaleCreate(
+            customer_name="Cliente Parcial",
+            channel="Marketplace",
+            items=[SaleItemCreate(product_id=p.id, quantity=1, unit_price=500.0)],
+        )
+    )
+    b_step1 = batch_service.get_by_id(batch_id)
+    assert b_step1.financial_status == "CASI_TABLAS"
+
+    # 6. Venta final: Vender 2da unidad a 300 Bs (Total 800 >= 600) -> RECUPERADO
+    sale_service.create(
+        SaleCreate(
+            customer_name="Cliente Final",
+            channel="Local",
+            items=[SaleItemCreate(product_id=p.id, quantity=1, unit_price=300.0)],
+        )
+    )
+    b_step2 = batch_service.get_by_id(batch_id)
+    assert b_step2.financial_status == "RECUPERADO"
+
+    # 7. Desvincular productos y ahora sí permitir eliminar la caja
+    product_service.update(p.id, {"batch_id": None})
+    res_del_ok = client.delete(
+        f"/api/commerce/batches/{batch_id}",
+        headers=superuser_token_headers,
+    )
+    assert res_del_ok.status_code == 200
+    assert batch_service.get_by_id(batch_id) is None
