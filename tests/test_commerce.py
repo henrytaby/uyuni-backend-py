@@ -1658,11 +1658,7 @@ def test_investment_round_and_batch_costing_modalities(
             channel="Marketplace",
             payment_method="QR",
             payment_status="COLLECTED",
-            items=[
-                SaleItemCreate(
-                    product_id=p_radio.id, quantity=1, unit_price=700.0
-                )
-            ],
+            items=[SaleItemCreate(product_id=p_radio.id, quantity=1, unit_price=700.0)],
         )
     )
     # Venta de 2 Taladros a 350 Bs c/u (700 Bs)
@@ -1673,9 +1669,7 @@ def test_investment_round_and_batch_costing_modalities(
             payment_method="Efectivo",
             payment_status="COLLECTED",
             items=[
-                SaleItemCreate(
-                    product_id=p_taladro.id, quantity=2, unit_price=350.0
-                )
+                SaleItemCreate(product_id=p_taladro.id, quantity=2, unit_price=350.0)
             ],
         )
     )
@@ -1699,11 +1693,7 @@ def test_investment_round_and_batch_costing_modalities(
             channel="Marketplace",
             payment_method="QR",
             payment_status="COLLECTED",
-            items=[
-                SaleItemCreate(
-                    product_id=p_cable.id, quantity=10, unit_price=90.0
-                )
-            ],
+            items=[SaleItemCreate(product_id=p_cable.id, quantity=10, unit_price=90.0)],
         )
     )
 
@@ -1719,3 +1709,164 @@ def test_investment_round_and_batch_costing_modalities(
     assert m3["is_break_even"] is True
     assert m3["available_items"] == 0  # Todo vendido
     assert m3["status"] == "LIQUIDATED"
+
+
+def test_personal_used_items_consignment_and_handmade_flow(
+    session: Session, client: TestClient, superuser_token_headers: dict
+):
+    round_service = InvestmentRoundService(session)
+    batch_service = BatchService(session)
+    product_service = ProductService(session)
+    sale_service = SaleService(session)
+
+    # 1. Crear Ronda de Inversión abierta (Bazar y Artesanías)
+    ronda = round_service.create(
+        InvestmentRound(
+            code="RND-BAZAR",
+            name="Ronda Bazar y Manufacturas",
+            capital_invested=0.0,
+            status="ACTIVE",
+        )
+    )
+
+    # 2. Crear Lote dinámico sin costo inicial de compra (0 Bs inicial)
+    batch = batch_service.create(
+        Batch(
+            name="Lote Bazar Cosas Usadas y Artesanías",
+            code="LOT-BAZAR-01",
+            costing_method="SPECIFIC_ITEM",
+            purchase_price=0.0,
+            freight_cost=0.0,
+            initial_items_count=0,
+            investment_round_id=ronda.id,
+        )
+    )
+    assert batch.purchase_price == 0.0
+    assert batch.total_cost == 0.0
+    assert batch.initial_items_count == 0
+
+    # Tanda 1: Cosas Propias de Socios (Costo Cero / Ganancia Pura)
+    m_propia = make_master(
+        session,
+        101,
+        "Chaqueta Cuero Usada (Propia)",
+        official_price=150.0,
+        published_price=120.0,
+        minimum_price=100.0,
+    )
+    p_propia = product_service.create(
+        Product(
+            master_product_id=m_propia.id,
+            batch_id=batch.id,
+            cost_price=0.0,
+            initial_quantity=1,
+        )
+    )
+    b_step1 = batch_service.get_by_id(batch.id)
+    assert b_step1.initial_items_count == 1
+    assert b_step1.total_cost == 0.0  # Sin deuda ni capital comprometido
+
+    # Tanda 2: Consignación de Familiar (Pago acordado al vender)
+    m_primo = make_master(
+        session,
+        102,
+        "Bicicleta Montaña (Consignación Primo)",
+        official_price=400.0,
+        published_price=350.0,
+        minimum_price=300.0,
+    )
+    p_primo = product_service.create(
+        Product(
+            master_product_id=m_primo.id,
+            batch_id=batch.id,
+            cost_price=200.0,  # Pago comprometido para el familiar
+            initial_quantity=1,
+        )
+    )
+    b_step2 = batch_service.get_by_id(batch.id)
+    assert b_step2.initial_items_count == 2
+    assert b_step2.purchase_price == 200.0  # Sumó la obligación del ítem
+    assert b_step2.total_cost == 200.0
+
+    # Tanda 3: Producto Hecho a Mano / Artesanías (Costo de insumos y materiales)
+    m_artesania = make_master(
+        session,
+        103,
+        "Arreglo Floral Navideño Hecho a Mano",
+        official_price=100.0,
+        published_price=90.0,
+        minimum_price=75.0,
+    )
+    p_artesania = product_service.create(
+        Product(
+            master_product_id=m_artesania.id,
+            batch_id=batch.id,
+            cost_price=30.0,  # Materiales (flores, cintas, base)
+            initial_quantity=1,
+        )
+    )
+    b_step3 = batch_service.get_by_id(batch.id)
+    assert b_step3.initial_items_count == 3
+    assert b_step3.purchase_price == 230.0  # 200 + 30
+    assert b_step3.total_cost == 230.0
+
+    # 3. Venta 1: Chaqueta Propia vendida en 110 Bs
+    # Al ser costo 0, la ganancia neta es el 100% del ingreso (110 Bs)
+    s1 = sale_service.create(
+        SaleCreate(
+            customer_name="Cliente Usados 1",
+            channel="Marketplace",
+            items=[
+                SaleItemCreate(product_id=p_propia.id, quantity=1, unit_price=110.0)
+            ],
+        )
+    )
+    assert s1.total_collected == 110.0
+    assert s1.total_cost == 0.0
+    assert s1.net_profit == 110.0
+
+    # 4. Venta 2: Bicicleta en Consignación vendida en 320 Bs
+    # Cobrado: 320 Bs, Costo (pago al familiar): 200 Bs, Ganancia Uyuni: 120 Bs
+    s2 = sale_service.create(
+        SaleCreate(
+            customer_name="Cliente Usados 2",
+            channel="Facebook",
+            items=[SaleItemCreate(product_id=p_primo.id, quantity=1, unit_price=320.0)],
+        )
+    )
+    assert s2.total_collected == 320.0
+    assert s2.total_cost == 200.0
+    assert s2.net_profit == 120.0
+
+    # 5. Venta 3: Arreglo Hecho a Mano vendido en 85 Bs
+    # Cobrado: 85 Bs, Insumos: 30 Bs, Ganancia: 55 Bs
+    s3 = sale_service.create(
+        SaleCreate(
+            customer_name="Cliente Navidad",
+            channel="Local",
+            items=[
+                SaleItemCreate(product_id=p_artesania.id, quantity=1, unit_price=85.0)
+            ],
+        )
+    )
+    assert s3.total_collected == 85.0
+    assert s3.total_cost == 30.0
+    assert s3.net_profit == 55.0
+
+    # 6. Consultar métricas de la Ronda vía API
+    res_m = client.get(
+        f"/api/commerce/rounds/{ronda.id}/metrics",
+        headers=superuser_token_headers,
+    )
+    assert res_m.status_code == 200
+    m = res_m.json()
+    # Total invertido/comprometido: 230 Bs (0 propia + 200 primo + 30 materiales)
+    assert m["capital_invested"] == 230.0
+    # Total recaudado: 110 + 320 + 85 = 515 Bs
+    assert m["capital_recovered"] == 515.0
+    # Ganancia neta: 515 - 230 = 285 Bs
+    assert m["net_profit"] == 285.0
+    assert m["available_items"] == 0
+    assert m["sold_items"] == 3
+    assert m["is_break_even"] is True
+    assert m["status"] == "LIQUIDATED"

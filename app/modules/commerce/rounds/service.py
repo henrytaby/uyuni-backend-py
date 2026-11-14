@@ -81,16 +81,22 @@ class InvestmentRoundService:
             total_sellable_qty = int(sellable_q)
 
         # 3. Determinar status financiero
-        if total_invested > 0 and capital_recovered >= total_invested:
+        if total_invested == 0:
+            if total_available_qty == 0 and total_sellable_qty > 0:
+                round_obj.status = "LIQUIDATED"
+            elif capital_recovered > 0:
+                round_obj.status = "RECOVERED"
+            else:
+                round_obj.status = "ACTIVE"
+        elif capital_recovered >= total_invested:
             if total_available_qty == 0 and total_sellable_qty > 0:
                 round_obj.status = "LIQUIDATED"
             else:
                 round_obj.status = "RECOVERED"
+        elif capital_recovered >= (0.8 * total_invested):
+            round_obj.status = "NEAR_BREAKEVEN"
         elif capital_recovered > 0:
-            if total_invested > 0 and capital_recovered >= (0.8 * total_invested):
-                round_obj.status = "NEAR_BREAKEVEN"
-            else:
-                round_obj.status = "IN_RECOVERY"
+            round_obj.status = "IN_RECOVERY"
         else:
             round_obj.status = "ACTIVE"
 
@@ -146,7 +152,7 @@ class InvestmentRoundService:
         progress_pct = (
             round((capital_recovered / capital_invested) * 100, 2)
             if capital_invested > 0
-            else 0.0
+            else (100.0 if capital_recovered > 0 else 0.0)
         )
 
         return {
