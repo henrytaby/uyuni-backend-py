@@ -754,9 +754,197 @@ Agrupaciones temáticas de productos para subastas en vivo (C1 Taller & Auto, C2
 - **Eliminar:** `DELETE /api/commerce/live-baskets/{id}`
 
 #### Ceja 4: Rondas de Inversión (`/api/commerce/rounds`)
-Control de aportes de capital y socios inversionistas:
-- **Listar:** `GET /api/commerce/rounds/?offset=0&limit=50`
-- **Crear:** `POST /api/commerce/rounds/`
+
+Gestión y control de fondos de inversión, aportes de capital y retorno financiero (Break-Even).
+
+> [!NOTE]
+> **Ubicación en UI y Arquitectura:**  
+> Por diseño del sistema (*Unified Catalog Hub Pattern*), las Rondas de Inversión se gestionan actualmente dentro del módulo **Catálogos** (`/commerce/catalogs`), en la **pestaña 4 ("Rondas de Inversión")**, para evitar saturar la barra lateral con catálogos auxiliares.  
+> Sin embargo, dado que en la operativa comercial la Ronda es el **Paso 1 del ciclo de vida** (Ronda $\rightarrow$ Lotes $\rightarrow$ Productos $\rightarrow$ Ventas), esta guía detalla tanto el uso dentro del Hub de Catálogos como los pasos para promoverlo a un módulo independiente en el Sidebar si el equipo de Frontend/Producto así lo requiere.
+
+##### Endpoints y Contrato de API:
+
+- **1. Listar Rondas (con paginación, búsqueda y orden):**
+  ```http
+  GET /api/commerce/rounds/?offset=0&limit=50&sort_by=code&sort_order=asc&search=bazar
+  ```
+  **Respuesta:**
+  ```json
+  [
+    {
+      "id": "019324a1-b8dc-73cb-8e37-99fb5265bd0e",
+      "code": "RND-04",
+      "name": "Ronda 4 (Campaña Fin de Año)",
+      "disbursement_date": "2026-11-01",
+      "capital_invested": 2250.0,
+      "currency": "BOB",
+      "status": "ACTIVE",
+      "observations": "Campaña de liquidación navideña y bazar familiar",
+      "created_at": "2026-11-01T10:00:00Z",
+      "updated_at": "2026-11-14T10:30:00Z"
+    }
+  ]
+  ```
+
+- **2. Crear Ronda de Inversión:**
+  ```http
+  POST /api/commerce/rounds/
+  ```
+  ```json
+  {
+    "code": "RND-05",
+    "name": "Ronda 5 (Bazar Cosas Usadas y Artesanías)",
+    "disbursement_date": "2026-11-14",
+    "capital_invested": 0.0,
+    "currency": "BOB",
+    "status": "ACTIVE",
+    "observations": "Ronda abierta para bazar familiar a costo cero y consignaciones"
+  }
+  ```
+  *Nota:* `capital_invested` puede crearse en `0.0`. Se sincronizará automáticamente cuando se vinculen lotes o se recalculen productos.
+
+- **3. Obtener Detalle por ID:**
+  ```http
+  GET /api/commerce/rounds/{id}
+  ```
+
+- **4. Actualizar Ronda:**
+  ```http
+  PUT /api/commerce/rounds/{id}
+  ```
+  ```json
+  {
+    "name": "Ronda 5 - Actualizada",
+    "status": "LIQUIDATED",
+    "observations": "Ronda totalmente liquidada con ganancia"
+  }
+  ```
+
+- **5. Eliminar Ronda (con Validación de Seguridad Obligatoria):**
+  ```http
+  DELETE /api/commerce/rounds/{id}
+  ```
+  > [!IMPORTANT]
+  > **Regla de Integridad Referencial:**
+  > - **Si la ronda tiene 0 lotes asociados:** La eliminación procede limpiamente retornando HTTP `200 OK`:
+  >   `{ "message": "Investment round deleted successfully" }`.
+  > - **Si la ronda tiene 1 o más lotes asociados (`commerce_batch`):** El backend **rechaza** la eliminación con HTTP `400 Bad Request` para proteger la trazabilidad financiera:
+  >   ```json
+  >   {
+  >     "detail": "No se puede eliminar la ronda 'Ronda 4' (RND-04) porque tiene 2 lote(s) asociado(s). Desvincule o elimine los lotes primero."
+  >   }
+  >   ```
+  > El Frontend debe capturar `err?.error?.detail` y mostrarlo directamente en un Toast de alerta roja (`severity: 'error'`).
+
+- **6. Consultar Métricas Financieras y Break-Even en Tiempo Real:**
+  ```http
+  GET /api/commerce/rounds/{id}/metrics
+  ```
+  **Respuesta Enriquecida:**
+  ```json
+  {
+    "round_id": "019324a1-b8dc-73cb-8e37-99fb5265bd0e",
+    "code": "RND-04",
+    "name": "Ronda 4 (Campaña Fin de Año)",
+    "status": "IN_RECOVERY",
+    "capital_invested": 2250.0,
+    "capital_recovered": 1400.0,
+    "net_profit": -850.0,
+    "break_even_progress_percent": 62.22,
+    "is_break_even": false,
+    "batches_count": 2,
+    "total_items": 45,
+    "available_items": 20,
+    "sold_items": 23,
+    "merma_items": 2
+  }
+  ```
+  **Estados Financieros Posibles (`status`):**
+  - `"ACTIVE"`: Ronda recién creada sin recaudación de ventas aún.
+  - `"IN_RECOVERY"`: En proceso de recuperación de capital ($< 80\%$ del capital recuperado).
+  - `"NEAR_BREAKEVEN"`: Próximo al equilibrio ($\ge 80\%$ y $< 100\%$ recuperado).
+  - `"RECOVERED"`: **Punto de equilibrio alcanzado** ($\ge 100\%$ recuperado; toda venta posterior es ganancia pura).
+  - `"LIQUIDATED"`: Capital recuperado y **todo el inventario vendido** (`available_items == 0`).
+
+- **7. Forzar Recálculo Manual:**
+  ```http
+  POST /api/commerce/rounds/{id}/recalculate
+  ```
+
+---
+
+##### Modelos e Interfaces TypeScript Recomendados:
+
+```typescript
+export interface CommerceRound {
+  id: string;
+  code: string;
+  name: string;
+  disbursement_date: string | null;
+  capital_invested: number;
+  currency: string;
+  status: 'ACTIVE' | 'IN_RECOVERY' | 'NEAR_BREAKEVEN' | 'RECOVERED' | 'LIQUIDATED';
+  observations: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommerceRoundCreate {
+  code: string;
+  name: string;
+  disbursement_date?: string | null;
+  capital_invested?: number;
+  currency?: string;
+  status?: string;
+  observations?: string | null;
+}
+
+export interface CommerceRoundMetrics {
+  round_id: string;
+  code: string;
+  name: string;
+  status: string;
+  capital_invested: number;
+  capital_recovered: number;
+  net_profit: number;
+  break_even_progress_percent: number;
+  is_break_even: boolean;
+  batches_count: number;
+  total_items: number;
+  available_items: number;
+  sold_items: number;
+  merma_items: number;
+}
+```
+
+---
+
+##### Guía para Promover "Rondas de Inversión" al Menú Lateral (Sidebar)
+
+Si el equipo de Frontend y Producto decide que las Rondas de Inversión deben tener su propio botón directo en el Menú Lateral (`/commerce/rounds`), se deben seguir estos 3 pasos:
+
+1. **Registrar el submódulo en el Manifiesto Backend (`app/modules/commerce/manifest.py`):**
+   ```python
+   ModuleDefinition(
+       name="Rondas de Inversión",
+       slug="investment-rounds",
+       description="Control de aportes de capital, lotes asociados y punto de equilibrio",
+       group_slug="commerce",
+       sort_order=1,  # Paso 1 antes de Lotes
+       icon="pi pi-chart-line",
+       route="commerce/rounds",
+       is_active=True,
+   )
+   ```
+2. **Definir la Ruta en Angular (`src/app/features/commerce/commerce.routes.ts`):**
+   ```typescript
+   {
+     path: 'rounds',
+     loadChildren: () => import('./rounds/rounds.routes').then(m => m.ROUNDS_ROUTES),
+     canActivate: [authGuard]
+   }
+   ```
+3. **Consumir los Servicios:** Reutilizar el servicio existente `CommerceCatalogService` o crear un `RoundService` dedicado consumiendo los endpoints `/api/commerce/rounds`.
 
 ---
 

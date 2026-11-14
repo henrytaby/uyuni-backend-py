@@ -20,12 +20,20 @@ flowchart TD
 ## 📋 Las 6 Fases Operativas Paso a Paso
 
 ### Fase 1: Financiación y Adquisición del Lote
-1. **Apertura de la Ronda (`InvestmentRound`):**
-   - Se crea una ronda (ej: `RONDA-02` - 2da Compra Combo Paralelo) con un capital asignado (ej: Bs. 15,000).
-2. **Registro de la Caja o Lote (`Batch`):**
-   - Cuando se adquiere una caja de liquidación (ej: `ATAUD-02`), se registra con su costo de compra (ej: Bs. 4,000) y el flete internacional hasta el almacén en Cochabamba (ej: Bs. 300).
-   - Costo total de la caja: **Bs. 4,300**.
-   - Estado financiero inicial: `EN_RECUPERACION`.
+
+Esta es la **receta inicial obligatoria** antes de desempaque o ventas:
+
+1. **Paso 1: Apertura de la Ronda de Inversión (`InvestmentRound`):**
+   - Se crea en el módulo de Catálogos (`/commerce/catalogs` $\rightarrow$ Pestaña *Rondas de Inversión*) o vía `POST /api/commerce/rounds/`.
+   - **Caso Importación de Cajas:** `RONDA-02` con capital inicial previsto (ej: Bs. 15,000).
+   - **Caso Bazar / Cosas Propias de Socios:** Se crea con `capital_invested = 0.0`. No hay deuda inicial que cubrir; el sistema irá sumando de abajo hacia arriba solo si se añaden compromisos de pago.
+2. **Paso 2: Registro del Lote o Caja (`Batch`):**
+   - Se crea en `/commerce/batches` asociándole la ronda creada (`investment_round_id`).
+   - Se define la **modalidad de costeo (`costing_method`)**:
+     - `WEIGHTED_RETAIL`: Cajas sorpresa o liquidaciones de Amazon con costo fijo global adelantado (ej. compra 4.000 Bs + flete 300 Bs = 4.300 Bs), cuyo costo se distribuye ponderadamente según el precio comercial de los productos buenos.
+     - `SPECIFIC_ITEM`: Lotes abiertos dinámicos (bazar familiar, compras a pedido, artesanías/manufactura) con costo de compra inicial de 0 Bs, donde cada producto nuevo ingresado suma su propio costo o costo nominal.
+     - `FLAT_AVERAGE`: Lotes mayoristas homogéneos repartidos en partes iguales entre las unidades vendibles.
+   - Estado financiero inicial: `ACTIVE` o `IN_RECOVERY`.
 
 ---
 
