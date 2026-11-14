@@ -37,7 +37,11 @@ from app.modules.commerce.batches.models import Batch
 from app.modules.commerce.categories.models import Category
 from app.modules.commerce.channels.models import SalesChannel
 from app.modules.commerce.live_baskets.models import LiveBasket
-from app.modules.commerce.product_masters.models import ProductMaster
+from app.modules.commerce.product_masters.models import (
+    ProductMaster,
+    ProductMasterExternalLink,
+)
+from app.modules.commerce.product_masters.service import detect_portal
 from app.modules.commerce.products.models import Product
 from app.modules.commerce.rounds.models import InvestmentRound
 from app.modules.commerce.sales.models import Sale, SaleItem
@@ -665,8 +669,8 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
             pub_fb = clean_bool(row[19]) if len(row) > 19 else False
             url_fb = clean_str(row[20]) if len(row) > 20 else None
             url_info = clean_str(row[21]) if len(row) > 21 else None
-            specs = clean_str(row[22]) if len(row) > 22 else None
-            marketing = clean_str(row[23]) if len(row) > 23 else None
+            caracteristicas = clean_str(row[22]) if len(row) > 22 else None
+            detalle_extendido = clean_str(row[23]) if len(row) > 23 else None
             canasta_str = clean_str(row[24]).lower() if len(row) > 24 else None
             wa_pub = clean_bool(row[25]) if len(row) > 25 else False
 
@@ -709,9 +713,9 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
             if not master and not dry_run:
                 master = ProductMaster(
                     item_number=target_master_num,
-                    code=str(target_master_num),
+                    code=None,
                     name=name,
-                    description=specs,
+                    description=caracteristicas,
                     category_id=category_id,
                     live_basket_id=basket_id,
                     brand=marca,
@@ -720,10 +724,8 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
                     minimum_price=p_minimo,
                     published_price=p_pub,
                     currency="BOB",
-                    marketplace_url=url_fb,
-                    external_info_url=url_info,
-                    features=specs,
-                    marketing_details=marketing,
+                    features=detalle_extendido,
+                    marketing_details=None,
                     is_reviewed=revisado,
                     is_fb_verified=fb_verif,
                     has_video=video,
@@ -736,11 +738,58 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
             elif master and not dry_run:
                 if basket_id:
                     master.live_basket_id = basket_id
-                master.marketplace_url = url_fb
+                master.code = None
+                master.description = caracteristicas
+                master.features = detalle_extendido
                 master.is_published_marketplace = pub_fb
                 master.is_whatsapp_published = wa_pub
                 master.is_fb_verified = fb_verif
                 session.add(master)
+
+            if master and url_info and not dry_run:
+                existing_link = session.exec(
+                    select(ProductMasterExternalLink).where(
+                        ProductMasterExternalLink.product_master_id == master.id,
+                        ProductMasterExternalLink.url == url_info,
+                    )
+                ).first()
+                if not existing_link:
+                    portal, label = detect_portal(url_info)
+                    link = ProductMasterExternalLink(
+                        product_master_id=master.id,
+                        url=url_info,
+                        portal=portal,
+                        label=label,
+                        link_type="REFERENCE",
+                        is_primary=True,
+                        is_public=True,
+                        sort_order=1,
+                    )
+                    session.add(link)
+
+            if master and url_fb and not dry_run and url_fb.startswith("http"):
+                existing_fb = session.exec(
+                    select(ProductMasterExternalLink).where(
+                        ProductMasterExternalLink.product_master_id == master.id,
+                        ProductMasterExternalLink.url == url_fb,
+                    )
+                ).first()
+                if not existing_fb:
+                    portal, label = detect_portal(url_fb)
+                    mkt_label = (
+                        "Facebook Marketplace" if "facebook" in url_fb else label
+                    )
+                    mkt_link = ProductMasterExternalLink(
+                        product_master_id=master.id,
+                        url=url_fb,
+                        portal=portal,
+                        label=mkt_label,
+                        link_type="MARKETPLACE",
+                        is_primary=True,
+                        is_public=True,
+                        sort_order=1,
+                    )
+                    session.add(mkt_link)
 
             master_id = master.id if master else None
 
@@ -963,6 +1012,21 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
         print(f"  ✓ {stats['sales']} ventas procesadas.")
 
         if not dry_run:
+            # Calibrar secuencia de Fichas Maestras
+            if session.get_bind().dialect.name == "postgresql":
+                from sqlalchemy import text
+
+                calib_sql = (
+                    "DO $$ BEGIN "
+                    "IF EXISTS (SELECT 1 FROM pg_sequences "
+                    "WHERE sequencename = "
+                    "'commerce_product_master_item_number_seq') THEN "
+                    "PERFORM setval('commerce_product_master_item_number_seq', "
+                    "COALESCE((SELECT MAX(item_number) "
+                    "FROM commerce_product_master), 0)); "
+                    "END IF; END $$;"
+                )
+                session.execute(text(calib_sql))
             session.commit()
             print("\n💾 Cambios guardados exitosamente en la base de datos.")
 

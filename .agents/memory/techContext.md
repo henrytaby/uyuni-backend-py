@@ -168,8 +168,10 @@ uyuni-backend-py/
 - `audit_log` - CDC change records
 
 ### Commerce Tables
-- `commerce_product` - Individual product SKUs
-- `commerce_product_master` - Master product definitions
+- `commerce_product` - Individual product SKUs (physical units per batch)
+- `commerce_product_master` - Master product definitions (item_number, prices, marketing, specs)
+- `commerce_product_master_image` - Master product images & multimedia gallery (Cloudinary)
+- `commerce_product_master_external_link` - Multi-link external references (Amazon, eBay, Alibaba) and marketplace listings (Facebook Marketplace, Liz/Henry multiple posts) with `link_type` ('REFERENCE' / 'MARKETPLACE'), auto portal detection, is_public catalog visibility flag and primary link sync
 - `commerce_batch` - Import containers & boxes
 - `commerce_sale` - Sales transactions
 - `commerce_sale_item` - Items sold per transaction

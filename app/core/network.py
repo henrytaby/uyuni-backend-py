@@ -31,4 +31,3 @@ def get_client_ip(request: Request | None) -> str:
         return request.client.host
 
     return "unknown"
-

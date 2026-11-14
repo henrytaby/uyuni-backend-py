@@ -97,6 +97,7 @@ Este backend actúa como motor transaccional y ERP de Marca Blanca para empresas
 - **Frontend Público de Clientes**: Aplicación web/móvil para catálogo en tiempo real (React + Vite PWA).
 - **Módulo de Negocio (`app/modules/commerce/`)**:
   - `products`: Catálogo de SKUs (`SKU-XXX`), estados (`disponible`, `reservado`, `vendido`, `merma`), precio oficial y mínimo (`minimum_price`).
+  - `product_masters` & `product_images`: Fichas maestras con secuencia atómica (`item_number`), código de barras opcional (`code`) y galería multi-foto en Cloudinary (`uyuni/products/{item_number}/{image_type}/`).
   - `batches`: Cajas y lotes importados con control de costos y punto de equilibrio.
   - `sales`: Registro atómico de ventas con métodos de pago (QR, efectivo, envíos), cliente y cálculo de ganancia neta.
   - `api/public/catalog`: Endpoint público cacheado para alimentar aplicaciones de clientes en tiempo real sin rebuilds.

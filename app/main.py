@@ -61,6 +61,23 @@ async def lifespan(app: FastAPI):
     try:
         with Session(app.state.engine) as session:
             global_manifest_registry.sync(session)
+            # Calibración automática de secuencias (resiliente a restauraciones)
+            bind = session.get_bind()
+            if bind and bind.dialect.name == "postgresql":
+                from sqlalchemy import text
+
+                calib_sql = (
+                    "DO $$ BEGIN "
+                    "IF EXISTS (SELECT 1 FROM pg_sequences "
+                    "WHERE sequencename = "
+                    "'commerce_product_master_item_number_seq') THEN "
+                    "PERFORM setval('commerce_product_master_item_number_seq', "
+                    "COALESCE((SELECT MAX(item_number) "
+                    "FROM commerce_product_master), 0)); "
+                    "END IF; END $$;"
+                )
+                session.execute(text(calib_sql))
+                session.commit()
     except Exception as exc:
         structlog.get_logger("lifespan").warning(
             "modules_manifest_sync_failed", error=str(exc)

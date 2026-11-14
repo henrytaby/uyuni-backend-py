@@ -67,7 +67,6 @@ def run_migration():
         for item_number, p in sorted(primary_products.items()):
             if item_number in existing_masters:
                 master = existing_masters[item_number]
-                master.marketplace_url = p.marketplace_url
                 master.is_published_marketplace = p.is_published_marketplace
                 master.is_whatsapp_published = p.is_whatsapp_published
                 master.is_fb_verified = p.is_fb_verified
@@ -86,8 +85,6 @@ def run_migration():
                     published_price=p.published_price,
                     currency=p.currency,
                     cover_image_url=None,
-                    marketplace_url=p.marketplace_url,
-                    external_info_url=p.external_info_url,
                     features=p.features,
                     marketing_details=p.marketing_details,
                     is_reviewed=p.is_reviewed,

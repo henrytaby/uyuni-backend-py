@@ -3,9 +3,7 @@ from sqlmodel import Field, SQLModel
 
 
 class MediaUploadResponse(SQLModel):
-    url: str = Field(
-        description="URL pública y segura de la imagen optimizada (HTTPS)"
-    )
+    url: str = Field(description="URL pública y segura de la imagen optimizada (HTTPS)")
     public_id: str = Field(
         description="Identificador público del archivo en Cloudinary"
     )

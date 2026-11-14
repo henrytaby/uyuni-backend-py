@@ -1,6 +1,6 @@
 # 02. Diccionario de Base de Datos — Commerce
 
-Este documento es la referencia técnica completa de la estructura de base de datos relacional para el dominio `commerce`. Contiene el diagrama Entidad-Relación (ERD) oficial y la descripción semántica campo por campo de las 9 tablas del sistema.
+Este documento es la referencia técnica completa de la estructura de base de datos relacional para el dominio `commerce`. Contiene el diagrama Entidad-Relación (ERD) oficial y la descripción semántica campo por campo de las 11 tablas del sistema.
 
 ---
 
@@ -12,6 +12,9 @@ erDiagram
     COMMERCE_CATEGORY ||--o{ COMMERCE_PRODUCT_MASTER : "clasifica"
     COMMERCE_LIVE_BASKET ||--o{ COMMERCE_PRODUCT_MASTER : "asigna canasta live"
     COMMERCE_PRODUCT_MASTER ||--o{ COMMERCE_PRODUCT : "define identidad comercial"
+    COMMERCE_PRODUCT_MASTER ||--o{ COMMERCE_PRODUCT_MASTER_IMAGE : "posee galería multimedia de catálogo"
+    COMMERCE_PRODUCT_MASTER ||--o{ COMMERCE_PRODUCT_MASTER_EXTERNAL_LINK : "posee enlaces externos de referencia"
+    COMMERCE_PRODUCT ||--o{ COMMERCE_PRODUCT_MASTER_IMAGE : "asocia fotos de unidad (opcional)"
     COMMERCE_BATCH ||--o{ COMMERCE_PRODUCT : "contiene inventario físico"
     COMMERCE_CHANNEL ||--o{ COMMERCE_SALE : "canal de venta"
     COMMERCE_SALE ||--|{ COMMERCE_SALE_ITEM : "contiene líneas"
@@ -66,8 +69,8 @@ erDiagram
 
     COMMERCE_PRODUCT_MASTER {
         uuid id PK
-        int item_number UK "1..242"
-        varchar code UK "53"
+        int item_number UK "1..242 (Secuencia atómica PostgreSQL)"
+        varchar code "Código de barras opcional (NULL / '7751234567890')"
         varchar name "Almohadilla Térmica Eléctrica"
         uuid category_id FK
         uuid live_basket_id FK
@@ -78,6 +81,23 @@ erDiagram
         varchar marketplace_url
         boolean is_reviewed
         boolean is_active
+    }
+
+    COMMERCE_PRODUCT_IMAGE {
+        uuid id PK
+        uuid product_master_id FK
+        uuid product_id FK
+        varchar url "https://res.cloudinary.com/..."
+        varchar public_id "uyuni/products/53/catalog/img1"
+        varchar image_type "CATALOG | REAL | MARKETING | BANNER"
+        varchar title "Foto frontal oficial"
+        varchar original_filename "IMG_01.jpg"
+        int file_size_bytes
+        int width
+        int height
+        varchar format "webp"
+        boolean is_cover
+        int sort_order
     }
 
     COMMERCE_PRODUCT {
@@ -224,8 +244,8 @@ La ficha comercial e intelectual del producto. Es la entidad central de mercadot
 | Columna | Tipo SQL | Nulo | Default | Índice / Restricción | Descripción Semántica |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | `id` | `UUID` | No | UUIDv7 | PK, Index | Identificador único universal. |
-| `item_number` | `INTEGER` | No | — | Unique, Index | Número de catálogo limpio de 1 a 242 (coincide con el Excel original). |
-| `code` | `VARCHAR(50)` | No | — | Unique, Index | Código de búsqueda normalizado (`"53"`, `"NOV-053"`). |
+| `item_number` | `INTEGER` | No | Sequence | Unique, Index | Número de catálogo secuencial atómico autogenerado por el backend (`commerce_product_master_item_number_seq`). |
+| `code` | `VARCHAR(50)` | Sí | `NULL` | Index | Código de barras o SKU comercial opcional (`"7751234567890"`). Sin restricción UNIQUE global para Multi-Tenancy. |
 | `name` | `VARCHAR(255)` | No | — | Index | Nombre comercial oficial del producto. |
 | `description` | `VARCHAR(2000)`| Sí | `NULL` | — | Descripción detallada para PWA y publicaciones. |
 | `category_id` | `UUID` | Sí | `NULL` | FK -> `commerce_category.id`, Index | Categoría del catálogo. |
@@ -237,16 +257,16 @@ La ficha comercial e intelectual del producto. Es la entidad central de mercadot
 | `published_price` | `DOUBLE PRECISION`| No | `0.0` | — | Precio mostrado en artes publicitarios y Marketplace. |
 | `currency` | `VARCHAR(3)` | No | `'BOB'` | — | Moneda de comercialización (`BOB`). |
 | `cover_image_url` | `VARCHAR(500)` | Sí | `NULL` | — | URL de la foto principal WebP para catálogos y PWA. |
-| `marketplace_url` | `VARCHAR(500)` | Sí | `NULL` | — | Enlace directo a la publicación activa en Facebook Marketplace. |
-| `external_info_url`| `VARCHAR(500)` | Sí | `NULL` | — | Enlace de referencia (ficha de Amazon, manual o fabricante). |
 | `features` | `VARCHAR(2000)`| Sí | `NULL` | — | Características técnicas viñeteadas para el cliente. |
 | `marketing_details`| `VARCHAR(2000)`| Sí | `NULL` | — | Guion de venta rápida, ganchos de live y objeciones frecuentes. |
 | `is_reviewed` | `BOOLEAN` | No | `false` | — | ¿La ficha de producto está completamente investigada y aprobada? |
 | `is_fb_verified` | `BOOLEAN` | No | `false` | — | ¿Creativos de Facebook verificados contra políticas publicitarias? |
 | `has_video` | `BOOLEAN` | No | `false` | — | ¿Cuenta con video de demostración grabado para TikTok/Reels? |
-| `is_published_marketplace`| `BOOLEAN` | No | `false` | — | ¿La publicación se encuentra actualmente activa en Marketplace? |
+| `is_published_marketplace`| `BOOLEAN` | No | `false` | — | ¿La publicación se encuentra actualmente activa en Marketplace? Se activa automáticamente si se agrega un enlace de tipo `MARKETPLACE`. |
 | `is_whatsapp_published` | `BOOLEAN` | No | `false` | — | ¿Publicado en el catálogo o grupos de WhatsApp? |
 | `is_active` | `BOOLEAN` | No | `true` | Index | ¿Producto activo en catálogo? (`false` = archivado). |
+
+> **Nota de Retrocompatibilidad:** Los campos `external_info_url` y `marketplace_url` fueron migrados y eliminados de la tabla física `commerce_product_master`. En la API REST (`ProductMasterRead`) se exponen como propiedades calculadas dinámicamente a partir de los enlaces que tengan `is_primary = true` y correspondan a `link_type = 'REFERENCE'` o `link_type = 'MARKETPLACE'` en `commerce_product_master_external_link`.
 
 ---
 
@@ -313,4 +333,43 @@ Líneas de detalle que relacionan la venta con las unidades físicas del inventa
 | `unit_cost` | `DOUBLE PRECISION`| No | `0.0` | — | Costo unitario que tenía el producto al momento de la venta. |
 | `total_price` | `DOUBLE PRECISION`| No | `0.0` | — | Subtotal pactado (`unit_price * quantity`). |
 | `net_margin` | `DOUBLE PRECISION`| No | `0.0` | — | Margen neto de esta línea (`total_price - (unit_cost * quantity)`). |
+
+---
+
+### 10. `commerce_product_master_image` (Galería Multimedia y Fotografías de Catálogo)
+Almacena las referencias, metadatos y enlaces de Cloudinary para la galería de fotos oficiales y creativos de la Ficha Maestra.
+
+| Columna | Tipo SQL | Nulo | Default | Índice / Restricción | Descripción Semántica |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| `id` | `UUID` | No | UUIDv7 | PK, Index | Identificador único universal secuencial. |
+| `product_master_id`| `UUID` | No | — | FK -> `commerce_product_master.id`, Index | Ficha Maestra a la que pertenece esta fotografía o creativo. |
+| `product_id` | `UUID` | Sí | `NULL` | FK -> `commerce_product.id`, Index | Producto físico específico si es fotografía de estado real / unboxing. |
+| `url` | `VARCHAR(500)` | No | — | — | URL pública HTTPS optimizada de Cloudinary (WebP inteligente). |
+| `public_id` | `VARCHAR(255)` | No | — | Index | ID del recurso en Cloudinary para gestión y eliminación física. |
+| `image_type` | `VARCHAR(30)` | No | `'CATALOG'`| Index | Categoría: `CATALOG` (web/PWA), `REAL` (almacén), `MARKETING` (banners), `BANNER`. |
+| `title` | `VARCHAR(200)` | Sí | `NULL` | — | Título o texto alternativo de la imagen. |
+| `original_filename`| `VARCHAR(255)` | Sí | `NULL` | — | Nombre original del archivo al subirse desde el frontend. |
+| `file_size_bytes` | `INTEGER` | Sí | `NULL` | — | Peso del archivo procesado en bytes. |
+| `width` | `INTEGER` | Sí | `NULL` | — | Ancho en píxeles. |
+| `height` | `INTEGER` | Sí | `NULL` | — | Alto en píxeles. |
+| `format` | `VARCHAR(10)` | Sí | `NULL` | — | Formato de compresión (`webp`, `png`, `jpg`, `avif`). |
+| `is_cover` | `BOOLEAN` | No | `false` | Index | ¿Es la fotografía de portada oficial del producto? |
+| `sort_order` | `INTEGER` | No | `0` | Index | Posición de secuencia para galerías y carruseles (1, 2, 3...). |
+
+---
+
+### 11. `commerce_product_master_external_link` (Enlaces de Información Externa y Publicaciones de Ficha Maestra)
+Permite asociar 1 o más enlaces tanto de portales de referencia técnica (Amazon, eBay, AliExpress, Alibaba, Walmart, YouTube, TikTok, MercadoLibre) como de publicaciones comerciales propias activas (Facebook Marketplace, MercadoLibre propio, TikTok Shop, etc.). Soporta múltiples publicaciones por producto (ej. cuentas de Liz y Henry), auto-clasificación de portal, filtrado por tipo (`link_type`), visibilidad pública para catálogo y designación de enlace principal independiente por categoría.
+
+| Columna | Tipo SQL | Nulo | Default | Índice / Restricción | Descripción Semántica |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| `id` | `UUID` | No | UUIDv7 | PK, Index | Identificador único universal secuencial. |
+| `product_master_id`| `UUID` | No | — | FK -> `commerce_product_master.id`, Index | Ficha Maestra a la que pertenece este enlace externo. |
+| `url` | `VARCHAR(1000)`| No | — | — | URL completa del producto o publicación externa. |
+| `portal` | `VARCHAR(50)` | No | `'OTHER'` | Index | Identificador del portal (`AMAZON`, `EBAY`, `ALIBABA`, `ALIEXPRESS`, `WALMART`, `MERCADOLIBRE`, `FACEBOOK`, `INSTAGRAM`, `TIKTOK`, `WHATSAPP`, `YOUTUBE`, `OTHER`). |
+| `link_type` | `VARCHAR(20)` | No | `'REFERENCE'` | Index | Tipo de enlace: `'REFERENCE'` (información técnica/proveedor) o `'MARKETPLACE'` (publicación comercial propia). |
+| `label` | `VARCHAR(150)` | Sí | `NULL` | — | Etiqueta amigable visible (ej. `Amazon UK`, `Facebook Marketplace - Liz`, `Marketplace - Henry`, `Alibaba`). |
+| `is_primary` | `BOOLEAN` | No | `false` | Index | ¿Es el enlace principal dentro de su `link_type`? (expuesto como `master.external_info_url` o `master.marketplace_url`). |
+| `is_public` | `BOOLEAN` | No | `true` | Index | ¿Visible para el comprador en la PWA / catálogo público? (`false` = uso interno confidencial de almacén o compra mayorista). |
+| `sort_order` | `INTEGER` | No | `0` | Index | Secuencia de presentación visual en las fichas del frontend. |
 

@@ -63,7 +63,48 @@
   - Purga controlada de 1,836 registros basura en Local y 322 en VPS PostgreSQL (`172.23.51.247/uyuni_prod`).
 - [x] Sincronización y migración completa del catálogo desde Google Sheets (240 fichas maestras, 242 productos, 127 ventas, lotes, canales y categorías) tanto en base de datos Local como en VPS.
 - [x] Actualización de guías de despliegue para Render (SPA rewrites, Brotli, IP extraction) y VPS Ubuntu (Certbot rate limit mitigation, Cloudflare, ZeroSSL).
-- [x] Actualización de `docs/AUDIT_GUIDE.md` y Memory Bank con la arquitectura de auditoría optimizada.
+- [x] Optimización y robustecimiento de Fichas Maestras (`commerce_product_master`):
+  - Creación de secuencia atómica en PostgreSQL (`commerce_product_master_item_number_seq`) para `item_number`.
+  - Inmutabilidad estricta y autogeneración por el backend de `item_number` (cero intervención manual del cliente).
+  - Flexibilización de `code` como campo opcional (`NULL` / código de barras) sin `UNIQUE` global, dejando la arquitectura 100% preparada para Multi-Tenancy.
+  - Limpieza de datos en Local y VPS: `code = NULL` y `features` con el detalle extendido en Markdown.
+  - Hook de auto-calibración en el arranque del servidor (`main.py` lifespan) y en scripts ETL para evitar desfasajes tras restauraciones de backups o migraciones con Navicat.
+  - Actualización de documentación de integración frontend (`03_FRONTEND_INTEGRATION_GUIDE.md`).
+- [x] Motor de Multi-Fotografías y Galería Multimedia para Fichas Maestras (`commerce_product_image`):
+  - Entidad SQLModel `ProductImage` y tabla singular `commerce_product_image` con campos: `url`, `public_id`, `image_type` (`CATALOG`, `REAL`, `MARKETING`, `BANNER`), `title`, `original_filename`, `file_size_bytes`, `width`, `height`, `format`, `is_cover`, `sort_order`, `created_at`, `updated_at`.
+  - Migración Alembic `6843e3c5c10e_create_commerce_product_image_table.py` aplicada tanto en BD Local (`localhost`) como en BD VPS (`172.23.51.247`).
+  - Jerarquía estructurada en Cloudinary: `uyuni/products/{item_number}/{image_type}/` (ej. `uyuni/products/242/catalog/`).
+  - Endpoints REST completos:
+    - `POST /api/commerce/product-masters/{id}/images` (subida masiva multipart drag & drop de 10+ fotos con validación de tipo y tamaño).
+    - `GET /api/commerce/product-masters/{id}/images` (filtrado por `image_type` y `product_id`).
+    - `PATCH /api/commerce/product-masters/{id}/images/{image_id}/cover` (definir portada oficial y sincronizar `ProductMaster.cover_image_url`).
+    - `PUT /api/commerce/product-masters/{id}/images/reorder` (reordenamiento de galería drag & drop).
+    - `PATCH /api/commerce/product-masters/{id}/images/{image_id}` (actualización de título y metadatos).
+    - `DELETE /api/commerce/product-masters/{id}/images/{image_id}` (eliminación física en Cloudinary y en BD, con reasignación inteligente de portada).
+  - Suite de pruebas unitarias exhaustiva (16 tests en `tests/test_commerce.py`, 85 tests en toda la aplicación, 100% pasando).
+  - Documentación técnica y guía de integración para frontend con PrimeNG 21 en `docs/commerce/03_FRONTEND_INTEGRATION_GUIDE.md`.
+- [x] Motor de Enlaces Externos Multi-Portal para Fichas Maestras (`commerce_product_master_external_link`):
+  - Entidad SQLModel `ProductMasterExternalLink` y tabla singular `commerce_product_master_external_link` con campos: `product_master_id`, `url`, `portal`, `label`, `is_primary`, `is_public`, `sort_order`, `created_at`, `updated_at`.
+  - Migración Alembic `d93fce7fce21` (extracción y desdoblamiento de 168 enlaces) y `b3ff00d4f9b4` (renombrado semántico a `commerce_product_master_external_link`, adición de `is_public` y eliminación de la columna redundante `external_info_url` en `commerce_product_master`) aplicadas con éxito tanto en BD Local (`localhost`) como en BD VPS (`172.23.51.247`).
+  - Clasificación automática e inteligente de portales (`detect_portal`): Amazon (UK, ES, MX, DE, FR, IT, AU, NL, CA, JP), eBay, Alibaba, AliExpress, Walmart, MercadoLibre, YouTube, TikTok y dominios genéricos sin requerir dropdowns manuales.
+  - Visibilidad pública granular: bandera `is_public: bool` que permite distinguir enlaces públicos para compradores (Amazon, YouTube) de enlaces confidenciales de almacén/compra mayorista (Alibaba, 1688).
+  - Retrocompatibilidad transparente: `ProductMasterRead.external_info_url` se expone dinámicamente a partir del enlace principal activo, garantizando cero roturas en frontend.
+  - Endpoints REST completos:
+    - `POST /api/commerce/product-masters/{id}/links`
+    - `GET /api/commerce/product-masters/{id}/links?only_public=false`
+    - `PATCH /api/commerce/product-masters/{id}/links/{link_id}`
+    - `PATCH /api/commerce/product-masters/{id}/links/{link_id}/primary`
+    - `PUT /api/commerce/product-masters/{id}/links/reorder`
+    - `DELETE /api/commerce/product-masters/{id}/links/{link_id}`
+  - Suite de pruebas unitarias exhaustiva (19 tests en `tests/test_commerce.py`, 88 tests en toda la aplicación, 100% pasando).
+- [x] Unificación y soporte de múltiples publicaciones en Marketplace (`link_type: 'MARKETPLACE'` vs `'REFERENCE'`):
+  - Se añadió la columna `link_type` a `commerce_product_master_external_link` (`VARCHAR(20)`, con índice, default `'REFERENCE'`).
+  - Migración Alembic `a91497080946`: migró los 78 enlaces existentes de `marketplace_url` a registros de tipo `'MARKETPLACE'` con `portal = 'FACEBOOK'`, y eliminó la columna física `marketplace_url` de `commerce_product_master`.
+  - Soporte de múltiples publicaciones simultáneas por producto (ej. cuentas de Liz y Henry) con etiquetas personalizadas (`label`), auditoría de autor (`created_by_id`) y fecha de publicación (`created_at`).
+  - Sincronización automática de `is_published_marketplace = True` al agregar una publicación comercial.
+  - Exposición dinámica en `ProductMasterRead`: `marketplace_url` (retrocompatible con el primario de marketplace), `external_info_url` (primario de referencia), `reference_links`, `marketplace_links`, y sus contadores independientes.
+  - Filtro por tipo en el endpoint `GET /api/commerce/product-masters/{id}/links?link_type=MARKETPLACE`.
+  - Cobertura completa de tests en `tests/test_commerce.py` (88/88 tests pasando, Ruff y Mypy en 100% verde).
 
 ### In Progress
 - [ ] Rate limiting for authentication endpoints

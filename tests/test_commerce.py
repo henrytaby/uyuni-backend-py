@@ -12,8 +12,14 @@ from app.modules.commerce.channels.models import SalesChannel
 from app.modules.commerce.channels.service import SalesChannelService
 from app.modules.commerce.live_baskets.models import LiveBasket
 from app.modules.commerce.live_baskets.service import LiveBasketService
-from app.modules.commerce.product_masters.models import ProductMaster
-from app.modules.commerce.product_masters.service import ProductMasterService
+from app.modules.commerce.product_masters.models import (
+    ProductImage,
+    ProductMaster,
+)
+from app.modules.commerce.product_masters.service import (
+    ProductMasterService,
+    detect_portal,
+)
 from app.modules.commerce.products.models import Product
 from app.modules.commerce.products.service import ProductService
 from app.modules.commerce.rounds.models import InvestmentRound
@@ -343,33 +349,35 @@ def test_api_commerce_endpoints(client: TestClient, superuser_token_headers: dic
     assert batch_data["unit_cost"] == 130.0  # 2600 / 20
     batch_id = batch_data["id"]
 
-    # 3. Create Product Master via API
+    # 3. Create Product Master via API (item_number es autogenerado por el backend)
     res_master = client.post(
         "/api/commerce/product-masters/",
         headers=superuser_token_headers,
         json={
-            "item_number": 53,
             "name": "Almohadilla Térmica API",
             "official_price": 250.0,
             "minimum_price": 200.0,
         },
     )
     assert res_master.status_code == 200
-    master_id = res_master.json()["id"]
+    master_data = res_master.json()
+    master_id = master_data["id"]
+    assigned_num = master_data["item_number"]
+    assert assigned_num > 0
 
     res_master_num = client.get(
-        "/api/commerce/product-masters/by-number/53",
+        f"/api/commerce/product-masters/by-number/{assigned_num}",
         headers=superuser_token_headers,
     )
     assert res_master_num.status_code == 200
     assert res_master_num.json()["id"] == master_id
 
     res_master_res = client.get(
-        "/api/commerce/product-masters/resolve/NOV-053",
+        f"/api/commerce/product-masters/resolve/{assigned_num}",
         headers=superuser_token_headers,
     )
     assert res_master_res.status_code == 200
-    assert res_master_res.json()["item_number"] == 53
+    assert res_master_res.json()["item_number"] == assigned_num
 
     # 3.1. Create Product Inventory Item via API
     res_product = client.post(
@@ -711,15 +719,15 @@ def test_product_master_crud_and_resolution(session: Session):
             name="Almohadilla Eléctrica Térmica 30x60 cm",
             official_price=180.0,
             minimum_price=130.0,
-            marketplace_url="https://facebook.com/marketplace/item/123",
             is_published_marketplace=True,
             is_whatsapp_published=True,
             is_fb_verified=True,
-        )
+        ),
+        initial_marketplace_url="https://facebook.com/marketplace/item/123",
     )
     assert master.id is not None
     assert master.item_number == 53
-    assert master.code == "53"
+    assert master.code is None
     assert master.is_published_marketplace is True
     assert master.is_whatsapp_published is True
     assert master.is_fb_verified is True
@@ -930,3 +938,546 @@ def test_commerce_catalogs_and_search(
     matched_masters = res_search_num.json()
     assert len(matched_masters) == 1
     assert matched_masters[0]["item_number"] == 999
+
+
+def test_product_master_images_service(session: Session):
+    from unittest.mock import patch
+
+    from app.modules.commerce.product_masters.schemas import (
+        ProductImageReorderItem,
+        ProductImageUpdate,
+    )
+
+    master = make_master(session, 1050, "Cámara Solar Test")
+    service = ProductMasterService(session)
+
+    mock_upload_responses = [
+        {
+            "url": "https://res.cloudinary.com/test/image/upload/v1/uyuni/products/1050/catalog/pic1.webp",
+            "public_id": "uyuni/products/1050/catalog/pic1",
+            "format": "webp",
+            "bytes": 54321,
+            "width": 1080,
+            "height": 1080,
+        },
+        {
+            "url": "https://res.cloudinary.com/test/image/upload/v1/uyuni/products/1050/catalog/pic2.webp",
+            "public_id": "uyuni/products/1050/catalog/pic2",
+            "format": "webp",
+            "bytes": 65432,
+            "width": 1080,
+            "height": 1080,
+        },
+        {
+            "url": "https://res.cloudinary.com/test/image/upload/v1/uyuni/products/1050/real/pic3.webp",
+            "public_id": "uyuni/products/1050/real/pic3",
+            "format": "webp",
+            "bytes": 76543,
+            "width": 800,
+            "height": 600,
+        },
+    ]
+
+    with (
+        patch(
+            "app.modules.commerce.product_masters.service.cloudinary_service.upload_image"
+        ) as mock_upload,
+        patch(
+            "app.modules.commerce.product_masters.service.cloudinary_service.delete_image"
+        ) as mock_delete,
+    ):
+        mock_upload.side_effect = mock_upload_responses
+        mock_delete.return_value = True
+
+        files_data = [
+            {
+                "content": b"fake-jpeg-bytes-1",
+                "filename": "foto_frontal.jpg",
+                "content_type": "image/jpeg",
+            },
+            {
+                "content": b"fake-png-bytes-2",
+                "filename": "foto_trasera.png",
+                "content_type": "image/png",
+            },
+        ]
+
+        # 1. Subida batch de 2 imágenes CATALOG
+        created = service.add_images(
+            master_id=master.id,
+            files_data=files_data,
+            image_type="CATALOG",
+            is_cover=False,
+        )
+        assert len(created) == 2
+        # La primera imagen se convierte automáticamente en portada
+        assert created[0].is_cover is True
+        assert created[0].sort_order == 1
+        assert created[0].original_filename == "foto_frontal.jpg"
+        assert created[1].is_cover is False
+        assert created[1].sort_order == 2
+
+        # Portada sincronizada en ProductMaster
+        session.refresh(master)
+        assert master.cover_image_url == mock_upload_responses[0]["url"]
+
+        # 2. Subida de una 3ra imagen tipo REAL
+        files_real = [
+            {
+                "content": b"fake-real-bytes-3",
+                "filename": "unboxing_real.jpg",
+                "content_type": "image/jpeg",
+            }
+        ]
+        created_real = service.add_images(
+            master_id=master.id,
+            files_data=files_real,
+            image_type="REAL",
+            is_cover=False,
+        )
+        assert len(created_real) == 1
+        assert created_real[0].image_type == "REAL"
+        assert created_real[0].sort_order == 3
+        assert created_real[0].is_cover is False
+
+        # 3. Listar imágenes y filtrar por tipo
+        all_imgs = service.get_images(master.id)
+        assert len(all_imgs) == 3
+
+        cat_imgs = service.get_images(master.id, image_type="CATALOG")
+        assert len(cat_imgs) == 2
+
+        real_imgs = service.get_images(master.id, image_type="REAL")
+        assert len(real_imgs) == 1
+
+        # 4. Cambiar portada a la segunda imagen
+        img2_id = created[1].id
+        updated_cover = service.set_cover_image(master.id, img2_id)
+        assert updated_cover.is_cover is True
+        session.refresh(master)
+        assert master.cover_image_url == mock_upload_responses[1]["url"]
+
+        # 5. Reordenar imágenes
+        reorder_items = [
+            ProductImageReorderItem(id=created_real[0].id, sort_order=1),
+            ProductImageReorderItem(id=created[0].id, sort_order=2),
+            ProductImageReorderItem(id=created[1].id, sort_order=3),
+        ]
+        reordered = service.reorder_images(master.id, reorder_items)
+        assert reordered[0].id == created_real[0].id
+        assert reordered[0].sort_order == 1
+
+        # 6. Actualizar metadatos de una imagen
+        service.update_image(
+            master.id,
+            created[0].id,
+            ProductImageUpdate(title="Foto Frontal con Caja"),
+        )
+        updated_img0 = service.session.get(ProductImage, created[0].id)
+        assert updated_img0 is not None
+        assert updated_img0.title == "Foto Frontal con Caja"
+
+        # 7. Eliminar imagen de portada: debe reasignar la siguiente disponible
+        service.delete_image(master.id, img2_id)
+        mock_delete.assert_called_with(mock_upload_responses[1]["public_id"])
+        session.refresh(master)
+        assert master.cover_image_url is not None
+
+        # 8. Eliminar las restantes
+        service.delete_image(master.id, created[0].id)
+        service.delete_image(master.id, created_real[0].id)
+        session.refresh(master)
+        assert master.cover_image_url is None
+        assert len(service.get_images(master.id)) == 0
+
+
+def test_product_master_images_api(
+    client: TestClient, session: Session, superuser_token_headers: dict[str, str]
+):
+    from unittest.mock import patch
+
+    master = make_master(session, 1051, "Audífonos Bluetooth Test")
+
+    mock_resp = {
+        "url": "https://res.cloudinary.com/test/image/upload/v1/uyuni/products/1051/catalog/aud.webp",
+        "public_id": "uyuni/products/1051/catalog/aud",
+        "format": "webp",
+        "bytes": 20480,
+        "width": 600,
+        "height": 600,
+    }
+
+    with (
+        patch(
+            "app.modules.commerce.product_masters.service.cloudinary_service.upload_image"
+        ) as mock_up,
+        patch(
+            "app.modules.commerce.product_masters.service.cloudinary_service.delete_image"
+        ) as mock_del,
+    ):
+        mock_up.return_value = mock_resp
+        mock_del.return_value = True
+
+        # 1. POST /api/commerce/product-masters/{id}/images
+        files = [
+            (
+                "files",
+                ("audifonos.jpg", b"fake-jpg-binary-stream", "image/jpeg"),
+            )
+        ]
+        res = client.post(
+            f"/api/commerce/product-masters/{master.id}/images",
+            files=files,
+            data={"image_type": "CATALOG", "is_cover": "true"},
+            headers=superuser_token_headers,
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data) == 1
+        img_id = data[0]["id"]
+        assert data[0]["is_cover"] is True
+        assert data[0]["url"] == mock_resp["url"]
+        assert data[0]["image_type"] == "CATALOG"
+
+        # 2. GET /api/commerce/product-masters/{id} debe incluir images e images_count
+        res_master = client.get(
+            f"/api/commerce/product-masters/{master.id}",
+            headers=superuser_token_headers,
+        )
+        assert res_master.status_code == 200
+        master_data = res_master.json()
+        assert master_data["images_count"] == 1
+        assert len(master_data["images"]) == 1
+        assert master_data["cover_image_url"] == mock_resp["url"]
+
+        # 3. GET /api/commerce/product-masters/{id}/images
+        res_imgs = client.get(
+            f"/api/commerce/product-masters/{master.id}/images",
+            headers=superuser_token_headers,
+        )
+        assert res_imgs.status_code == 200
+        assert len(res_imgs.json()) == 1
+
+        # 4. PATCH /api/commerce/product-masters/{id}/images/{image_id}
+        res_patch = client.patch(
+            f"/api/commerce/product-masters/{master.id}/images/{img_id}",
+            json={"title": "Audífonos In-Ear"},
+            headers=superuser_token_headers,
+        )
+        assert res_patch.status_code == 200
+        assert res_patch.json()["title"] == "Audífonos In-Ear"
+
+        # 4.b Verificar que PUT proteja cover_image_url y descarte manipulaciones
+        res_put = client.put(
+            f"/api/commerce/product-masters/{master.id}",
+            json={
+                "name": "Audífonos Bluetooth Pro",
+                "cover_image_url": "https://fake-link.com/invalido.png",
+            },
+            headers=superuser_token_headers,
+        )
+        assert res_put.status_code == 200
+        assert res_put.json()["name"] == "Audífonos Bluetooth Pro"
+        assert res_put.json()["cover_image_url"] == mock_resp["url"]
+
+        # 5. DELETE /api/commerce/product-masters/{id}/images/{image_id}
+        res_del = client.delete(
+            f"/api/commerce/product-masters/{master.id}/images/{img_id}",
+            headers=superuser_token_headers,
+        )
+        assert res_del.status_code == 200
+        assert res_del.json()["message"] == "Fotografía eliminada exitosamente"
+
+        # Verificar que ya no hay imágenes
+        res_empty = client.get(
+            f"/api/commerce/product-masters/{master.id}/images",
+            headers=superuser_token_headers,
+        )
+        assert res_empty.status_code == 200
+        assert len(res_empty.json()) == 0
+
+
+def test_detect_portal_classification():
+    portal, label = detect_portal(
+        "https://www.amazon.co.uk/Fitabok-Electric-Heater-Portable-Protection/dp/B0FJ8GPS3J"
+    )
+    assert portal == "AMAZON"
+    assert label == "Amazon UK"
+
+    portal, label = detect_portal("https://www.amazon.es/dp/B08XJ8P9W9")
+    assert portal == "AMAZON"
+    assert label == "Amazon España"
+
+    portal, label = detect_portal("https://www.ebay.com/itm/123456789")
+    assert portal == "EBAY"
+    assert label == "eBay"
+
+    portal, label = detect_portal("https://es.aliexpress.com/item/100500123.html")
+    assert portal == "ALIEXPRESS"
+    assert label == "AliExpress"
+
+    portal, label = detect_portal("https://spanish.alibaba.com/p-detail/sample.html")
+    assert portal == "ALIBABA"
+    assert label == "Alibaba"
+
+    portal, label = detect_portal("https://www.walmart.com/ip/seort/123456")
+    assert portal == "WALMART"
+    assert label == "Walmart"
+
+    portal, label = detect_portal("https://articulo.mercadolibre.com.bo/MLC-123")
+    assert portal == "MERCADOLIBRE"
+    assert label == "MercadoLibre"
+
+    portal, label = detect_portal("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    assert portal == "YOUTUBE"
+    assert label == "YouTube"
+
+    portal, label = detect_portal("https://www.tiktok.com/@user/video/12345")
+    assert portal == "TIKTOK"
+    assert label == "TikTok"
+
+    portal, label = detect_portal("https://sifsof.com/product/sphygmomanometer")
+    assert portal == "OTHER"
+    assert label == "Sifsof"
+
+
+def test_product_master_external_links_service(session: Session):
+    service = ProductMasterService(session)
+
+    # 1. Crear ficha con initial_external_url -> crea enlace automáticamente
+    master = service.create(
+        ProductMaster(
+            name="Calefactor Fitabok",
+            official_price=250.0,
+            minimum_price=200.0,
+        ),
+        initial_external_url="https://www.amazon.co.uk/dp/B0FJ8GPS3J",
+    )
+
+    links = service.get_external_links(master.id)
+    assert len(links) == 1
+    assert links[0].portal == "AMAZON"
+    assert links[0].label == "Amazon UK"
+    assert links[0].is_primary is True
+    assert links[0].is_public is True
+    assert links[0].sort_order == 1
+
+    # 2. Agregar segundo enlace privado (Alibaba)
+    alibaba_link = service.add_external_link(
+        master_id=master.id,
+        url="https://spanish.alibaba.com/p-detail/12345.html",
+        label=None,  # auto-detect
+        is_public=False,
+    )
+    assert alibaba_link.portal == "ALIBABA"
+    assert alibaba_link.label == "Alibaba"
+    assert alibaba_link.is_primary is False
+    assert alibaba_link.is_public is False
+    assert alibaba_link.sort_order == 2
+
+    # Verificar filtro only_public
+    public_links = service.get_external_links(master.id, only_public=True)
+    assert len(public_links) == 1
+    assert public_links[0].portal == "AMAZON"
+
+    # 3. Cambiar Alibaba como enlace principal
+    service.set_primary_external_link(master.id, alibaba_link.id)
+    links_after_primary = service.get_external_links(master.id)
+    primary_link = next(lnk for lnk in links_after_primary if lnk.is_primary)
+    assert primary_link.id == alibaba_link.id
+
+    # 4. Eliminar el enlace primario (Alibaba) -> promueve el siguiente (Amazon)
+    service.delete_external_link(master.id, alibaba_link.id)
+    remaining_links = service.get_external_links(master.id)
+    assert len(remaining_links) == 1
+    assert remaining_links[0].is_primary is True
+    assert remaining_links[0].portal == "AMAZON"
+
+    # 5. Eliminar último enlace -> sin enlaces
+    service.delete_external_link(master.id, remaining_links[0].id)
+    assert len(service.get_external_links(master.id)) == 0
+
+
+def test_product_master_external_links_api(
+    client: TestClient, superuser_token_headers: dict, session: Session
+):
+    service = ProductMasterService(session)
+    master = service.create(
+        ProductMaster(
+            name="Proyector TP360",
+            official_price=450.0,
+            minimum_price=380.0,
+        )
+    )
+
+    # 1. POST /api/commerce/product-masters/{id}/links (Amazon)
+    res_add1 = client.post(
+        f"/api/commerce/product-masters/{master.id}/links",
+        json={
+            "url": "https://www.amazon.es/dp/B00123456",
+            "label": "Ficha Amazon España",
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_add1.status_code == 200
+    link1 = res_add1.json()
+    assert link1["portal"] == "AMAZON"
+    assert link1["label"] == "Ficha Amazon España"
+    assert link1["is_primary"] is True
+    link1_id = link1["id"]
+
+    # 2. POST /api/commerce/product-masters/{id}/links (Alibaba sin label -> auto)
+    res_add2 = client.post(
+        f"/api/commerce/product-masters/{master.id}/links",
+        json={"url": "https://spanish.alibaba.com/p-detail/projector-tp360.html"},
+        headers=superuser_token_headers,
+    )
+    assert res_add2.status_code == 200
+    link2 = res_add2.json()
+    assert link2["portal"] == "ALIBABA"
+    assert link2["label"] == "Alibaba"
+    assert link2["is_primary"] is False
+    link2_id = link2["id"]
+
+    # 3. GET /api/commerce/product-masters/{id} verifica external_links y count
+    res_master = client.get(
+        f"/api/commerce/product-masters/{master.id}",
+        headers=superuser_token_headers,
+    )
+    assert res_master.status_code == 200
+    master_data = res_master.json()
+    assert master_data["external_links_count"] == 2
+    assert len(master_data["external_links"]) == 2
+    assert master_data["external_info_url"] == "https://www.amazon.es/dp/B00123456"
+
+    # 4. PATCH /api/commerce/product-masters/{id}/links/{link_id}/primary
+    res_primary = client.patch(
+        f"/api/commerce/product-masters/{master.id}/links/{link2_id}/primary",
+        headers=superuser_token_headers,
+    )
+    assert res_primary.status_code == 200
+    assert res_primary.json()["is_primary"] is True
+
+    # 4.b Verificar que external_info_url ahora refleje el nuevo enlace primario
+    res_master2 = client.get(
+        f"/api/commerce/product-masters/{master.id}",
+        headers=superuser_token_headers,
+    )
+    assert res_master2.status_code == 200
+    assert res_master2.json()["external_info_url"] == link2["url"]
+
+    # 4.c Modificar is_public a false vía PATCH
+    res_patch_priv = client.patch(
+        f"/api/commerce/product-masters/{master.id}/links/{link2_id}",
+        json={"is_public": False},
+        headers=superuser_token_headers,
+    )
+    assert res_patch_priv.status_code == 200
+    assert res_patch_priv.json()["is_public"] is False
+
+    # 4.d GET con ?only_public=true
+    res_pub_only = client.get(
+        f"/api/commerce/product-masters/{master.id}/links?only_public=true",
+        headers=superuser_token_headers,
+    )
+    assert res_pub_only.status_code == 200
+    pub_links = res_pub_only.json()
+    assert len(pub_links) == 1
+    assert pub_links[0]["id"] == link1_id
+
+    # 5. PUT /api/commerce/product-masters/{id}/links/reorder
+    res_reorder = client.put(
+        f"/api/commerce/product-masters/{master.id}/links/reorder",
+        json=[{"id": link2_id, "sort_order": 1}, {"id": link1_id, "sort_order": 2}],
+        headers=superuser_token_headers,
+    )
+    assert res_reorder.status_code == 200
+    reordered = res_reorder.json()
+    assert reordered[0]["id"] == link2_id
+
+    # 6. DELETE /api/commerce/product-masters/{id}/links/{link_id}
+    res_del = client.delete(
+        f"/api/commerce/product-masters/{master.id}/links/{link2_id}",
+        headers=superuser_token_headers,
+    )
+    assert res_del.status_code == 200
+    assert res_del.json()["message"] == "Enlace externo eliminado exitosamente"
+
+    # 7. MARKETPLACE Links: Múltiples publicaciones ("Liz y Henry")
+    # 7.a Añadir publicación de Marketplace de Liz
+    res_mkt1 = client.post(
+        f"/api/commerce/product-masters/{master.id}/links",
+        json={
+            "url": "https://www.facebook.com/marketplace/item/999111/",
+            "link_type": "MARKETPLACE",
+            "label": "Marketplace - Liz (La Paz)",
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_mkt1.status_code == 200
+    mkt1 = res_mkt1.json()
+    assert mkt1["link_type"] == "MARKETPLACE"
+    assert mkt1["portal"] == "FACEBOOK"
+    assert mkt1["label"] == "Marketplace - Liz (La Paz)"
+    assert mkt1["is_primary"] is True
+
+    # 7.b Añadir publicación de Marketplace de Henry
+    res_mkt2 = client.post(
+        f"/api/commerce/product-masters/{master.id}/links",
+        json={
+            "url": "https://www.facebook.com/marketplace/item/888222/",
+            "link_type": "MARKETPLACE",
+            "label": "Marketplace - Henry (Central)",
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_mkt2.status_code == 200
+    mkt2 = res_mkt2.json()
+    assert mkt2["link_type"] == "MARKETPLACE"
+    assert mkt2["is_primary"] is False
+
+    # 7.c Verificar que la ficha maestra refleja marketplace y reference links
+    res_master3 = client.get(
+        f"/api/commerce/product-masters/{master.id}",
+        headers=superuser_token_headers,
+    )
+    assert res_master3.status_code == 200
+    m_data3 = res_master3.json()
+    assert m_data3["is_published_marketplace"] is True
+    assert (
+        m_data3["marketplace_url"]
+        == "https://www.facebook.com/marketplace/item/999111/"
+    )
+    assert m_data3["external_info_url"] == "https://www.amazon.es/dp/B00123456"
+    assert m_data3["reference_links_count"] == 1
+    assert m_data3["marketplace_links_count"] == 2
+    assert len(m_data3["marketplace_links"]) == 2
+
+    # 7.d Filtrar links por link_type=MARKETPLACE
+    res_filter_mkt = client.get(
+        f"/api/commerce/product-masters/{master.id}/links?link_type=MARKETPLACE",
+        headers=superuser_token_headers,
+    )
+    assert res_filter_mkt.status_code == 200
+    mkt_only = res_filter_mkt.json()
+    assert len(mkt_only) == 2
+    assert all(lnk["link_type"] == "MARKETPLACE" for lnk in mkt_only)
+
+    # 7.e Fijar mkt2 como primario no debe desmarcar el primario de REFERENCE
+    res_mkt2_pri = client.patch(
+        f"/api/commerce/product-masters/{master.id}/links/{mkt2['id']}/primary",
+        headers=superuser_token_headers,
+    )
+    assert res_mkt2_pri.status_code == 200
+    assert res_mkt2_pri.json()["is_primary"] is True
+
+    res_master4 = client.get(
+        f"/api/commerce/product-masters/{master.id}",
+        headers=superuser_token_headers,
+    )
+    m_data4 = res_master4.json()
+    assert (
+        m_data4["marketplace_url"]
+        == "https://www.facebook.com/marketplace/item/888222/"
+    )
+    assert m_data4["external_info_url"] == "https://www.amazon.es/dp/B00123456"

@@ -56,9 +56,7 @@ class CloudinaryService:
                 "folder": target_folder,
                 "resource_type": "image",
                 "tags": [folder, "uyuni"],
-                "transformation": [
-                    {"quality": "auto", "fetch_format": "auto"}
-                ],
+                "transformation": [{"quality": "auto", "fetch_format": "auto"}],
             }
 
             if public_id:
@@ -73,8 +71,7 @@ class CloudinaryService:
                 **upload_params,
             )
             return {
-                "url": upload_result.get("secure_url")
-                or upload_result.get("url"),
+                "url": upload_result.get("secure_url") or upload_result.get("url"),
                 "public_id": upload_result.get("public_id"),
                 "format": upload_result.get("format"),
                 "bytes": upload_result.get("bytes", 0),
@@ -108,9 +105,7 @@ class CloudinaryService:
         try:
             result = cloudinary.uploader.destroy(public_id)
             is_ok = result.get("result") in ("ok", "not found")
-            logger.info(
-                "cloudinary_image_deleted", public_id=public_id, result=result
-            )
+            logger.info("cloudinary_image_deleted", public_id=public_id, result=result)
             return is_ok
         except Exception as exc:
             logger.warning(

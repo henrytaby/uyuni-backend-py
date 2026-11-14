@@ -33,7 +33,7 @@ flowchart TD
 Al abrir la caja física en el almacén, el operador saca cada producto y realiza una doble verificación:
 
 1. **¿El producto ya existe en el catálogo maestro? (`ProductMaster`):**
-   - **Caso A (Producto Nuevo):** Se crea una nueva Ficha Maestra con su número correlativo limpio (`item_number: 243`), nombre oficial, categoría y precios de referencia (`official_price: 180`, `minimum_price: 140`). Se almacenan las fotos y creativos correspondientes en el repositorio o CDN de medios (`products/243-...`).
+   - **Caso A (Producto Nuevo):** Se crea una nueva Ficha Maestra con su número correlativo limpio asignado atómicamente (`item_number: 243`), nombre oficial, categoría y precios de referencia (`official_price: 180`, `minimum_price: 140`). Se suben las fotos y creativos directamente a Cloudinary organizados en su jerarquía (`uyuni/products/243/catalog/`, `real/`, `marketing/`).
    - **Caso B (Producto Repetido):** Si el producto ya existía de una importación anterior (por ejemplo, el producto `#53 - Almohadilla Térmica`), **NO** se duplica la ficha maestra. Se utiliza la ficha existente `#53`.
 2. **Registro de la Unidad Física en el Lote (`Product`):**
    - Se crea el registro de inventario físico vinculándolo a la ficha maestra (`master_product_id`) y a la caja de donde salió (`batch_id`).

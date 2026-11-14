@@ -91,7 +91,7 @@ GET /api/commerce/product-masters/?offset=0&limit=50&category_id=<uuid>&live_bas
 - `limit`: Cantidad de registros por página (default: `100`).
 - `sort_by`: Campo de ordenación (`item_number`, `name`, `official_price`, default: `item_number`).
 - `sort_order`: `'asc'` o `'desc'`.
-- `search`: Búsqueda multi-campo insensible a mayúsculas (`"53"`, `"#53"`, `"NOV-053"`, `"reloj"`, `"almohadilla"`).
+- `search`: Búsqueda multi-campo insensible a mayúsculas (`"53"`, `"#53"`, `"NOV-053"`, `"reloj"`, `"almohadilla"`). Busca en `code`, `name`, `brand`, `model`, `description` y `features`.
 - `category_id`: Filtrar por categoría.
 - `live_basket_id`: Filtrar por canasta de TikTok Live.
 - `is_active`: Filtrar activos (`true`) o archivados (`false`).
@@ -103,7 +103,7 @@ Cada elemento incluye el consolidado de existencias en tiempo real de todas las 
   {
     "id": "01a1c785-02b3-7641-bb12-9988aa112233",
     "item_number": 53,
-    "code": "53",
+    "code": null,
     "name": "Almohadilla Térmica Eléctrica",
     "description": "Almohadilla de calor terapéutico con control de temperatura digital.",
     "category_id": "01a1b8dc-dd82-73cb-8e37-99fb5265bd0e",
@@ -117,8 +117,8 @@ Cada elemento incluye el consolidado de existencias en tiempo real de todas las 
     "cover_image_url": "https://pub-cdn.empresa.com/products/053/cover.webp",
     "marketplace_url": "https://www.facebook.com/marketplace/item/123456789/",
     "external_info_url": "https://www.amazon.com/dp/B08XYZ123",
-    "features": "• 6 niveles de temperatura\n• Auto-apagado a las 2 horas\n• Lavable a máquina",
-    "marketing_details": "Ideal para dolores lumbares y menstruales. Resaltar la seguridad del auto-apagado.",
+    "features": "- **Fuente de Energía:** Enchufe 220V\n- **Instrucciones:** 1. Conectar cable. 2. Regular temperatura...",
+    "marketing_details": null,
     "is_reviewed": true,
     "is_fb_verified": true,
     "has_video": true,
@@ -132,7 +132,55 @@ Cada elemento incluye el consolidado de existencias en tiempo real de todas las 
 ]
 ```
 
-### B. Obtener Total de Fichas Maestras
+### B. Crear Nueva Ficha Maestra (`POST /api/commerce/product-masters/`)
+
+> [!IMPORTANT]
+> **Autogeneración Atómica del Identificador:**
+> 1. **`item_number`**: **NO debe ser enviado por el frontend**. El backend asigna automáticamente el siguiente correlativo entero atómico (`nextval` en PostgreSQL) sin posibilidad de colisión ni saltos. En la UI del frontend, este campo debe mostrarse como un badge o etiqueta informativa: `Ficha Maestra (Autogenerada)`.
+> 2. **`code`**: Es **opcional (`string | null`)**. Está pensado para almacenar el **código de barras** escaneado del producto (EAN-13, UPC) o un SKU de fábrica. Si el producto no tiene código de barras (ej. viene en bolsa sellada sin etiqueta), debe enviarse como `null` o vaciarse.
+> 3. **`description`**: Breve resumen comercial (1-2 párrafos) para tarjetas web y catálogo PWA.
+> 4. **`features`**: Viñetas con especificaciones técnicas, modo de uso y cuidados en formato Markdown.
+> 5. **`marketing_details`**: Guion de venta rápida / TikTok Live (opcional, para copys de venta).
+
+#### Petición (Creación limpia):
+```http
+POST /api/commerce/product-masters/
+Content-Type: application/json
+```
+```json
+{
+  "name": "Cámara Exterior PTZ 4G Solar",
+  "code": "7751234567890",
+  "description": "Cámara de seguridad autónoma con panel solar y conectividad SIM 4G.",
+  "features": "- **Fuente de Energía:** Panel Solar + Batería 18650\n- **Instrucciones:** 1. Insertar chip SIM...",
+  "marketing_details": "Enfatizar que no requiere WiFi ni electricidad. Ideal para fincas y depósitos.",
+  "category_id": "01a1b8dc-dd82-73cb-8e37-99fb5265bd0e",
+  "official_price": 550.0,
+  "minimum_price": 480.0,
+  "published_price": 520.0,
+  "currency": "BOB"
+}
+```
+
+### C. Actualizar Ficha Maestra (`PUT /api/commerce/product-masters/{id}`)
+
+* **`item_number`**: **Es inmutable**. No se puede modificar una vez creada la ficha.
+* **`cover_image_url`**: **Es de solo lectura**. No se edita por este endpoint ni se escribe a mano; se sincroniza automáticamente desde la galería multimedia (`/images`) mediante la subida de fotos o el botón "Fijar como portada" para garantizar consistencia total con Cloudinary.
+* **`code`**: Se puede actualizar con un nuevo código de barras o limpiar a `null`.
+
+```http
+PUT /api/commerce/product-masters/01a1c785-02b3-7641-bb12-9988aa112233
+Content-Type: application/json
+```
+```json
+{
+  "official_price": 190.0,
+  "minimum_price": 150.0,
+  "code": "0848061058498"
+}
+```
+
+### D. Obtener Total de Fichas Maestras
 ```http
 GET /api/commerce/product-masters/count?category_id=<uuid>&search=reloj
 ```
@@ -144,18 +192,360 @@ GET /api/commerce/product-masters/count?category_id=<uuid>&search=reloj
 }
 ```
 
-### C. Obtener por Número Numérico Directo
+### E. Obtener por Número Numérico Directo
 ```http
 GET /api/commerce/product-masters/by-number/53
 ```
 
+### F. Resolver Flexiblemente por Número, Código o SKU
+```http
+GET /api/commerce/product-masters/resolve/NOV-053
+GET /api/commerce/product-masters/resolve/53
+GET /api/commerce/product-masters/resolve/7751234567890
+```
+
 ---
 
-## 🏷️ 3. Inventario Físico por Caja (`/api/commerce/products`)
+## 📸 3. Gestión Multi-Fotografía y Galería Multimedia (`/api/commerce/product-masters/{id}/images`)
 
-Representa las existencias físicas asociadas a una caja o lote de importación.
+El sistema cuenta con un motor completo de multi-fotografía conectado a Cloudinary con compresión WebP automática, categorización por tipo y carpetas estructuradas.
 
-### A. Listar Inventario Físico
+### A. Estructura de Carpetas en Cloudinary
+Las imágenes se guardan de forma aislada y ordenada:
+```
+uyuni/products/{item_number}/{image_type}/
+```
+- **`CATALOG`** (`uyuni/products/242/catalog/`): Fotos de alta calidad para e-commerce / PWA y catálogo web (editadas, fondo blanco o ambientadas).
+- **`REAL`** (`uyuni/products/242/real/`): Fotos tomadas en almacén (unboxing, producto real, estado físico) para consultas de clientes.
+- **`MARKETING`** (`uyuni/products/242/marketing/`): Creativos para redes sociales generados por NovaBox (TikTok, Facebook, historias).
+- **`BANNER`** (`uyuni/products/242/banner/`): Creativos panorámicos o banners publicitarios.
+
+---
+
+### B. Subida Masiva de Fotografías (Drag & Drop)
+Soporta subir de 1 a 10+ fotos simultáneamente en una sola llamada multipart:
+
+```http
+POST /api/commerce/product-masters/{id}/images
+Content-Type: multipart/form-data
+```
+
+#### Parámetros del Formulario (`multipart/form-data`):
+- `files`: Lista de archivos binarios (JPG, PNG, WEBP, GIF, AVIF, máx 10 MB por archivo).
+- `image_type`: `"CATALOG"` (default), `"REAL"`, `"MARKETING"`, o `"BANNER"`.
+- `is_cover`: `true` | `false` (si es `true`, o si la ficha aún no tiene foto de portada, la primera imagen de esta tanda se asigna automáticamente como portada oficial).
+- `product_id`: `UUID | null` (opcional: si se desea vincular la foto a una unidad física específica de lote).
+
+#### Ejemplo de Respuesta:
+```json
+[
+  {
+    "id": "01a1c787-1234-5678-90ab-cdef12345678",
+    "product_master_id": "01a1c785-02b3-7641-bb12-9988aa112233",
+    "product_id": null,
+    "url": "https://res.cloudinary.com/novalabs-bo/image/upload/v1794590000/uyuni/products/53/catalog/IMG_01.webp",
+    "public_id": "uyuni/products/53/catalog/IMG_01",
+    "image_type": "CATALOG",
+    "title": "IMG_01.jpg",
+    "original_filename": "IMG_01.jpg",
+    "file_size_bytes": 145890,
+    "width": 1200,
+    "height": 1200,
+    "format": "webp",
+    "is_cover": true,
+    "sort_order": 1,
+    "created_at": "2026-11-13T16:00:00Z",
+    "updated_at": "2026-11-13T16:00:00Z"
+  }
+]
+```
+
+---
+
+### C. Listar Galería de la Ficha Maestra
+```http
+GET /api/commerce/product-masters/{id}/images?image_type=CATALOG
+```
+Retorna todas las imágenes ordenadas por `sort_order ASC, created_at ASC`.
+
+> [!NOTE]
+> Al consultar la Ficha Maestra individual (`GET /api/commerce/product-masters/{id}` o `/by-number/{item_number}`), la respuesta ya incluye directamente el arreglo `images: list[ProductImageRead]` y el contador `images_count: int`.
+
+---
+
+### D. Definir Fotografía como Portada Oficial
+```http
+PATCH /api/commerce/product-masters/{id}/images/{image_id}/cover
+```
+Marca la imagen seleccionada como `is_cover=True`, desmarca las demás y sincroniza automáticamente `ProductMaster.cover_image_url`.
+
+---
+
+### E. Reordenar Imágenes (Drag & Drop)
+Para guardar el nuevo orden tras arrastrar imágenes en la interfaz de Angular/PrimeNG:
+```http
+PUT /api/commerce/product-masters/{id}/images/reorder
+Content-Type: application/json
+```
+```json
+[
+  { "id": "01a1c787-1234-5678-90ab-cdef12345678", "sort_order": 1 },
+  { "id": "01a1c787-9999-5678-90ab-cdef12345678", "sort_order": 2 }
+]
+```
+
+---
+
+### F. Actualizar Metadatos de Imagen
+```http
+PATCH /api/commerce/product-masters/{id}/images/{image_id}
+Content-Type: application/json
+```
+```json
+{
+  "title": "Fotografía en ángulo de 45°",
+  "image_type": "CATALOG"
+}
+```
+
+---
+
+### G. Eliminar Fotografía
+```http
+DELETE /api/commerce/product-masters/{id}/images/{image_id}
+```
+Elimina el archivo físico de Cloudinary (usando su `public_id`) y el registro de la base de datos. Si la foto eliminada era la portada oficial, el backend reasigna automáticamente la siguiente foto disponible como portada.
+
+---
+
+### H. Ejemplo de Implementación en PrimeNG 21 (Angular)
+```html
+<!-- Subida Masiva con Drag & Drop en pestaña Marketing y Redes -->
+<p-fileupload 
+    mode="advanced" 
+    name="files" 
+    [url]="uploadUrl" 
+    [multiple]="true" 
+    accept="image/*" 
+    maxFileSize="10485760"
+    (onUpload)="onUploadSuccess($event)">
+</p-fileupload>
+
+<!-- Galería con badges y acciones -->
+<div class="grid grid-cols-4 gap-4 mt-4">
+  <div *ngFor="let img of master.images" class="relative group border rounded-lg overflow-hidden">
+    <img [src]="img.url" [alt]="img.title" class="w-full h-36 object-cover" />
+    <span *ngIf="img.is_cover" class="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+      Portada
+    </span>
+    <span class="absolute top-2 right-2 bg-slate-800/80 text-white text-xs px-1.5 py-0.5 rounded">
+      {{ img.image_type }}
+    </span>
+    <div class="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <button *ngIf="!img.is_cover" (click)="setAsCover(img)" class="p-button-sm p-button-secondary" title="Fijar como portada">★</button>
+      <button (click)="deleteImage(img)" class="p-button-sm p-button-danger" title="Eliminar">🗑</button>
+    </div>
+  </div>
+</div>
+```
+
+---
+
+## 🔗 3.1 Gestión de Enlaces Externos y Publicaciones de Marketplace (`/api/commerce/product-masters/{id}/links`)
+
+Permite almacenar tanto enlaces de portales internacionales de referencia técnica (Amazon UK, Amazon ES, eBay, Alibaba, AliExpress, Walmart, MercadoLibre, YouTube, TikTok, etc.) como publicaciones comerciales propias activas (Facebook Marketplace, MercadoLibre propio, TikTok Shop, etc.). Soporta múltiples publicaciones por producto (por ejemplo, publicaciones simultáneas de diferentes miembros del equipo como Liz y Henry).
+
+### 🏷️ Tipos de Enlace (`link_type`)
+- **`REFERENCE`** (default): Enlaces de especificaciones técnicas, videos, reseñas y fichas de fabricantes o proveedores mayoristas.
+- **`MARKETPLACE`**: Enlaces directos a publicaciones de venta comercial activas en Facebook Marketplace, MercadoLibre, grupos de venta, etc.
+  - Al agregar un enlace de tipo `MARKETPLACE`, el sistema activa automáticamente `is_published_marketplace = true` en la ficha maestra.
+
+### 🧠 Clasificación Automática de la Industria (Zero-Boilerplate)
+**El usuario NO necesita seleccionar el portal de una lista desplegable**: Al pegar cualquier URL externa, el backend analiza la estructura del enlace y clasifica automáticamente el portal y la etiqueta amigable:
+- `https://www.facebook.com/marketplace/item/...` ➔ `portal: "FACEBOOK"`, `label: "Facebook Marketplace"`
+- `https://www.amazon.co.uk/...` ➔ `portal: "AMAZON"`, `label: "Amazon UK"`
+- `https://www.amazon.es/...` ➔ `portal: "AMAZON"`, `label: "Amazon España"`
+- `https://www.ebay.com/...` ➔ `portal: "EBAY"`, `label: "eBay"`
+- `https://spanish.alibaba.com/...` ➔ `portal: "ALIBABA"`, `label: "Alibaba"`
+- `https://es.aliexpress.com/...` ➔ `portal: "ALIEXPRESS"`, `label: "AliExpress"`
+- `https://www.walmart.com/...` ➔ `portal: "WALMART"`, `label: "Walmart"`
+- `https://articulo.mercadolibre...` ➔ `portal: "MERCADOLIBRE"`, `label: "MercadoLibre"`
+- `https://www.youtube.com/...` ➔ `portal: "YOUTUBE"`, `label: "YouTube"`
+- `https://www.tiktok.com/...` ➔ `portal: "TIKTOK"`, `label: "TikTok"`
+- Cualquier otro dominio ➔ `portal: "OTHER"`, `label: "<Dominio>"`
+
+El usuario puede opcionalmente sobrescribir el `label` con etiquetas operativas clave (ej: *"Marketplace - Liz (La Paz)"*, *"Marketplace - Henry (Central)"*, *"Alibaba Proveedor Directo"*).
+
+---
+
+### A. Agregar Enlace Externo / Publicación
+```http
+POST /api/commerce/product-masters/{id}/links
+Content-Type: application/json
+```
+```json
+{
+  "url": "https://www.facebook.com/marketplace/item/999111/",
+  "link_type": "MARKETPLACE",
+  "label": "Marketplace - Liz (La Paz)",
+  "is_primary": true,
+  "is_public": true
+}
+```
+*Si es el primer enlace de su tipo (`REFERENCE` o `MARKETPLACE`), se marcará automáticamente como enlace principal de esa categoría y se reflejará en `ProductMaster.external_info_url` o `ProductMaster.marketplace_url`.*  
+*Si el enlace es un proveedor mayorista privado (Alibaba, 1688), configurar `is_public: false` para que nunca se exponga en la PWA a clientes.*
+
+#### Ejemplo de Respuesta:
+```json
+{
+  "id": "01932456-789a-7b3c-8d1e-2f3a4b5c6d7e",
+  "product_master_id": "019323c0-bf22-77e8-b710-bb2bb4e2baee",
+  "url": "https://www.facebook.com/marketplace/item/999111/",
+  "portal": "FACEBOOK",
+  "link_type": "MARKETPLACE",
+  "label": "Marketplace - Liz (La Paz)",
+  "is_primary": true,
+  "is_public": true,
+  "sort_order": 1,
+  "created_at": "2026-11-13T18:30:00Z",
+  "updated_at": "2026-11-13T18:30:00Z"
+}
+```
+
+---
+
+### B. Listar Enlaces con Filtros
+```http
+GET /api/commerce/product-masters/{id}/links?link_type=MARKETPLACE&only_public=false
+```
+- `link_type`: `'REFERENCE'` o `'MARKETPLACE'` (opcional, sin este parámetro retorna ambos).
+- `only_public=true`: Retorna únicamente los enlaces marcados como visibles para clientes (ideal para la PWA de catálogo).
+- `only_public=false` (default): Retorna todos los enlaces.
+
+> [!NOTE]
+> Al obtener la Ficha Maestra (`GET /api/commerce/product-masters/{id}`), el objeto ya incluye directamente:
+> - `reference_links`: Lista de enlaces de referencia técnica (`ProductMasterExternalLinkRead`).
+> - `reference_links_count`: Cantidad de enlaces de referencia.
+> - `marketplace_links`: Lista de publicaciones comerciales activas (`ProductMasterExternalLinkRead`).
+> - `marketplace_links_count`: Cantidad de publicaciones registradas.
+> - `external_links`: Todos los enlaces juntos.
+> - `external_info_url`: URL del enlace principal de referencia activa.
+> - `marketplace_url`: URL de la publicación principal activa en Marketplace.
+
+---
+
+### C. Designar Enlace como Principal
+```http
+PATCH /api/commerce/product-masters/{id}/links/{link_id}/primary
+```
+Marca este enlace como `is_primary: true`, desmarca los demás y actualiza inmediatamente la propiedad `external_info_url` de la ficha.
+
+---
+
+### D. Reordenar Enlaces (Drag & Drop)
+```http
+PUT /api/commerce/product-masters/{id}/links/reorder
+Content-Type: application/json
+```
+```json
+[
+  { "id": "01932456-789a-7b3c-8d1e-2f3a4b5c6d7e", "sort_order": 1 },
+  { "id": "01932456-9999-7b3c-8d1e-2f3a4b5c6d7e", "sort_order": 2 }
+]
+```
+
+---
+
+### E. Actualizar Metadatos de Enlace
+```http
+PATCH /api/commerce/product-masters/{id}/links/{link_id}
+Content-Type: application/json
+```
+```json
+{
+  "label": "Ficha Oficial Proveedor Shenzhen",
+  "url": "https://spanish.alibaba.com/p-detail/sample.html",
+  "is_public": false
+}
+```
+
+---
+
+### F. Eliminar Enlace Externo
+```http
+DELETE /api/commerce/product-masters/{id}/links/{link_id}
+```
+Si el enlace eliminado era el principal de su categoría (`REFERENCE` o `MARKETPLACE`), el backend promueve automáticamente el siguiente enlace disponible en la secuencia como principal.
+
+---
+
+### G. Implementación UI Recomendada en Angular (PrimeNG 21)
+
+Para mantener la interfaz intuitiva en el diálogo de Ficha Maestra:
+1. En la pestaña **"Marketing y Redes"**, separar dos bloques organizados o un sub-tab:
+   - **"Publicaciones Activas en Marketplace"** (`marketplace_links`):
+     - Muestra un tag con el portal (Facebook / MercadoLibre), la etiqueta asignada (ej. *"Liz - La Paz"*, *"Henry - Central"*), y la fecha de publicación (`created_at`).
+     - Botón directo para abrir el enlace en una nueva pestaña del navegador.
+     - Botón para designar publicación principal.
+     - Formulario rápido: pegar URL, etiqueta (opcional) y botón *"Agregar Publicación"*.
+   - **"Referencias y Especificaciones de Fabricante"** (`reference_links`):
+     - Muestra los enlaces de Amazon, eBay, Alibaba con badges de portal.
+     - Switch de visibilidad pública (`is_public`) para ocultar proveedores mayoristas confidenciales.
+     - Estrella para designar el enlace principal de especificaciones.
+
+---
+
+## 🖼️ 3.2 Optimización de Rendimiento con Cloudinary (Transformaciones Dinámicas en Frontend)
+
+Las fotos subidas a Cloudinary se almacenan en resolución original (1600×1600 o 2048×2048). **Nunca se debe renderizar la URL cruda en tablas o miniaturas pequeñas**, ya que consume ancho de banda y ralentiza la aplicación.
+
+### A. Pipe de Angular Reutilizable (`CloudinaryPipe`)
+Crear en `src/app/shared/pipes/cloudinary.pipe.ts`:
+
+```typescript
+import { Pipe, PipeTransform } from '@angular/core';
+
+@Pipe({
+  name: 'cloudinary',
+  standalone: true,
+})
+export class CloudinaryPipe implements PipeTransform {
+  transform(
+    url: string | null | undefined,
+    size: 'thumb' | 'card' | 'zoom' | 'original' = 'card'
+  ): string {
+    if (!url) return 'assets/images/no-image.png';
+    if (!url.includes('cloudinary.com') || size === 'original') return url;
+
+    const transformations: Record<string, string> = {
+      // 100x100 px, recorte inteligente centrado en el objeto, auto WebP/AVIF (ideal para tablas)
+      thumb: 'w_100,h_100,c_fill,g_auto,q_auto,f_auto',
+      // 400x400 px, ajustado proporcionalmente (ideal para tarjetas y galerías modales)
+      card: 'w_400,h_400,c_pad,b_white,q_auto,f_auto',
+      // 1200 px máx, alta resolución optimizada (para visor a pantalla completa o zoom)
+      zoom: 'w_1200,c_limit,q_auto,f_auto',
+    };
+
+    return url.replace('/image/upload/', `/image/upload/${transformations[size]}/`);
+  }
+}
+```
+
+### B. Uso en Templates de Angular
+```html
+<!-- En la tabla de catálogo (miniatura rápida de 48px que pesa ~3 KB en vez de 400 KB) -->
+<img [src]="master.cover_image_url | cloudinary:'thumb'" class="w-10 h-10 rounded object-cover shadow-sm" />
+
+<!-- En la galería de fotos del modal de Ficha Maestra -->
+<img [src]="img.url | cloudinary:'card'" class="w-full h-44 object-contain rounded" />
+
+<!-- En visor a pantalla completa / zoom -->
+<img [src]="selectedImage.url | cloudinary:'zoom'" class="max-h-[85vh] object-contain mx-auto" />
+```
+
+---
+
+## 🏷️ 4. Inventario Físico por Caja (`/api/commerce/products`)
 ```http
 GET /api/commerce/products/?batch_id=<uuid>&master_product_id=<uuid>&status=AVAILABLE
 ```
@@ -207,7 +597,7 @@ PUT /api/commerce/products/<product_id>
 
 ---
 
-## 💰 4. Transacciones de Venta (`/api/commerce/sales`)
+## 💰 5. Transacciones de Venta (`/api/commerce/sales`)
 
 Permite registrar transacciones comerciales atómicas con soporte para logística y pagos bolivianos.
 
@@ -284,7 +674,7 @@ El backend genera el código de venta (`VTA-YYYYMMDD-XXXXXX`), asocia el costo u
 
 ---
 
-## 🎛️ 5. Módulo Unificado de Catálogos y Parámetros (`/commerce/catalogs`)
+## 🎛️ 6. Módulo Unificado de Catálogos y Parámetros (`/commerce/catalogs`)
 
 ### 5.1. Estándar de Industria: Separación de Flujo Operativo vs. Catálogos Maestros
 En sistemas ERP de clase mundial (Shopify, Stripe, Odoo, SAP), los elementos de la interfaz se dividen en:

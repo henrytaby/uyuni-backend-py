@@ -13,15 +13,16 @@ La documentación completa, modular y profesional del módulo de **Commerce** se
 2. **[01. Arquitectura y Reglas de Negocio](./commerce/01_ARCHITECTURE.md):**
    - Clean Architecture y patrón DDD-Lite.
    - Separación entre Ficha Comercial Maestra (`ProductMaster`) e Inventario Físico (`Product`).
-   - Reglas críticas: piso mínimo de regateo (`minimum_price`), costeo por lote, absorción de mermas y ventas atómicas.
+   - Reglas críticas: piso mínimo de regateo (`minimum_price`), costeo por lote, absorción de mermas, ventas atómicas, motor multi-foto en Cloudinary y secuencias atómicas.
 
 3. **[02. Diccionario de Base de Datos](./commerce/02_DATABASE_DICTIONARY.md):**
    - Diagrama Entidad-Relación (ERD) oficial en Mermaid.
-   - Diccionario exhaustivo campo por campo de las 9 tablas, tipos, índices, claves foráneas y columnas de auditoría.
+   - Diccionario exhaustivo campo por campo de las 10 tablas, tipos, índices, claves foráneas y columnas de auditoría.
 
 4. **[03. Guía de Integración Frontend](./commerce/03_FRONTEND_INTEGRATION_GUIDE.md):**
    - Consumo de API para Angular 21 y React PWA.
    - Carga masiva de catálogos en una sola petición (`POST /api/catalogs/bulk`).
+   - Gestión multi-fotografía: subida masiva drag & drop de 10+ fotos, galería y portada automática.
    - Endpoints, parámetros query, contratos JSON y respuestas enriquecidas con existencias consolidadas.
 
 5. **[04. Flujo Operativo y Ciclo de Vida](./commerce/04_OPERATIONAL_WORKFLOW.md):**

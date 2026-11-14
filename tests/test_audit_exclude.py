@@ -115,4 +115,3 @@ def test_audit_exclude_system_entities_and_noop_updates(
     logs_after = len(session.exec(task_logs_query).all())
     # Count should not increase because there were no actual attribute changes
     assert logs_after == logs_before
-

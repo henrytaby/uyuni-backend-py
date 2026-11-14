@@ -35,14 +35,10 @@ def test_media_upload_requires_auth(client: TestClient):
     assert res.status_code == 401
 
 
-def test_media_upload_rejects_invalid_mime_type(
-    client: TestClient, auth_headers: dict
-):
+def test_media_upload_rejects_invalid_mime_type(client: TestClient, auth_headers: dict):
     """Uploading non-image files (e.g. PDF or plain text) must return 400."""
     files = {"file": ("doc.pdf", b"%PDF-1.4...", "application/pdf")}
-    res = client.post(
-        "/api/core/media/upload", files=files, headers=auth_headers
-    )
+    res = client.post("/api/core/media/upload", files=files, headers=auth_headers)
     assert res.status_code == 400
     assert "no permitido" in res.json()["detail"].lower()
 
@@ -83,9 +79,7 @@ def test_media_upload_success_mocked(client: TestClient, auth_headers: dict):
         assert data["height"] == 500
 
 
-def test_media_upload_fails_when_not_configured(
-    client: TestClient, auth_headers: dict
-):
+def test_media_upload_fails_when_not_configured(client: TestClient, auth_headers: dict):
     """When Cloudinary credentials are missing, API returns a clear 400 error."""
     with patch(
         "app.core.storage.cloudinary_service.cloudinary_service.is_configured",
@@ -113,8 +107,7 @@ def test_extract_public_id_from_url():
 
     url2 = "https://res.cloudinary.com/novalabs-bo/image/upload/uyuni/products/sku_100.webp"
     assert (
-        cloudinary_service.extract_public_id_from_url(url2)
-        == "uyuni/products/sku_100"
+        cloudinary_service.extract_public_id_from_url(url2) == "uyuni/products/sku_100"
     )
 
     url3 = "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
@@ -222,5 +215,3 @@ def test_patch_avatar_null_or_empty_cleans_cloudinary(
         mock_delete.assert_called_once_with(
             "https://res.cloudinary.com/novalabs-bo/image/upload/v10/uyuni/avatars/avatar_10.png"
         )
-
-

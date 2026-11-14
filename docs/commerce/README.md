@@ -25,9 +25,9 @@ La documentación se encuentra organizada en 4 volúmenes especializados según 
 
 | Documento | Audiencia | Contenido Principal |
 | :--- | :--- | :--- |
-| **[01. Arquitectura y Reglas de Negocio](./01_ARCHITECTURE.md)** | Arquitectos, Tech Leads, Backend Devs | Patrón DDD-Lite, Clean Architecture, separación Ficha Maestra vs. Lote, reglas de negocio críticas, transacciones y diagramas de flujo. |
-| **[02. Diccionario de Base de Datos](./02_DATABASE_DICTIONARY.md)** | DBAs, Fullstack Devs, Auditores | Diagrama Entidad-Relación (ERD) completo y descripción detallada campo por campo de las 9 tablas, tipos, índices y claves foráneas. |
-| **[03. Guía de Integración Frontend](./03_FRONTEND_INTEGRATION_GUIDE.md)** | Frontend Devs (Angular, React) | Consumo de la API REST, autenticación, carga masiva de catálogos (`/api/catalogs/bulk`), búsqueda inteligente, filtros y ejemplos de payloads JSON. |
+| **[01. Arquitectura y Reglas de Negocio](./01_ARCHITECTURE.md)** | Arquitectos, Tech Leads, Backend Devs | Patrón DDD-Lite, Clean Architecture, separación Ficha Maestra vs. Lote, reglas de negocio críticas, motor multi-foto en Cloudinary, secuencias atómicas y diagramas de flujo. |
+| **[02. Diccionario de Base de Datos](./02_DATABASE_DICTIONARY.md)** | DBAs, Fullstack Devs, Auditores | Diagrama Entidad-Relación (ERD) completo y descripción detallada campo por campo de las 10 tablas, tipos, índices y claves foráneas. |
+| **[03. Guía de Integración Frontend](./03_FRONTEND_INTEGRATION_GUIDE.md)** | Frontend Devs (Angular, React) | Consumo de la API REST, autenticación, carga masiva de catálogos (`/api/catalogs/bulk`), subida masiva de fotos, galería multimedia, filtros y ejemplos de payloads JSON. |
 | **[04. Flujo Operativo y Ciclo de Vida](./04_OPERATIONAL_WORKFLOW.md)** | Operadores, Gestores de Almacén, Devs | Ciclo de vida didáctico paso a paso: desde el desempaque de una caja de liquidación, inspección y merma, hasta la venta en live y el cierre de lote. |
 
 ---

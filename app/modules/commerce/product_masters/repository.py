@@ -8,7 +8,7 @@ from app.modules.commerce.product_masters.models import ProductMaster
 
 
 class ProductMasterRepository(BaseRepository[ProductMaster]):
-    searchable_fields = ["code", "name", "brand", "model", "features"]
+    searchable_fields = ["code", "name", "brand", "model", "description", "features"]
 
     def __init__(self, session: Session):
         super().__init__(session, ProductMaster)
@@ -23,6 +23,7 @@ class ProductMasterRepository(BaseRepository[ProductMaster]):
             col(ProductMaster.name).ilike(search_term),
             col(ProductMaster.brand).ilike(search_term),
             col(ProductMaster.model).ilike(search_term),
+            col(ProductMaster.description).ilike(search_term),
             col(ProductMaster.features).ilike(search_term),
         ]
         cleaned = (
@@ -39,7 +40,9 @@ class ProductMasterRepository(BaseRepository[ProductMaster]):
         )
         return self.session.exec(statement).first()
 
-    def get_by_code(self, code: str) -> ProductMaster | None:
+    def get_by_code(self, code: str | None) -> ProductMaster | None:
+        if not code:
+            return None
         statement = select(ProductMaster).where(ProductMaster.code == code)
         return self.session.exec(statement).first()
 

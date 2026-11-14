@@ -80,7 +80,8 @@ classDiagram
         +float minimum_price (140.0)
         +float published_price (160.0)
         +str cover_image_url
-        +str marketplace_url
+        +str external_info_url (computed)
+        +str marketplace_url (computed)
         +bool is_reviewed
         +bool is_published_marketplace
     }
@@ -107,8 +108,39 @@ classDiagram
         +float unit_cost
     }
 
+    class ProductMasterImage {
+        +UUID id
+        +UUID product_master_id
+        +UUID product_id
+        +str url
+        +str public_id
+        +str image_type ("CATALOG", "REAL", "MARKETING", "BANNER")
+        +str title
+        +str original_filename
+        +int file_size_bytes
+        +int width
+        +int height
+        +str format ("webp")
+        +bool is_cover
+        +int sort_order
+    }
+
+    class ProductMasterExternalLink {
+        +UUID id
+        +UUID product_master_id
+        +str url
+        +str portal ("AMAZON", "EBAY", "ALIBABA", "ALIEXPRESS", "WALMART", "MERCADOLIBRE", "FACEBOOK", "TIKTOK", "OTHER")
+        +str link_type ("REFERENCE", "MARKETPLACE")
+        +str label ("Amazon UK", "Facebook Marketplace - Liz", "Marketplace - Henry")
+        +bool is_primary
+        +bool is_public
+        +int sort_order
+    }
+
     ProductMaster "1" <-- "*" Product : Referencia de Identidad y Precios
     Batch "1" <-- "*" Product : Procedencia y Costo Físico
+    ProductMaster "1" <-- "*" ProductMasterImage : Galería Multimedia y Creativos de Catálogo
+    ProductMaster "1" <-- "*" ProductMasterExternalLink : Enlaces de Referencia y Publicaciones en Marketplace
 ```
 
 ### Justificación de Negocio:
@@ -179,4 +211,62 @@ sequenceDiagram
   - Estado y condición física (`status`, `physical_condition`).
   - Número de ítem numérico (`item_number` si el término es numérico).
 - **En `ProductMasterRepository`:** Normaliza automáticamente búsquedas con caracteres comunes como `#53`, `NOV-53`, `NOV-053` o simplemente `53`.
+
+---
+
+### 5. Motor de Multi-Fotografía y Gestión Multimedia (Cloudinary Engine)
+
+El subsistema de imágenes implementa un patrón híbrido que combina la normalización relacional para galerías multi-foto con la desnormalización estratégica para lecturas de alto rendimiento:
+
+```mermaid
+flowchart TD
+    subgraph Storage ["Cloudinary CDN (Almacenamiento Físico)"]
+        Dir["uyuni/products/{item_number}/{image_type}/"]
+        Dir --> Cat["catalog/ (Web/PWA)"]
+        Dir --> Real["real/ (Almacén/Unboxing)"]
+        Dir --> Mkt["marketing/ (TikTok/Banners)"]
+    end
+
+    subgraph Database ["PostgreSQL (uyuni_prod)"]
+        Master["commerce_product_master\ncover_image_url (O(1) lectura rápida)"]
+        Images["commerce_product_image\nurl, public_id, image_type, is_cover, sort_order"]
+        Master -->|"1:N"| Images
+    end
+
+    Images -.->|Sincroniza automáticamente| Master
+```
+
+#### Reglas de Implementación en Backend:
+1. **Jerarquía Aislada en Cloudinary:**
+   - Todo archivo se sube a la ruta: `uyuni/products/{item_number}/{image_type.lower()}/`.
+   - Se convierte y sirve automáticamente en formato WebP con compresión inteligente (`quality: auto`, `fetch_format: auto`).
+2. **Desnormalización de `cover_image_url`:**
+   - La columna `cover_image_url` en `commerce_product_master` actúa como caché de lectura inmediata para alimentar tablas de Angular y la PWA de clientes sin requerir un `JOIN` a la tabla de imágenes.
+   - **Inmutabilidad en formulario:** El endpoint `PUT /api/commerce/product-masters/{id}` descarta explícitamente `cover_image_url` (`data.pop("cover_image_url", None)`). La portada se modifica **exclusivamente** mediante las acciones de la galería (`/images`).
+3. **Máquina de Estados de Portada:**
+   - **Subida:** Si la ficha maestra no tiene portada, la primera foto subida se convierte automáticamente en portada oficial.
+   - **Fijar Portada (`set_cover_image`):** Se marca `is_cover = True` en la foto seleccionada, `is_cover = False` en las demás, y se sincroniza `master.cover_image_url`.
+   - **Eliminación con Auto-Recuperación (`delete_image`):** Si se borra la foto que era portada, el backend busca la siguiente foto disponible según `sort_order` y la promueve automáticamente como nueva portada. Si no quedan fotos, establece `master.cover_image_url = None`.
+   - **Destrucción en Cloudinary:** Cada eliminación física ejecuta `cloudinary.uploader.destroy(public_id)` para asegurar que no queden activos huérfanos ocupando almacenamiento.
+   - **Cascada al Eliminar Ficha Maestra:** Si se elimina una ficha maestra (`ProductMasterService.delete`), se purgan de Cloudinary todas las fotos asociadas antes de borrar el registro en base de datos.
+
+---
+
+### 6. Autogeneración Atómica del Identificador (`item_number`)
+
+Para evitar cualquier posibilidad de colisión, duplicados o errores cuando múltiples usuarios crean productos simultáneamente:
+
+1. **Secuencia Nativa en Base de Datos:**
+   - Se creó la secuencia atómica en PostgreSQL:
+     ```sql
+     CREATE SEQUENCE commerce_product_master_item_number_seq;
+     ALTER TABLE commerce_product_master 
+     ALTER COLUMN item_number SET DEFAULT nextval('commerce_product_master_item_number_seq');
+     ```
+2. **Consumo Atómico en Memoria:**
+   - En PostgreSQL, la llamada `SELECT nextval('commerce_product_master_item_number_seq')` consume la secuencia directamente en memoria compartida con candado por hardware (*spinlock*). Dos peticiones simultáneas en el mismo microsegundo reciben números correlativos consecutivos independientes (ej: 243 y 244).
+3. **Inmutabilidad Absoluta:**
+   - Ni en `POST` ni en `PUT` el usuario puede definir o alterar `item_number`. Ambos endpoints descartan cualquier valor manual recibido y delegan la numeración a PostgreSQL.
+4. **Hook de Auto-Calibración en Arranque (`main.py`):**
+   - Al iniciar la aplicación, un hook ejecuta `SELECT setval('commerce_product_master_item_number_seq', COALESCE(MAX(item_number), 0))` para asegurar sincronía perfecta incluso tras restauraciones con Navicat o backups manuales de base de datos.
 
