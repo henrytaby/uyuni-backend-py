@@ -74,7 +74,8 @@ async def lifespan(app: FastAPI):
                     "PERFORM setval('commerce_product_master_item_number_seq', "
                     "GREATEST(COALESCE((SELECT MAX(item_number) "
                     "FROM commerce_product_master), 1), 1), "
-                    "(SELECT MAX(item_number) FROM commerce_product_master) IS NOT NULL); "
+                    "(SELECT MAX(item_number) "
+                    "FROM commerce_product_master) IS NOT NULL); "
                     "END IF; END $$;"
                 )
                 session.execute(text(calib_sql))
