@@ -10,6 +10,7 @@ from app.modules.commerce.constants import CommerceModuleSlug
 from app.modules.commerce.rounds.models import InvestmentRound
 from app.modules.commerce.rounds.schemas import (
     InvestmentRoundCreate,
+    InvestmentRoundMetricsRead,
     InvestmentRoundRead,
     InvestmentRoundUpdate,
 )
@@ -119,3 +120,39 @@ def delete_round(
     if not service.delete(id):
         raise NotFoundException(detail="Investment round not found")
     return {"message": "Investment round deleted successfully"}
+
+
+@router.get("/{id}/metrics", response_model=InvestmentRoundMetricsRead)
+def get_round_metrics(
+    id: UUID,
+    session: SessionDep,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
+        )
+    ),
+):
+    service = InvestmentRoundService(session)
+    metrics = service.get_round_metrics(id)
+    if not metrics:
+        raise NotFoundException(detail="Investment round not found")
+    return metrics
+
+
+@router.post("/{id}/recalculate", response_model=InvestmentRoundRead)
+def recalculate_round(
+    id: UUID,
+    session: SessionDep,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.UPDATE,
+        )
+    ),
+):
+    service = InvestmentRoundService(session)
+    round_obj = service.recalculate_round(id)
+    if not round_obj:
+        raise NotFoundException(detail="Investment round not found")
+    return round_obj

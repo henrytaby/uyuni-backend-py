@@ -152,8 +152,8 @@ def allocate_relative_costs(
     id: UUID,
     session: SessionDep,
     basis: str = Query(
-        "official_price",
-        description="Base de ponderación: 'official_price' o 'minimum_price'",
+        "published_price",
+        description="Base: 'published_price', 'official_price' o 'minimum_price'",
     ),
     revalue_sales: bool = Query(
         True, description="Recalcular automáticamente costos y márgenes de ventas"

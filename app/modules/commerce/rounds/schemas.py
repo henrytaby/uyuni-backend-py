@@ -30,3 +30,20 @@ class InvestmentRoundUpdate(BaseModel):
 
 class InvestmentRoundRead(InvestmentRoundBase):
     id: UUID
+
+
+class InvestmentRoundMetricsRead(BaseModel):
+    round_id: UUID
+    code: str
+    name: str
+    status: str
+    capital_invested: float
+    capital_recovered: float
+    net_profit: float
+    break_even_progress_percent: float
+    is_break_even: bool
+    batches_count: int
+    total_items: int
+    available_items: int
+    sold_items: int
+    merma_items: int

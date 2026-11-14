@@ -176,12 +176,30 @@ En el modelo comercial minorista y de importaciones de Uyuni ERP, cada ficha mae
   ```
 - **Excepción autorizada:** Un administrador puede vender por debajo del mínimo (por ejemplo, remate de unidad con raspones leves) enviando explícitamente `allow_below_minimum=True` en el payload de la venta.
 
-### 2. Contabilidad de Costos por Lote y Absorción de Mermas
-- **Regla:** Al comprar una caja de liquidación cerrada (por ejemplo, $4,000 Bs por la caja + $200 Bs de flete = $4,200 Bs costo total), se recibe una cantidad inicial de productos heterogéneos. Si 2 productos llegan rotos o inservibles (**merma**), el costo de la caja no disminuye; en su lugar, **las unidades vendibles restantes deben absorber el costo de las unidades mermadas**.
-- **Fórmula implementada en `BatchService`:**
-  $$\text{sellable\_items\_count} = \text{initial\_items\_count} - \text{merma\_items\_count}$$
-  $$\text{unit\_cost} = \frac{\text{total\_cost}}{\text{sellable\_items\_count}}$$
-- **Cascada automática:** Cada vez que se crea, actualiza o elimina un producto asociado a una caja, o se incrementa su merma (`merma_quantity`), el servicio `BatchService.recalculate_from_products` recalcula automáticamente los conteos, el costo unitario promedio del lote y el estado financiero hacia el punto de equilibrio.
+### 2. Contabilidad de Costos por Lote y Modalidades de Adquisición
+
+El backend soporta tres modalidades de costeo empresarial configurables en `Batch.costing_method`:
+
+1. **Modalidad 1: Caja Mixta / Liquidación (`WEIGHTED_RETAIL` - Retail Inventory Method):**
+   - **Regla:** Al comprar una caja o pallet cerrado a precio ciego (ej: $2,000 Bs por la caja), los productos vendibles absorben el costo total y las mermas (rotos) se excluyen de la ponderación.
+   - **Prorrateo Ponderado por Valor Comercial:** Para evitar distorsiones donde un accesorio barato genere pérdidas y un ítem costoso infle márgenes artificialmente, el costo se distribuye en función del valor esperado de venta (`published_price` con fallback a `official_price` o `minimum_price`):
+     $$w_i = \frac{\text{precio\_referencia}_i \times \text{cantidad}_i}{\sum (\text{precio\_referencia}_j \times \text{cantidad}_j)}$$
+     $$\text{cost\_price}_i = \frac{w_i \times \text{total\_cost}}{\text{cantidad}_i}$$
+   - **Reconciliación de Centavos:** El último ítem absorbe la diferencia por redondeo, garantizando que $\sum (\text{cost\_price} \times \text{cantidad}) = \text{total\_cost}$ al centavo exacto.
+
+2. **Modalidad 2: Reposición Bajo Demanda (`SPECIFIC_ITEM` / Bottom-Up):**
+   - **Regla:** Para compras puntuales a pedido de clientes, el costo real específico se registra en el producto (`Product.cost_price`).
+   - El lote acumula automáticamente de abajo hacia arriba:
+     $$\text{Batch.purchase\_price} = \sum (\text{Product.cost\_price} \times \text{cantidad})$$
+     $$\text{Batch.total\_cost} = \text{Batch.purchase\_price} + \text{Batch.freight\_cost}$$
+
+3. **Modalidad 3: Compra Mayorista Tradicional (`WHOLESALE` / Costeo por Factura):**
+   - Cada producto mantiene su costo unitario negociado de factura y el flete general se prorratea o suma al total del lote.
+
+- **Sincronización Automática con la Ronda de Inversión (`InvestmentRound`):**
+  Cada vez que se crea, actualiza, recalcula o elimina un lote (`Batch`), el servicio notifica a la ronda asociada para actualizar su capital invertido:
+  $$\text{InvestmentRound.capital\_invested} = \sum \text{Batch.total\_cost}$$
+  Y al registrarse ventas (`SaleService`), la ronda evalúa en tiempo real el capital recuperado y avanza su estado hacia el Punto de Equilibrio (`IN_RECOVERY` → `NEAR_BREAKEVEN` → `RECOVERED` → `LIQUIDATED`).
 
 ### 3. Transacción Atómica de Ventas (`SaleService`)
 - **Regla:** Una venta debe ser indivisible. Si la transacción falla en cualquier punto (por ejemplo, stock insuficiente en el segundo producto de un carrito con 3 ítems), la base de datos revierte completamente la operación sin dejar registros parciales.

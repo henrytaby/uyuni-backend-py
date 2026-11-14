@@ -34,6 +34,7 @@ def make_master(
     name: str = "Producto Test",
     official_price: float = 100.0,
     minimum_price: float = 80.0,
+    published_price: float = 0.0,
 ) -> ProductMaster:
     service = ProductMasterService(session)
     existing = service.get_by_item_number(item_number)
@@ -45,6 +46,7 @@ def make_master(
             name=name,
             official_price=official_price,
             minimum_price=minimum_price,
+            published_price=published_price,
         )
     )
 
@@ -1481,3 +1483,239 @@ def test_product_master_external_links_api(
         == "https://www.facebook.com/marketplace/item/888222/"
     )
     assert m_data4["external_info_url"] == "https://www.amazon.es/dp/B00123456"
+
+
+def test_investment_round_and_batch_costing_modalities(
+    client, superuser_token_headers, session: Session
+):
+    from app.modules.commerce.batches.service import BatchService
+    from app.modules.commerce.products.service import ProductService
+    from app.modules.commerce.rounds.models import InvestmentRound
+    from app.modules.commerce.rounds.service import InvestmentRoundService
+    from app.modules.commerce.sales.schemas import SaleCreate, SaleItemCreate
+    from app.modules.commerce.sales.service import SaleService
+
+    round_service = InvestmentRoundService(session)
+    batch_service = BatchService(session)
+    product_service = ProductService(session)
+    sale_service = SaleService(session)
+
+    # 1. Crear Ronda de Inversión 04 con capital inicial 0.0
+    ronda = round_service.create(
+        InvestmentRound(
+            code="RONDA-04-TEST",
+            name="Ronda 4 (Campaña Fin de Año)",
+            capital_invested=0.0,
+            status="ACTIVE",
+        )
+    )
+    assert ronda.capital_invested == 0.0
+    assert ronda.status == "ACTIVE"
+
+    # Verificar métricas iniciales
+    res_m = client.get(
+        f"/api/commerce/rounds/{ronda.id}/metrics",
+        headers=superuser_token_headers,
+    )
+    assert res_m.status_code == 200
+    metrics = res_m.json()
+    assert metrics["capital_invested"] == 0.0
+    assert metrics["batches_count"] == 0
+
+    # 2. Opción 1: Caja Amazon Mixta (WEIGHTED_RETAIL)
+    # Lote cerrado de 2000 Bs (compra 1800 + flete 200)
+    batch_liq = batch_service.create(
+        Batch(
+            code="AMZ-BOX-2026",
+            name="Caja Amazon Liquidación",
+            investment_round_id=ronda.id,
+            costing_method="WEIGHTED_RETAIL",
+            purchase_price=1800.0,
+            freight_cost=200.0,
+        )
+    )
+    assert batch_liq.total_cost == 2000.0
+
+    # La ronda debe haber actualizado automáticamente su capital_invested a 2000.0
+    ronda_refreshed = round_service.get_by_id(ronda.id)
+    assert ronda_refreshed is not None
+    assert ronda_refreshed.capital_invested == 2000.0
+
+    # Añadir productos a la caja de liquidación
+    m_radio = make_master(
+        session,
+        301,
+        "Radio Pantalla Car",
+        published_price=700.0,
+        official_price=800.0,
+        minimum_price=500.0,
+    )
+    m_cable = make_master(
+        session,
+        302,
+        "Cable USB C",
+        published_price=30.0,
+        official_price=35.0,
+        minimum_price=20.0,
+    )
+    m_merma = make_master(
+        session,
+        303,
+        "Foco Roto",
+        published_price=50.0,
+        official_price=50.0,
+        minimum_price=20.0,
+    )
+
+    p_radio = product_service.create(
+        Product(
+            master_product_id=m_radio.id,
+            batch_id=batch_liq.id,
+            initial_quantity=1,
+        )
+    )
+    p_cable = product_service.create(
+        Product(
+            master_product_id=m_cable.id,
+            batch_id=batch_liq.id,
+            initial_quantity=10,
+        )
+    )
+    # Añadir merma física
+    product_service.create(
+        Product(
+            master_product_id=m_merma.id,
+            batch_id=batch_liq.id,
+            initial_quantity=1,
+            merma_quantity=1,
+            physical_condition="DAMAGED_SCRAP",
+        )
+    )
+
+    # Ejecutar prorrateo ponderado por valor comercial (published_price)
+    batch_alloc = batch_service.allocate_relative_costs(
+        batch_liq.id, basis="published_price"
+    )
+    assert batch_alloc is not None
+
+    p_radio_up = product_service.get_by_id(p_radio.id)
+    p_cable_up = product_service.get_by_id(p_cable.id)
+    assert p_radio_up is not None and p_cable_up is not None
+    # Valor base: Radio = 700 * 1 = 700; Cable = 30 * 10 = 300. Total = 1000.
+    # Factor de costo = 2000 / 1000 = 2.0
+    # Costo Radio = 700 * 2.0 = 1400.0
+    # Costo Cable unitario = 30 * 2.0 = 60.0
+    # Cuadre: 1400.0 * 1 + 60.0 * 10 = 2000.0 (exacto a batch_liq.total_cost)
+    assert p_radio_up.cost_price == 1400.0
+    assert p_cable_up.cost_price == 60.0
+
+    # 3. Opción 2: Reposición Bajo Demanda (SPECIFIC_ITEM / Bottom-Up)
+    batch_spot = batch_service.create(
+        Batch(
+            code="SPOT-REORDER-01",
+            name="Reposición a Pedido",
+            investment_round_id=ronda.id,
+            costing_method="SPECIFIC_ITEM",
+            purchase_price=0.0,
+            freight_cost=50.0,
+        )
+    )
+    m_taladro = make_master(
+        session,
+        304,
+        "Taladro Pro",
+        published_price=350.0,
+        minimum_price=300.0,
+    )
+    p_taladro = product_service.create(
+        Product(
+            master_product_id=m_taladro.id,
+            batch_id=batch_spot.id,
+            initial_quantity=2,
+            cost_price=100.0,  # Comprado a 100 Bs c/u
+        )
+    )
+    # Lote de reposición debe calcular automáticamente:
+    # purchase_price = 2 * 100 = 200.0
+    # total_cost = 200 + 50 (flete) = 250.0
+    # unit_cost = 250 / 2 = 125.0
+    batch_spot_up = batch_service.get_by_id(batch_spot.id)
+    assert batch_spot_up is not None
+    assert batch_spot_up.purchase_price == 200.0
+    assert batch_spot_up.total_cost == 250.0
+    assert batch_spot_up.unit_cost == 125.0
+
+    # Y la ronda debe sumar ambos lotes: 2000 + 250 = 2250.0
+    ronda_both = round_service.get_by_id(ronda.id)
+    assert ronda_both is not None
+    assert ronda_both.capital_invested == 2250.0
+
+    # 4. Registrar Ventas y Verificar Break-Even
+    # Venta de Radio a 700 Bs
+    sale_service.create(
+        SaleCreate(
+            customer_name="Cliente A",
+            channel="Marketplace",
+            payment_method="QR",
+            payment_status="COLLECTED",
+            items=[
+                SaleItemCreate(
+                    product_id=p_radio.id, quantity=1, unit_price=700.0
+                )
+            ],
+        )
+    )
+    # Venta de 2 Taladros a 350 Bs c/u (700 Bs)
+    sale_service.create(
+        SaleCreate(
+            customer_name="Cliente B",
+            channel="WhatsApp",
+            payment_method="Efectivo",
+            payment_status="COLLECTED",
+            items=[
+                SaleItemCreate(
+                    product_id=p_taladro.id, quantity=2, unit_price=350.0
+                )
+            ],
+        )
+    )
+
+    # Métricas de ronda tras 1400 Bs recuperados (1400 / 2250 = ~62.22%)
+    res_m2 = client.get(
+        f"/api/commerce/rounds/{ronda.id}/metrics",
+        headers=superuser_token_headers,
+    )
+    assert res_m2.status_code == 200
+    m2 = res_m2.json()
+    assert m2["capital_invested"] == 2250.0
+    assert m2["capital_recovered"] == 1400.0
+    assert m2["is_break_even"] is False
+    assert m2["status"] == "IN_RECOVERY"
+
+    # Venta restante de 10 cables a 90 Bs c/u (900 Bs) -> Total = 1400 + 900 = 2300 Bs
+    sale_service.create(
+        SaleCreate(
+            customer_name="Cliente Mayorista",
+            channel="Marketplace",
+            payment_method="QR",
+            payment_status="COLLECTED",
+            items=[
+                SaleItemCreate(
+                    product_id=p_cable.id, quantity=10, unit_price=90.0
+                )
+            ],
+        )
+    )
+
+    # Ahora capital_recovered (2300) > capital_invested (2250): BREAK-EVEN ALCANZADO
+    res_m3 = client.get(
+        f"/api/commerce/rounds/{ronda.id}/metrics",
+        headers=superuser_token_headers,
+    )
+    assert res_m3.status_code == 200
+    m3 = res_m3.json()
+    assert m3["capital_recovered"] == 2300.0
+    assert m3["net_profit"] == 50.0
+    assert m3["is_break_even"] is True
+    assert m3["available_items"] == 0  # Todo vendido
+    assert m3["status"] == "LIQUIDATED"

@@ -154,8 +154,25 @@ class SaleService:
 
             self.session.add(product)
 
+        # Sincronizar rondas de inversión afectadas por los productos vendidos
+        affected_round_ids: set[UUID] = set()
+        for p_item in prepared_items:
+            prod = p_item["product"]
+            if prod.batch_id:
+                batch = self.session.get(Batch, prod.batch_id)
+                if batch and batch.investment_round_id:
+                    affected_round_ids.add(batch.investment_round_id)
+
         self.session.commit()
         self.session.refresh(sale)
+
+        if affected_round_ids:
+            from app.modules.commerce.rounds.service import InvestmentRoundService
+
+            round_service = InvestmentRoundService(self.session)
+            for r_id in affected_round_ids:
+                round_service.recalculate_round(r_id)
+
         return sale
 
     def get_all(

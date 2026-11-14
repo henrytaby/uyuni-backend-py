@@ -181,6 +181,7 @@ Representa una caja, palet o lote de liquidación cerrado importado desde EEUU.
 | `investment_round_id`| `UUID` | Sí | `NULL` | FK -> `commerce_investment_round.id` | Ronda financiera que fondeó la compra. |
 | `provider` | `VARCHAR(150)` | Sí | `NULL` | — | Proveedor o liquidador de origen (ej: Quicklotz, Direct Liquidation). |
 | `batch_type` | `VARCHAR(150)` | Sí | `NULL` | — | Tipo de contenido (ej: `Electrónicos Pequeños`, `Ataúd Mixto`). |
+| `costing_method` | `VARCHAR(50)` | No | `'WEIGHTED_RETAIL'` | — | Método de costeo: `WEIGHTED_RETAIL` (Prorrateo ponderado), `SPECIFIC_ITEM` (Costo real por ítem), `FLAT_AVERAGE` (Promedio plano). |
 | `purchase_date` | `DATE` | Sí | `NULL` | — | Fecha de compra de la caja. |
 | `purchase_price` | `DOUBLE PRECISION`| No | `0.0` | — | Costo de adquisición de la caja. |
 | `freight_cost` | `DOUBLE PRECISION`| No | `0.0` | — | Flete, aranceles y transporte hasta el almacén. |

@@ -10,6 +10,7 @@ class BatchBase(BaseModel):
     investment_round_id: UUID | None = None
     provider: str | None = None
     batch_type: str | None = None
+    costing_method: str = "WEIGHTED_RETAIL"
     purchase_date: date | None = None
     purchase_price: float = 0.0
     freight_cost: float = 0.0
@@ -34,6 +35,7 @@ class BatchUpdate(BaseModel):
     investment_round_id: UUID | None = None
     provider: str | None = None
     batch_type: str | None = None
+    costing_method: str | None = None
     purchase_date: date | None = None
     purchase_price: float | None = None
     freight_cost: float | None = None

@@ -32,6 +32,11 @@ class Batch(BaseModel, AuditMixin, table=True):
         max_length=150,
         description="Liquidación Electrónicos, Ataúd Amazon, etc.",
     )
+    costing_method: str = Field(
+        default="WEIGHTED_RETAIL",
+        max_length=50,
+        description="WEIGHTED_RETAIL, SPECIFIC_ITEM, o FLAT_AVERAGE",
+    )
     purchase_date: date | None = Field(default=None)
 
     # Costos
