@@ -18,6 +18,9 @@ ACCESS_TOKEN_EXPIRE_MINUTES: int = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS: int = settings.REFRESH_TOKEN_EXPIRE_DAYS
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(
+    tokenUrl="/api/auth/login", auto_error=False
+)
 
 
 def get_password_hash(password: str) -> str:
@@ -74,9 +77,11 @@ def create_access_token(
     return encoded_jwt
 
 
-def decode_token(token: str) -> dict[str, Any]:
+def decode_token(token: str, verify_exp: bool = True) -> dict[str, Any]:
     """Decode a JWT token and return the payload."""
-    payload: dict[str, Any] = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    payload: dict[str, Any] = jwt.decode(
+        token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": verify_exp}
+    )
     return payload
 
 

@@ -209,7 +209,7 @@ class AuthService:
             raise UnauthorizedException(detail="Invalid refresh token") from None
 
         user = utils.get_user(self.session, username)
-        if user is None:
+        if user is None or not user.is_active:
             raise UnauthorizedException(detail="Invalid refresh token")
 
         # Check if the refresh token is already revoked
@@ -221,8 +221,6 @@ class AuthService:
             raise UnauthorizedException(detail="Token has been revoked")
 
         # Revoke the old refresh token (Rotate)
-        # Using 0 as user_id temporarily, or accurate user_id if we want
-        # stricter validation earlier used_id for the record.
         new_revoked_token = UserRevokedToken(token=refresh_token, user_id=user.id)
         self.session.add(new_revoked_token)
         self.session.commit()
@@ -235,61 +233,85 @@ class AuthService:
             "refresh_token": new_refresh_token,
         }
 
-    def logout(self, token: str, refresh_token: str | None = None) -> None:
-        try:
-            payload = utils.decode_token(token)
-            user_id = payload.get("id")
-            if user_id is None:
-                raise UnauthorizedException(detail="Invalid token")
-        except jwt.InvalidTokenError:
-            raise UnauthorizedException(detail="Invalid token") from None
+    def logout(
+        self, token: str | None = None, refresh_token: str | None = None
+    ) -> None:
+        if not token and not refresh_token:
+            raise UnauthorizedException(detail="Token or refresh token required")
 
-        # Check if the access token is already revoked
-        query = select(UserRevokedToken).where(UserRevokedToken.token == token)
-        revoked_token = self.session.exec(query).first()
-        if not revoked_token:
-            user_uuid = uuid.UUID(str(user_id))
-            revoked_token = UserRevokedToken(token=token, user_id=user_uuid)
-            self.session.add(revoked_token)
+        access_user_id: str | None = None
+        refresh_user_id: str | None = None
 
-        # Revoke Refresh Token if provided
+        # 1. Validate Access Token if provided (allowing expired tokens during logout)
+        if token:
+            try:
+                payload = utils.decode_token(token, verify_exp=False)
+                access_user_id = payload.get("id")
+                if access_user_id is None:
+                    raise UnauthorizedException(detail="Invalid token")
+            except jwt.InvalidTokenError:
+                raise UnauthorizedException(detail="Invalid token") from None
+
+        # 2. Validate Refresh Token if provided (allowing expired tokens during logout)
         if refresh_token:
             try:
-                # Validate the refresh token before revoking
-                rf_payload = utils.decode_token(refresh_token)
-                rf_user_id = rf_payload.get("id")
-
-                # Ensure the refresh token belongs to the user
-                if rf_user_id != user_id:
-                    raise UnauthorizedException(
-                        detail="Invalid refresh token ownership"
-                    )
-
-                query_rf = select(UserRevokedToken).where(
-                    UserRevokedToken.token == refresh_token
-                )
-                revoked_rf = self.session.exec(query_rf).first()
-                if not revoked_rf:
-                    user_uuid = uuid.UUID(str(user_id))
-                    revoked_rf = UserRevokedToken(
-                        token=refresh_token, user_id=user_uuid
-                    )
-                    self.session.add(revoked_rf)
-
+                rf_payload = utils.decode_token(refresh_token, verify_exp=False)
+                refresh_user_id = rf_payload.get("id")
+                if refresh_user_id is None:
+                    raise UnauthorizedException(detail="Invalid refresh token")
             except jwt.InvalidTokenError:
-                # If refresh token is garbage or invalid signature, we can choose to:
-                # 1. Ignore it (Log out successfully anyway)
-                # 2. Raise Error (Strict)
-                # Given strict security, raising error is safer
-                # to signal client client issues.
                 raise UnauthorizedException(detail="Invalid refresh token") from None
 
-        # Update the log with logout time
-        log_query = select(UserLogLogin).where(UserLogLogin.token == token)
-        log = self.session.exec(log_query).first()
-        if log:
-            log.logged_out_at = get_current_time()
-            self.session.add(log)
+        # 3. Ensure token ownership matches if both tokens are provided
+        if access_user_id and refresh_user_id:
+            if str(access_user_id) != str(refresh_user_id):
+                raise UnauthorizedException(detail="Invalid refresh token ownership")
+
+        effective_user_id = access_user_id or refresh_user_id
+        if not effective_user_id:
+            raise UnauthorizedException(detail="Could not determine user identity")
+
+        user_uuid = uuid.UUID(str(effective_user_id))
+
+        # 4. Revoke Access Token if provided
+        if token:
+            query = select(UserRevokedToken).where(UserRevokedToken.token == token)
+            revoked_token = self.session.exec(query).first()
+            if not revoked_token:
+                revoked_token = UserRevokedToken(token=token, user_id=user_uuid)
+                self.session.add(revoked_token)
+
+            # Update the log with logout time
+            log_query = select(UserLogLogin).where(UserLogLogin.token == token)
+            log = self.session.exec(log_query).first()
+            if log and not log.logged_out_at:
+                log.logged_out_at = get_current_time()
+                self.session.add(log)
+        else:
+            # If no access token provided, update the latest active session
+            # for this user
+            log_query = (
+                select(UserLogLogin)
+                .where(
+                    UserLogLogin.user_id == user_uuid,
+                    UserLogLogin.logged_out_at.is_(None),  # type: ignore
+                )
+                .order_by(UserLogLogin.created_at.desc())  # type: ignore
+            )
+            log = self.session.exec(log_query).first()
+            if log:
+                log.logged_out_at = get_current_time()
+                self.session.add(log)
+
+        # 5. Revoke Refresh Token if provided
+        if refresh_token:
+            query_rf = select(UserRevokedToken).where(
+                UserRevokedToken.token == refresh_token
+            )
+            revoked_rf = self.session.exec(query_rf).first()
+            if not revoked_rf:
+                revoked_rf = UserRevokedToken(token=refresh_token, user_id=user_uuid)
+                self.session.add(revoked_rf)
 
         self.session.commit()
 

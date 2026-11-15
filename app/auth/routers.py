@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.auth import schemas, utils
 from app.auth.service import AuthService
 from app.core.db import SessionDep
+from app.core.exceptions import BadRequestException
 from app.models.user import User as UserModel
 
 router = APIRouter()
@@ -64,16 +65,25 @@ async def change_password_me(
 
 @router.post("/refresh", response_model=schemas.Token)
 async def refresh_access_token(
-    refresh_token: str, service: AuthService = Depends(get_auth_service)
+    payload: schemas.RefreshTokenRequest | None = None,
+    refresh_token: str | None = Query(
+        default=None,
+        description="Deprecated: pass refresh_token in JSON request body instead",
+    ),
+    service: AuthService = Depends(get_auth_service),
 ):
-    return service.refresh_access_token(refresh_token)
+    token = (
+        payload.refresh_token if payload and payload.refresh_token else None
+    ) or refresh_token
+    if not token or not token.strip():
+        raise BadRequestException(detail="Refresh token is required")
+    return service.refresh_access_token(token)
 
 
 @router.post("/logout", response_model=dict)
 async def logout(
     service: AuthService = Depends(get_auth_service),
-    token: str = Depends(utils.oauth2_scheme),
-    current_user: UserModel = Depends(utils.get_current_user),
+    token: str | None = Depends(utils.oauth2_scheme_optional),
     logout_data: schemas.LogoutRequest | None = None,
 ):
     refresh_token = logout_data.refresh_token if logout_data else None

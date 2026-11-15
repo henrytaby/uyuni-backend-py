@@ -139,8 +139,16 @@ class TokenData(SQLModel):
     username: str | None = None
 
 
+class RefreshTokenRequest(SQLModel):
+    refresh_token: str | None = Field(
+        default=None, description="Token to refresh the access token"
+    )
+
+
 class LogoutRequest(SQLModel):
-    refresh_token: str = Field(description="Refresh token to revoke")
+    refresh_token: str | None = Field(
+        default=None, description="Refresh token to revoke"
+    )
 
 
 # --- RBAC SCHEMAS ---
