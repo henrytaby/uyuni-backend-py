@@ -15,6 +15,7 @@ class ProductMasterImageBase(BaseModel):
     height: int | None = None
     format: str | None = None
     is_cover: bool = False
+    is_public: bool = False
     sort_order: int = 0
 
 
@@ -32,6 +33,7 @@ class ProductMasterImageUpdate(BaseModel):
     title: str | None = None
     image_type: str | None = None
     is_cover: bool | None = None
+    is_public: bool | None = None
     sort_order: int | None = None
 
 
@@ -40,11 +42,16 @@ class ProductMasterImageReorderItem(BaseModel):
     sort_order: int
 
 
+class ProductMasterImageBulkDelete(BaseModel):
+    image_ids: list[UUID]
+
+
 # Aliases de compatibilidad para imágenes de ficha maestra
 ProductImageBase = ProductMasterImageBase
 ProductImageRead = ProductMasterImageRead
 ProductImageUpdate = ProductMasterImageUpdate
 ProductImageReorderItem = ProductMasterImageReorderItem
+ProductImageBulkDelete = ProductMasterImageBulkDelete
 
 
 class ProductMasterExternalLinkBase(BaseModel):

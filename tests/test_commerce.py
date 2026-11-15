@@ -1200,6 +1200,26 @@ def test_product_master_images_api(
         assert res_empty.status_code == 200
         assert len(res_empty.json()) == 0
 
+        # 6. Test Bulk Delete /api/commerce/product-masters/{id}/images/bulk-delete
+        mock_up.side_effect = [mock_resp, mock_resp]
+        res_upload_2 = client.post(
+            f"/api/commerce/product-masters/{master.id}/images",
+            files=[
+                ("files", ("pic1.jpg", b"fake1", "image/jpeg")),
+                ("files", ("pic2.jpg", b"fake2", "image/jpeg")),
+            ],
+            headers=superuser_token_headers,
+        )
+        assert res_upload_2.status_code == 200
+        ids_to_del = [img["id"] for img in res_upload_2.json()]
+        res_bulk_del = client.post(
+            f"/api/commerce/product-masters/{master.id}/images/bulk-delete",
+            json={"image_ids": ids_to_del},
+            headers=superuser_token_headers,
+        )
+        assert res_bulk_del.status_code == 200
+        assert res_bulk_del.json()["deleted_count"] == 2
+
 
 def test_detect_portal_classification():
     portal, label = detect_portal(
@@ -2086,3 +2106,475 @@ def test_batch_integrity_and_financial_status_flow(
     )
     assert res_del_ok.status_code == 200
     assert batch_service.get_by_id(batch_id) is None
+
+
+def test_product_custom_prices_and_automated_status(
+    session: Session, client: TestClient, superuser_token_headers: dict[str, str]
+):
+    """
+    Verifica las reglas de negocio de commerce_product:
+    1. Herencia automática de published_price y minimum_price desde ProductMaster.
+    2. Override de published_price y minimum_price para ítems de lote
+       (ej. cámara solar incompleta: 150 Bs en vez de 700 Bs,
+       min 120 Bs en vez de 550 Bs).
+    3. Automatización estricta de status y available_quantity:
+       - initial=5, merma=2 -> available=3, status=AVAILABLE
+       - merma=initial -> SCRAPPED, condition=DAMAGED_SCRAP
+    4. Uso del precio custom en allocate_relative_costs.
+    5. Venta exitosa a 140 Bs validada contra el mínimo del lote (120 Bs).
+    """
+    master_service = ProductMasterService(session)
+    batch_service = BatchService(session)
+    product_service = ProductService(session)
+    sale_service = SaleService(session)
+
+    # 1. Crear ficha maestra (Cámara Solar de 700 Bs con piso 550 Bs)
+    master = master_service.create(
+        ProductMaster(
+            item_number=501,
+            code="CAM-SOLAR-01",
+            name="Cámara Solar WiFi 360",
+            published_price=700.0,
+            minimum_price=550.0,
+            official_price=800.0,
+            is_active=True,
+        )
+    )
+
+    # Crear caja de importación
+    batch = batch_service.create(
+        Batch(
+            code="BOX-CUSTOM-PRICE",
+            name="Lote Amazon Cámaras",
+            purchase_price=1000.0,
+            freight_cost=0.0,
+        )
+    )
+
+    # 2. Producto 1: Sin override de precios -> Debe heredar 700.0 y 550.0
+    p_standard = product_service.create(
+        Product(
+            master_product_id=master.id,
+            batch_id=batch.id,
+            initial_quantity=2,
+            variant_name="Cámara Completa Nueva",
+        )
+    )
+    assert p_standard.published_price == 700.0
+    assert p_standard.minimum_price == 550.0
+    assert p_standard.available_quantity == 2
+    assert p_standard.status == "AVAILABLE"
+
+    # 3. Producto 2: Cámara incompleta (sin panel solar) -> Override a 150.0 y 120.0
+    p_incomplete = product_service.create(
+        Product(
+            master_product_id=master.id,
+            batch_id=batch.id,
+            initial_quantity=2,
+            published_price=150.0,
+            minimum_price=120.0,
+            physical_condition="INCOMPLETE",
+            defect_detail="Sin panel solar",
+            variant_name="Sin Panel Solar",
+        )
+    )
+    assert p_incomplete.published_price == 150.0
+    assert p_incomplete.minimum_price == 120.0
+    assert p_incomplete.effective_published_price == 150.0
+    assert p_incomplete.effective_minimum_price == 120.0
+
+    # 4. Probar API REST GET /products/{id} retorna precios efectivos
+    res_get = client.get(
+        f"/api/commerce/products/{p_incomplete.id}",
+        headers=superuser_token_headers,
+    )
+    assert res_get.status_code == 200
+    p_data = res_get.json()
+    assert p_data["published_price"] == 150.0
+    assert p_data["minimum_price"] == 120.0
+
+    # 5. Ejecutar distribución relativa de costos (allocate-relative-costs)
+    # Total valor base: 2 * 700 (estándar) + 2 * 150 (incompleto) = 1400 + 300 = 1700
+    # Costo caja: 1000
+    # Costo estándar: round(700 * (1000/1700), 2) = round(411.764, 2) = 411.76
+    # Costo incompleto: round(150 * (1000/1700), 2) = round(88.235, 2) = 88.24
+    # Si hubiera usado 700 para la incompleta, su costo habría sido 250 Bs!
+    batch_service.allocate_relative_costs(batch.id, basis="published_price")
+
+    p_std_updated = product_service.get_by_id(p_standard.id)
+    p_inc_updated = product_service.get_by_id(p_incomplete.id)
+    assert p_std_updated is not None and p_inc_updated is not None
+    assert p_std_updated.cost_price == 411.76
+    assert p_inc_updated.cost_price == 88.24
+
+    # 6. Venta a 140 Bs de la cámara incompleta:
+    # Si se validara contra el maestro (550 Bs), fallaría.
+    # Pero como tiene minimum_price=120 Bs en el lote, ¡la venta pasa exitosamente!
+    sale = sale_service.create(
+        SaleCreate(
+            customer_name="Comprador Cámara Barata",
+            channel="Marketplace",
+            items=[
+                SaleItemCreate(
+                    product_id=p_incomplete.id,
+                    quantity=1,
+                    unit_price=140.0,
+                )
+            ],
+        )
+    )
+    assert sale.total_collected == 140.0
+    # Ganancia neta real: 140 - 88.24 = 51.76 Bs (¡No es pérdida!)
+    assert sale.net_profit == 51.76
+
+    # 7. Verificar actualización de existencias y status post-venta
+    p_inc_after_sale = product_service.get_by_id(p_incomplete.id)
+    assert p_inc_after_sale is not None
+    assert p_inc_after_sale.sold_quantity == 1
+    assert p_inc_after_sale.available_quantity == 1
+    assert p_inc_after_sale.status == "AVAILABLE"
+
+    # 8. Marcar la última unidad restante como merma
+    product_service.update(p_incomplete.id, {"merma_quantity": 1})
+    p_inc_scrapped = product_service.get_by_id(p_incomplete.id)
+    assert p_inc_scrapped is not None
+    assert p_inc_scrapped.available_quantity == 0
+    # Queda en SOLD_OUT porque ya tuvo 1 venta
+    assert p_inc_scrapped.status == "SOLD_OUT"
+
+    # 9. Producto 3: Todo merma desde inicio -> SCRAPPED y DAMAGED_SCRAP
+    p_all_merma = product_service.create(
+        Product(
+            master_product_id=master.id,
+            batch_id=batch.id,
+            initial_quantity=3,
+            merma_quantity=3,
+            variant_name="Llegó Chatarra Rota",
+        )
+    )
+    assert p_all_merma.available_quantity == 0
+    assert p_all_merma.status == "SCRAPPED"
+    assert p_all_merma.physical_condition == "DAMAGED_SCRAP"
+
+
+def test_product_real_images_service_and_api(
+    client: TestClient, session: Session, superuser_token_headers: dict[str, str]
+):
+    from unittest.mock import patch
+
+    master = make_master(session, 1055, "Panel Solar Portátil")
+    batch_service = BatchService(session)
+    batch = batch_service.create(
+        Batch(
+            code="LOTE-SOLAR-01",
+            name="Lote Amazon Solar",
+            purchase_price=1000.0,
+            freight_cost=0.0,
+        )
+    )
+    p_service = ProductService(session)
+    product = p_service.create(
+        Product(
+            master_product_id=master.id,
+            batch_id=batch.id,
+            initial_quantity=2,
+            published_price=350.0,
+            minimum_price=300.0,
+        )
+    )
+
+    mock_resp_1 = {
+        "url": "https://res.cloudinary.com/test/image/upload/v1/uyuni/products/1055/real/foto_almacen_1.webp",
+        "public_id": "uyuni/products/1055/real/foto_almacen_1",
+        "format": "webp",
+        "bytes": 45000,
+        "width": 1280,
+        "height": 720,
+    }
+    mock_resp_2 = {
+        "url": "https://res.cloudinary.com/test/image/upload/v1/uyuni/products/1055/real/foto_almacen_2.webp",
+        "public_id": "uyuni/products/1055/real/foto_almacen_2",
+        "format": "webp",
+        "bytes": 55000,
+        "width": 1280,
+        "height": 720,
+    }
+
+    with (
+        patch(
+            "app.modules.commerce.product_masters.service.cloudinary_service.upload_image"
+        ) as mock_upload,
+        patch(
+            "app.modules.commerce.product_masters.service.cloudinary_service.delete_image"
+        ) as mock_delete,
+    ):
+        mock_upload.side_effect = [mock_resp_1, mock_resp_2]
+        mock_delete.return_value = True
+
+        # 1. Verificar lista vacía inicialmente en API
+        res_empty = client.get(
+            f"/api/commerce/products/{product.id}/images",
+            headers=superuser_token_headers,
+        )
+        assert res_empty.status_code == 200
+        assert res_empty.json() == []
+
+        # 2. Subida vía API POST /api/commerce/products/{id}/images
+        # Por defecto is_public=False
+        files = [
+            ("files", ("caja_abierta.jpg", b"fake-real-photo-1", "image/jpeg")),
+        ]
+        res_post = client.post(
+            f"/api/commerce/products/{product.id}/images",
+            files=files,
+            data={"is_public": "false"},
+            headers=superuser_token_headers,
+        )
+        assert res_post.status_code == 200
+        data_post = res_post.json()
+        assert len(data_post) == 1
+        img1 = data_post[0]
+        assert img1["image_type"] == "REAL"
+        assert img1["is_public"] is False
+        assert img1["product_id"] == str(product.id)
+        assert img1["product_master_id"] == str(master.id)
+        assert img1["url"] == mock_resp_1["url"]
+
+        img1_id = img1["id"]
+
+        # 3. GET /api/commerce/products/{id}/images
+        res_list = client.get(
+            f"/api/commerce/products/{product.id}/images",
+            headers=superuser_token_headers,
+        )
+        assert res_list.status_code == 200
+        assert len(res_list.json()) == 1
+
+        # 4. PATCH /api/commerce/products/{id}/images/{image_id}
+        # Modificar título y activar is_public=True
+        res_patch = client.patch(
+            f"/api/commerce/products/{product.id}/images/{img1_id}",
+            json={"is_public": True, "title": "Foto real de unboxing"},
+            headers=superuser_token_headers,
+        )
+        assert res_patch.status_code == 200
+        data_patch = res_patch.json()
+        assert data_patch["is_public"] is True
+        assert data_patch["title"] == "Foto real de unboxing"
+
+        # 5. Subida directa vía ProductService con is_public=True
+        img2_list = p_service.add_images(
+            product_id=product.id,
+            files_data=[
+                {
+                    "content": b"fake-real-photo-2",
+                    "filename": "unboxing2.png",
+                    "content_type": "image/png",
+                }
+            ],
+            is_public=True,
+        )
+        assert len(img2_list) == 1
+        assert img2_list[0].is_public is True
+        assert img2_list[0].image_type == "REAL"
+        assert img2_list[0].product_id == product.id
+
+        # 5.b Reordenar imágenes (drag & drop)
+        res_reorder = client.put(
+            f"/api/commerce/products/{product.id}/images/reorder",
+            json=[
+                {"id": str(img2_list[0].id), "sort_order": 1},
+                {"id": str(img1_id), "sort_order": 2},
+            ],
+            headers=superuser_token_headers,
+        )
+        assert res_reorder.status_code == 200
+        reordered_data = res_reorder.json()
+        assert reordered_data[0]["id"] == str(img2_list[0].id)
+        assert reordered_data[0]["sort_order"] == 1
+        assert reordered_data[1]["id"] == str(img1_id)
+        assert reordered_data[1]["sort_order"] == 2
+
+        # 6. DELETE /api/commerce/products/{id}/images/{image_id}
+        res_del = client.delete(
+            f"/api/commerce/products/{product.id}/images/{img1_id}",
+            headers=superuser_token_headers,
+        )
+        assert res_del.status_code == 200
+        assert res_del.json()["message"] == "Fotografía eliminada correctamente"
+
+        # 7. Eliminar la restante vía service
+        assert p_service.delete_image(product.id, img2_list[0].id) is True
+        assert len(p_service.get_images(product.id)) == 0
+
+        # 8. Test Bulk Delete /api/commerce/products/{id}/images/bulk-delete
+        mock_upload.side_effect = [mock_resp_1, mock_resp_2]
+        img_bulk_1 = p_service.add_images(
+            product_id=product.id,
+            files_data=[
+                {
+                    "content": b"bulk1",
+                    "filename": "b1.jpg",
+                    "content_type": "image/jpeg",
+                }
+            ],
+        )
+        img_bulk_2 = p_service.add_images(
+            product_id=product.id,
+            files_data=[
+                {
+                    "content": b"bulk2",
+                    "filename": "b2.jpg",
+                    "content_type": "image/jpeg",
+                }
+            ],
+        )
+        res_bulk_p = client.post(
+            f"/api/commerce/products/{product.id}/images/bulk-delete",
+            json={"image_ids": [str(img_bulk_1[0].id), str(img_bulk_2[0].id)]},
+            headers=superuser_token_headers,
+        )
+        assert res_bulk_p.status_code == 200
+        assert res_bulk_p.json()["deleted_count"] == 2
+        assert len(p_service.get_images(product.id)) == 0
+
+
+def test_product_master_images_filter_warehouse_real(
+    client: TestClient, session: Session, superuser_token_headers: dict[str, str]
+):
+    from unittest.mock import patch
+
+    master = make_master(session, 1056, "Proyector Portátil HD")
+    batch_service = BatchService(session)
+    batch = batch_service.create(
+        Batch(
+            code="LOTE-PROY-01",
+            name="Lote Proyectores",
+            purchase_price=500.0,
+            freight_cost=0.0,
+        )
+    )
+    p_service = ProductService(session)
+    product = p_service.create(
+        Product(
+            master_product_id=master.id,
+            batch_id=batch.id,
+            initial_quantity=5,
+            published_price=350.0,
+            minimum_price=300.0,
+        )
+    )
+
+    mock_catalog = {
+        "url": "https://res.cloudinary.com/test/image/upload/v1/uyuni/products/1056/catalog/catalogo.webp",
+        "public_id": "uyuni/products/1056/catalog/catalogo",
+        "format": "webp",
+        "bytes": 20480,
+        "width": 800,
+        "height": 800,
+    }
+    mock_real = {
+        "url": "https://res.cloudinary.com/test/image/upload/v1/uyuni/products/1056/real/almacen_real.webp",
+        "public_id": "uyuni/products/1056/real/almacen_real",
+        "format": "webp",
+        "bytes": 35000,
+        "width": 1024,
+        "height": 768,
+    }
+
+    with (
+        patch(
+            "app.modules.commerce.product_masters.service.cloudinary_service.upload_image"
+        ) as mock_upload,
+        patch(
+            "app.modules.commerce.product_masters.service.cloudinary_service.delete_image"
+        ) as mock_delete,
+    ):
+        mock_upload.side_effect = [mock_catalog, mock_real]
+        mock_delete.return_value = True
+
+        # 1. Subir fotografía de catálogo a la Ficha Maestra
+        res_cat = client.post(
+            f"/api/commerce/product-masters/{master.id}/images",
+            files=[("files", ("catalogo.jpg", b"fake-catalog-bytes", "image/jpeg"))],
+            data={"image_type": "CATALOG", "is_cover": "true"},
+            headers=superuser_token_headers,
+        )
+        assert res_cat.status_code == 200
+        assert len(res_cat.json()) == 1
+
+        # 2. Subir fotografía real de almacén al producto físico específico
+        res_real = client.post(
+            f"/api/commerce/products/{product.id}/images",
+            files=[("files", ("almacen.jpg", b"fake-real-bytes", "image/jpeg"))],
+            data={"is_public": "false"},
+            headers=superuser_token_headers,
+        )
+        assert res_real.status_code == 200
+        assert len(res_real.json()) == 1
+        assert res_real.json()[0]["image_type"] == "REAL"
+        assert res_real.json()[0]["product_id"] == str(product.id)
+
+        # 3. GET /api/commerce/product-masters/{master.id}/images
+        # Por defecto debe excluir la foto real de almacén y devolver solo comercial
+        res_m_imgs = client.get(
+            f"/api/commerce/product-masters/{master.id}/images",
+            headers=superuser_token_headers,
+        )
+        assert res_m_imgs.status_code == 200
+        m_imgs = res_m_imgs.json()
+        assert len(m_imgs) == 1
+        assert m_imgs[0]["url"] == mock_catalog["url"]
+        assert m_imgs[0]["image_type"] == "CATALOG"
+
+        # 4. GET /api/commerce/product-masters/{master.id}/images?image_type=CATALOG
+        res_cat_filter = client.get(
+            f"/api/commerce/product-masters/{master.id}/images?image_type=CATALOG",
+            headers=superuser_token_headers,
+        )
+        assert res_cat_filter.status_code == 200
+        assert len(res_cat_filter.json()) == 1
+        assert res_cat_filter.json()[0]["url"] == mock_catalog["url"]
+
+        # 5. GET /api/commerce/product-masters/{master.id}/images?image_type=REAL
+        # Si se consulta explícitamente con image_type=REAL, respeta el query param
+        res_real_filter = client.get(
+            f"/api/commerce/product-masters/{master.id}/images?image_type=REAL",
+            headers=superuser_token_headers,
+        )
+        assert res_real_filter.status_code == 200
+        assert len(res_real_filter.json()) == 1
+        assert res_real_filter.json()[0]["url"] == mock_real["url"]
+
+        # 6. GET /api/commerce/product-masters/{master.id} (detalle de ficha maestra)
+        # La relación images y el images_count deben excluir fotos de almacén
+        res_detail = client.get(
+            f"/api/commerce/product-masters/{master.id}",
+            headers=superuser_token_headers,
+        )
+        assert res_detail.status_code == 200
+        detail_data = res_detail.json()
+        assert detail_data["images_count"] == 1
+        assert len(detail_data["images"]) == 1
+        assert detail_data["images"][0]["url"] == mock_catalog["url"]
+
+        # 7. GET /api/commerce/product-masters/ (listado)
+        # images_count debe ser 1 (no 2)
+        res_list = client.get(
+            "/api/commerce/product-masters/?search=1056",
+            headers=superuser_token_headers,
+        )
+        assert res_list.status_code == 200
+        list_data = res_list.json()
+        target = next(item for item in list_data if item["id"] == str(master.id))
+        assert target["images_count"] == 1
+
+        # 8. GET /api/commerce/products/{product.id}/images (producto físico)
+        # Debe devolver su fotografía real de almacén
+        res_p_imgs = client.get(
+            f"/api/commerce/products/{product.id}/images",
+            headers=superuser_token_headers,
+        )
+        assert res_p_imgs.status_code == 200
+        assert len(res_p_imgs.json()) == 1
+        assert res_p_imgs.json()[0]["url"] == mock_real["url"]

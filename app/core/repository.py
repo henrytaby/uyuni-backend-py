@@ -57,7 +57,9 @@ class BaseRepository[ModelType: SQLModel]:
             else:
                 statement = statement.order_by(column.asc())
 
-        statement = statement.offset(offset).limit(limit)
+        # Proteger contra ataques DoS de memoria acotando el límite entre 1 y 500
+        safe_limit = min(max(1, limit), 500) if limit is not None else 100
+        statement = statement.offset(offset).limit(safe_limit)
         return self.session.exec(statement).all()  # type: ignore[no-any-return]
 
     def count(

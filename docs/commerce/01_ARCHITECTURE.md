@@ -260,8 +260,10 @@ flowchart TD
 
     subgraph Database ["PostgreSQL (uyuni_prod)"]
         Master["commerce_product_master\ncover_image_url (O(1) lectura rápida)"]
-        Images["commerce_product_image\nurl, public_id, image_type, is_cover, sort_order"]
+        Product["commerce_product (Unidad física de lote)\npublished_price, minimum_price, cost_price"]
+        Images["commerce_product_master_image\nurl, public_id, image_type, is_cover, is_public, sort_order"]
         Master -->|"1:N"| Images
+        Product -->|"1:N (fotos reales)"| Images
     end
 
     Images -.->|Sincroniza automáticamente| Master
@@ -274,7 +276,10 @@ flowchart TD
 2. **Desnormalización de `cover_image_url`:**
    - La columna `cover_image_url` en `commerce_product_master` actúa como caché de lectura inmediata para alimentar tablas de Angular y la PWA de clientes sin requerir un `JOIN` a la tabla de imágenes.
    - **Inmutabilidad en formulario:** El endpoint `PUT /api/commerce/product-masters/{id}` descarta explícitamente `cover_image_url` (`data.pop("cover_image_url", None)`). La portada se modifica **exclusivamente** mediante las acciones de la galería (`/images`).
-3. **Máquina de Estados de Portada:**
+3. **Fotos Reales de Almacén (`commerce_product` y `image_type = 'REAL'`):**
+   - Las fotos tomadas físicamente en desempaque o unboxing se asocian a `commerce_product` mediante `product_id`.
+   - **Bandera de Seguridad `is_public`:** Por defecto es `false` en fotos de almacén para proteger la privacidad interna (reclamos, inspección interna, fotos de números de serie o rayones). El vendedor o administrador puede activar `is_public = true` mediante `PATCH /api/commerce/products/{id}/images/{image_id}` para publicarla en el catálogo de clientes.
+4. **Máquina de Estados de Portada:**
    - **Subida:** Si la ficha maestra no tiene portada, la primera foto subida se convierte automáticamente en portada oficial.
    - **Fijar Portada (`set_cover_image`):** Se marca `is_cover = True` en la foto seleccionada, `is_cover = False` en las demás, y se sincroniza `master.cover_image_url`.
    - **Eliminación con Auto-Recuperación (`delete_image`):** Si se borra la foto que era portada, el backend busca la siguiente foto disponible según `sort_order` y la promueve automáticamente como nueva portada. Si no quedan fotos, establece `master.cover_image_url = None`.

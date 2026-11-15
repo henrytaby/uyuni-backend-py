@@ -272,23 +272,25 @@ La ficha comercial e intelectual del producto. Es la entidad central de mercadot
 ---
 
 ### 7. `commerce_product` (Inventario Físico por Lote)
-Existencias físicas reales de un producto dentro de una caja de importación específica.
+Existencias físicas reales de un producto dentro de una caja de importación o lote de compra específico.
 
 | Columna | Tipo SQL | Nulo | Default | Índice / Restricción | Descripción Semántica |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | `id` | `UUID` | No | UUIDv7 | PK, Index | Identificador único universal. |
 | `master_product_id`| `UUID` | No | — | FK -> `commerce_product_master.id`, Index | Ficha Maestra obligatoria a la que pertenece esta unidad física. |
 | `batch_id` | `UUID` | Sí | `NULL` | FK -> `commerce_batch.id`, Index | Caja o lote físico del cual se extrajo la unidad. |
-| `sheet_row_id` | `INTEGER` | Sí | `NULL` | Index | ID numérico histórico de fila en la hoja de liquidación. |
-| `variant_name` | `VARCHAR(100)` | Sí | `NULL` | — | Variante física de este lote (ej: `Color Blanco`, `Diseño Luna`). |
-| `cost_price` | `DOUBLE PRECISION`| Sí | `NULL` | — | Costo unitario específico asignado a esta unidad física en este lote. |
-| `initial_quantity` | `INTEGER` | No | `1` | — | Unidades físicas que llegaron en esta caja. |
-| `sold_quantity` | `INTEGER` | No | `0` | — | Unidades ya vendidas y cobradas de este lote. |
-| `merma_quantity` | `INTEGER` | No | `0` | — | Unidades rotas o defectuosas descartadas de este lote. |
-| `available_quantity`| `INTEGER` | No | `1` | — | Existencias físicas disponibles actualmente para venta. |
-| `status` | `VARCHAR(50)` | No | `'AVAILABLE'`| Index | Estado comercial: `AVAILABLE`, `RESERVED`, `SOLD_OUT`, `SCRAPPED`. |
+| `sheet_row_id` | `INTEGER` | Sí | `NULL` | Index | *Campo legacy transitorio*: ID numérico histórico de la fila en Google Sheets (no se usa en nuevas operaciones). |
+| `variant_name` | `VARCHAR(100)` | Sí | `NULL` | — | Variante física de este lote (ej: `Color Blanco`, `Sin panel solar / Open Box`). |
+| `cost_price` | `DOUBLE PRECISION`| Sí | `NULL` | — | Costo unitario real asignado a esta unidad física en este lote. En lotes de prorrateo (`WEIGHTED_RETAIL`) es calculado por el algoritmo; en lotes de costeo por ítem (`SPECIFIC_ITEM`) es ingresado manualmente. |
+| `published_price` | `DOUBLE PRECISION`| Sí | `NULL` | — | Precio de venta publicado específico para este lote físico. Si no se especifica, hereda el de la Ficha Maestra. Permite fijar un precio real menor para unidades incompletas o abiertas. |
+| `minimum_price` | `DOUBLE PRECISION`| Sí | `NULL` | — | Piso mínimo de regateo específico para este lote físico. Si no se especifica, hereda el de la Ficha Maestra. Protege la venta contra rechazos falsos. |
+| `initial_quantity` | `INTEGER` | No | `1` | — | Unidades físicas que llegaron en esta caja (editable). |
+| `sold_quantity` | `INTEGER` | No | `0` | — | Unidades ya vendidas y cobradas (calculado automáticamente por transacciones de venta en `commerce_sale_item`, no editable). |
+| `merma_quantity` | `INTEGER` | No | `0` | — | Unidades rotas o defectuosas descartadas de este lote (editable). |
+| `available_quantity`| `INTEGER` | No | `1` | — | Existencias físicas disponibles actualmente para venta (`initial - sold - merma`, calculado automáticamente). |
+| `status` | `VARCHAR(50)` | No | `'AVAILABLE'`| Index | Estado comercial estrictamente automático: `AVAILABLE`, `SOLD_OUT`, `SCRAPPED`. |
 | `physical_condition`| `VARCHAR(50)` | No | `'OPERATIONAL'`| — | Condición física: `OPERATIONAL`, `DAMAGED_SCRAP`, `FOR_PARTS`, `INCOMPLETE`. |
-| `defect_detail` | `VARCHAR(500)` | Sí | `NULL` | — | Detalle de raspón, accesorio faltante o reparación realizada. |
+| `defect_detail` | `VARCHAR(500)` | Sí | `NULL` | — | Detalle descriptivo de fallas, accesorios faltantes o daños en la unidad. |
 | `is_reviewed` | `BOOLEAN` | No | `false` | — | ¿Fue probado físicamente en mesa de trabajo que enciende y funciona? |
 
 ---
@@ -355,6 +357,7 @@ Almacena las referencias, metadatos y enlaces de Cloudinary para la galería de 
 | `height` | `INTEGER` | Sí | `NULL` | — | Alto en píxeles. |
 | `format` | `VARCHAR(10)` | Sí | `NULL` | — | Formato de compresión (`webp`, `png`, `jpg`, `avif`). |
 | `is_cover` | `BOOLEAN` | No | `false` | Index | ¿Es la fotografía de portada oficial del producto? |
+| `is_public` | `BOOLEAN` | No | `false` | Index | ¿Visible en el catálogo público de clientes? (`true` por defecto para `CATALOG`, `false` por defecto para fotos de almacén `REAL`). |
 | `sort_order` | `INTEGER` | No | `0` | Index | Posición de secuencia para galerías y carruseles (1, 2, 3...). |
 
 ---

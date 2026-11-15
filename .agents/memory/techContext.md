@@ -132,7 +132,7 @@ uyuni-backend-py/
 - `PUT /auth/role` - Set active role
 
 ### Commerce Module
-- `/commerce/products` - Product SKUs CRUD & status transitions
+- `/commerce/products` - Product SKUs CRUD, pricing overrides, status transitions & real warehouse images (`/images`)
 - `/commerce/product-masters` - Master product catalog definitions
 - `/commerce/batches` - Import batches and landed cost control
 - `/commerce/sales` - Atomic sales and items
@@ -168,9 +168,9 @@ uyuni-backend-py/
 - `audit_log` - CDC change records
 
 ### Commerce Tables
-- `commerce_product` - Individual product SKUs (physical units per batch)
+- `commerce_product` - Individual product SKUs (physical units per batch, published_price, minimum_price, cost_price, condition, merma)
 - `commerce_product_master` - Master product definitions (item_number, prices, marketing, specs)
-- `commerce_product_master_image` - Master product images & multimedia gallery (Cloudinary)
+- `commerce_product_master_image` - Unified product images & multimedia gallery (Cloudinary, CATALOG and REAL warehouse photos with is_public visibility)
 - `commerce_product_master_external_link` - Multi-link external references (Amazon, eBay, Alibaba) and marketplace listings (Facebook Marketplace, Liz/Henry multiple posts) with `link_type` ('REFERENCE' / 'MARKETPLACE'), auto portal detection, is_public catalog visibility flag and primary link sync
 - `commerce_batch` - Import containers & boxes
 - `commerce_sale` - Sales transactions

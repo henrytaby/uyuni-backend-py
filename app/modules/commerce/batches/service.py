@@ -355,10 +355,19 @@ class BatchService:
             return batch
 
         def get_item_basis_price(prod: Product) -> float:
-            val = getattr(prod, basis, 0.0) or 0.0
+            if basis == "published_price":
+                val = prod.effective_published_price
+            elif basis == "minimum_price":
+                val = prod.effective_minimum_price
+            else:
+                val = getattr(prod, basis, 0.0) or 0.0
             if val > 0:
                 return float(val)
-            for alt in ("published_price", "official_price", "minimum_price"):
+            for alt in (
+                "effective_published_price",
+                "official_price",
+                "effective_minimum_price",
+            ):
                 alt_val = getattr(prod, alt, 0.0) or 0.0
                 if alt_val > 0:
                     return float(alt_val)

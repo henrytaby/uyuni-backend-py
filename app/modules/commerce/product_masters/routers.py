@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
-from sqlmodel import col, func, select
+from sqlmodel import col, func, or_, select
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
@@ -15,6 +15,7 @@ from app.modules.commerce.product_masters.models import (
 )
 from app.modules.commerce.product_masters.schemas import (
     ImportExternalImagesRequest,
+    ProductImageBulkDelete,
     ProductImageRead,
     ProductImageReorderItem,
     ProductImageUpdate,
@@ -49,7 +50,11 @@ def _enrich_master_read(
         images_count = (
             service.session.exec(
                 select(func.count(col(ProductImage.id))).where(
-                    ProductImage.product_master_id == master.id
+                    ProductImage.product_master_id == master.id,
+                    or_(
+                        col(ProductImage.product_id).is_(None),
+                        ProductImage.image_type == "CATALOG",
+                    ),
                 )
             ).one()
             or 0
@@ -590,6 +595,30 @@ def delete_product_image(
     service = ProductMasterService(session)
     service.delete_image(id, image_id)
     return {"message": "Fotografía eliminada exitosamente"}
+
+
+@router.post(
+    "/{id}/images/bulk-delete",
+    summary="Eliminar lote de fotografías de forma atómica",
+    description="Elimina múltiples imágenes en una sola transacción.",
+)
+def bulk_delete_product_images(
+    session: SessionDep,
+    id: UUID,
+    data: ProductImageBulkDelete,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.DELETE,
+        )
+    ),
+):
+    service = ProductMasterService(session)
+    count = service.delete_images_bulk(id, data.image_ids)
+    return {
+        "message": f"{count} fotografías eliminadas exitosamente",
+        "deleted_count": count,
+    }
 
 
 # =========================================================================

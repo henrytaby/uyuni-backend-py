@@ -176,6 +176,11 @@ class ProductMasterImage(BaseModel, AuditMixin, table=True):
         index=True,
         description="¿Es la fotografía de portada oficial del producto?",
     )
+    is_public: bool = Field(
+        default=False,
+        index=True,
+        description="¿Visible en el catálogo público para clientes finales?",
+    )
     sort_order: int = Field(
         default=0,
         index=True,
@@ -184,7 +189,7 @@ class ProductMasterImage(BaseModel, AuditMixin, table=True):
 
     # Relationships
     product_master: Optional["ProductMaster"] = Relationship(back_populates="images")
-    product: Optional["Product"] = Relationship()
+    product: Optional["Product"] = Relationship(back_populates="images")
 
 
 # Alias de retrocompatibilidad

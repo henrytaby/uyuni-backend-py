@@ -6,7 +6,8 @@ from uuid import UUID
 
 import structlog
 from sqlalchemy import text
-from sqlmodel import Session, col, func, select
+from sqlalchemy.orm.exc import StaleDataError
+from sqlmodel import Session, col, func, or_, select
 
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.core.storage.cloudinary_service import cloudinary_service
@@ -316,7 +317,7 @@ class ProductMasterService:
         return updated
 
     def delete(self, id: UUID) -> bool:
-        images = self.get_images(id)
+        images = self.get_images(id, include_all=True)
         for img in images:
             if img.public_id:
                 cloudinary_service.delete_image(img.public_id)
@@ -348,6 +349,7 @@ class ProductMasterService:
         master_id: UUID,
         image_type: str | None = None,
         product_id: UUID | None = None,
+        include_all: bool = False,
     ) -> Sequence[ProductImage]:
         statement = (
             select(ProductImage)
@@ -361,6 +363,13 @@ class ProductMasterService:
             statement = statement.where(ProductImage.image_type == image_type.upper())
         if product_id is not None:
             statement = statement.where(ProductImage.product_id == product_id)
+        if not include_all and image_type is None and product_id is None:
+            statement = statement.where(
+                or_(
+                    col(ProductImage.product_id).is_(None),
+                    ProductImage.image_type == "CATALOG",
+                )
+            )
         return self.session.exec(statement).all()
 
     def add_images(
@@ -370,6 +379,7 @@ class ProductMasterService:
         image_type: str = "CATALOG",
         is_cover: bool = False,
         product_id: UUID | None = None,
+        is_public: bool | None = None,
     ) -> list[ProductImage]:
         master = self.get_by_id(master_id)
         if not master:
@@ -381,6 +391,11 @@ class ProductMasterService:
                 f"Tipo de imagen '{image_type}' inválido. "
                 f"Valores permitidos: {', '.join(sorted(VALID_IMAGE_TYPES))}"
             )
+
+        if is_public is not None:
+            img_is_public = is_public
+        else:
+            img_is_public = True if norm_type == "CATALOG" else False
 
         if product_id:
             prod = self.session.get(Product, product_id)
@@ -453,9 +468,9 @@ class ProductMasterService:
             )
 
             make_cover = False
-            if is_cover and idx == 0:
+            if is_cover and idx == 0 and norm_type == "CATALOG":
                 make_cover = True
-            elif not has_cover and idx == 0:
+            elif not has_cover and idx == 0 and norm_type == "CATALOG":
                 make_cover = True
 
             if make_cover:
@@ -486,6 +501,7 @@ class ProductMasterService:
                 height=upload_res.get("height"),
                 format=upload_res.get("format"),
                 is_cover=make_cover,
+                is_public=img_is_public,
                 sort_order=current_order,
             )
             self.session.add(img)
@@ -520,41 +536,175 @@ class ProductMasterService:
         return target_img
 
     def delete_image(self, master_id: UUID, image_id: UUID) -> bool:
-        master = self.get_by_id(master_id)
+        stmt_master = select(ProductMaster).where(ProductMaster.id == master_id)
+        if self.session.bind and self.session.bind.dialect.name == "postgresql":
+            stmt_master = stmt_master.with_for_update()
+        master = self.session.exec(stmt_master).first()
         if not master:
             raise NotFoundException(f"Ficha maestra {master_id} no encontrada")
 
         target_img = self.session.get(ProductImage, image_id)
-        if not target_img or target_img.product_master_id != master_id:
+        if not target_img:
+            # Idempotencia: si ya fue eliminada concurrentemente, retornar éxito
+            return True
+        if target_img.product_master_id != master_id:
             raise NotFoundException("Fotografía no encontrada para esta ficha maestra")
 
         if target_img.public_id:
-            cloudinary_service.delete_image(target_img.public_id)
-
-        was_cover = target_img.is_cover or (master.cover_image_url == target_img.url)
+            try:
+                cloudinary_service.delete_image(target_img.public_id)
+            except Exception as e:
+                logger.warning(
+                    "Error eliminando asset en Cloudinary",
+                    error=str(e),
+                    public_id=target_img.public_id,
+                )
 
         self.session.delete(target_img)
         self.session.flush()
 
-        if was_cover:
-            next_img = self.session.exec(
+        # Sincronizar portada oficial de la Ficha Maestra
+        # Regla: Solo fotos de CATALOG pueden ser portada oficial del maestro
+        catalog_cover = self.session.exec(
+            select(ProductImage).where(
+                ProductImage.product_master_id == master_id,
+                ProductImage.image_type == "CATALOG",
+                ProductImage.is_cover == True,  # noqa: E712
+                ProductImage.id != image_id,
+            )
+        ).first()
+
+        if not catalog_cover:
+            # Si no hay portada activa de catálogo, promover la siguiente disponible
+            next_catalog_img = self.session.exec(
                 select(ProductImage)
-                .where(ProductImage.product_master_id == master_id)
+                .where(
+                    ProductImage.product_master_id == master_id,
+                    ProductImage.image_type == "CATALOG",
+                    ProductImage.id != image_id,
+                )
                 .order_by(
                     col(ProductImage.sort_order).asc(),
                     col(ProductImage.created_at).asc(),
                 )
             ).first()
-            if next_img:
-                next_img.is_cover = True
-                master.cover_image_url = next_img.url
-                self.session.add(next_img)
+            if next_catalog_img:
+                next_catalog_img.is_cover = True
+                master.cover_image_url = next_catalog_img.url
+                self.session.add(next_catalog_img)
+            else:
+                # Ya no queda ninguna foto de catálogo: limpiar cover_image_url a None
+                master.cover_image_url = None
+            self.session.add(master)
+
+        try:
+            self.session.commit()
+        except StaleDataError:
+            self.session.rollback()
+            self._sync_cover_after_delete(master_id)
+
+        return True
+
+    def _sync_cover_after_delete(self, master_id: UUID) -> None:
+        try:
+            stmt_master = select(ProductMaster).where(ProductMaster.id == master_id)
+            if self.session.bind and self.session.bind.dialect.name == "postgresql":
+                stmt_master = stmt_master.with_for_update()
+            master = self.session.exec(stmt_master).first()
+            if not master:
+                return
+            cover = self.session.exec(
+                select(ProductImage).where(
+                    ProductImage.product_master_id == master_id,
+                    ProductImage.image_type == "CATALOG",
+                    ProductImage.is_cover == True,  # noqa: E712
+                )
+            ).first()
+            if not cover:
+                next_img = self.session.exec(
+                    select(ProductImage)
+                    .where(
+                        ProductImage.product_master_id == master_id,
+                        ProductImage.image_type == "CATALOG",
+                    )
+                    .order_by(
+                        col(ProductImage.sort_order).asc(),
+                        col(ProductImage.created_at).asc(),
+                    )
+                ).first()
+                if next_img:
+                    next_img.is_cover = True
+                    master.cover_image_url = next_img.url
+                    self.session.add(next_img)
+                else:
+                    master.cover_image_url = None
+                self.session.add(master)
+            self.session.commit()
+        except Exception:
+            self.session.rollback()
+
+    def delete_images_bulk(self, master_id: UUID, image_ids: list[UUID]) -> int:
+        stmt_master = select(ProductMaster).where(ProductMaster.id == master_id)
+        if self.session.bind and self.session.bind.dialect.name == "postgresql":
+            stmt_master = stmt_master.with_for_update()
+        master = self.session.exec(stmt_master).first()
+        if not master:
+            raise NotFoundException(f"Ficha maestra {master_id} no encontrada")
+
+        imgs = self.session.exec(
+            select(ProductImage).where(
+                ProductImage.product_master_id == master_id,
+                col(ProductImage.id).in_(image_ids),
+            )
+        ).all()
+
+        deleted_count = 0
+        for img in imgs:
+            if img.public_id:
+                try:
+                    cloudinary_service.delete_image(img.public_id)
+                except Exception as e:
+                    logger.warning(
+                        "Error eliminando asset en Cloudinary",
+                        error=str(e),
+                        public_id=img.public_id,
+                    )
+            self.session.delete(img)
+            deleted_count += 1
+
+        self.session.flush()
+
+        # Sincronizar portada oficial de la Ficha Maestra
+        catalog_cover = self.session.exec(
+            select(ProductImage).where(
+                ProductImage.product_master_id == master_id,
+                ProductImage.image_type == "CATALOG",
+                ProductImage.is_cover == True,  # noqa: E712
+            )
+        ).first()
+
+        if not catalog_cover:
+            next_catalog_img = self.session.exec(
+                select(ProductImage)
+                .where(
+                    ProductImage.product_master_id == master_id,
+                    ProductImage.image_type == "CATALOG",
+                )
+                .order_by(
+                    col(ProductImage.sort_order).asc(),
+                    col(ProductImage.created_at).asc(),
+                )
+            ).first()
+            if next_catalog_img:
+                next_catalog_img.is_cover = True
+                master.cover_image_url = next_catalog_img.url
+                self.session.add(next_catalog_img)
             else:
                 master.cover_image_url = None
             self.session.add(master)
 
         self.session.commit()
-        return True
+        return deleted_count
 
     def reorder_images(
         self, master_id: UUID, items: list[ProductImageReorderItem]
@@ -595,6 +745,8 @@ class ProductMasterService:
             img.image_type = norm_type
         if data.sort_order is not None:
             img.sort_order = data.sort_order
+        if data.is_public is not None:
+            img.is_public = data.is_public
 
         if data.is_cover is True:
             return self.set_cover_image(master_id, image_id)

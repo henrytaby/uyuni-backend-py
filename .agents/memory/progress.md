@@ -124,6 +124,22 @@
   - Soporte de lotes a costo cero / nominal para bazar familiar y artículos propios o en consignación.
   - Cobertura completa de tests unitarios e integrados (111 tests pasando al 100%, Ruff y Mypy en verde).
   - Guía completa de integración frontend (`03_FRONTEND_INTEGRATION_GUIDE.md`) y flujo operativo (`04_OPERATIONAL_WORKFLOW.md`) actualizados.
+- [x] Motor de Precios a Nivel de Producto e Inventario Enriquecido:
+  - Adición de `published_price` y `minimum_price` a `commerce_product` mediante migración Alembic `66ad4fe5425b`.
+  - Herencia automática: si un nuevo producto físico no especifica precios propios, hereda automáticamente los de su Ficha Maestra.
+  - Prellenado y backfill completo de los 242 registros de productos en PostgreSQL local.
+  - Enriquecimiento integral del esquema de lectura `ProductRead`: `image_url` (foto de catálogo de ficha maestra), `item_number`, `master_code`, `category_name`, `batch_code`, `currency`, `estimated_margin` (`published - cost`) y `discount_margin` (`published - minimum`).
+  - Protección de memoria contra DoS en paginación: límite forzado `limit = min(max(1, limit), 500)` en `BaseRepository.get_all`.
+- [x] Arquitectura Unificada de Fotografías Reales de Almacén (`commerce_product_master_image`):
+  - Adición de la columna indexada `is_public: bool` mediante migración Alembic `9f6eb2dc0e9b`.
+  - Soporte de visibilidad granular: por defecto `false` para fotos reales de almacén (`image_type = 'REAL'`), protegiendo la privacidad de unboxing, reclamos o números de serie; y `true` para fotos de catálogo (`'CATALOG'`).
+  - Endpoints REST en `/api/commerce/products/{id}/images`:
+    - `GET /api/commerce/products/{id}/images` (listar fotos reales asociadas al producto físico).
+    - `POST /api/commerce/products/{id}/images` (subida multipart a `uyuni/products/{item_number}/real/` con opción `is_public`).
+    - `PATCH /api/commerce/products/{id}/images/{image_id}` (conmutación de `is_public` y metadatos).
+    - `DELETE /api/commerce/products/{id}/images/{image_id}` (eliminación física en Cloudinary y BD).
+  - Cobertura de tests unitarios: `test_product_real_images_service_and_api` en `tests/test_commerce.py` (116/116 tests globales pasando al 100%, Ruff y Mypy en verde).
+  - Actualización del Diccionario de Datos (`02_DATABASE_DICTIONARY.md`), Arquitectura (`01_ARCHITECTURE.md`) y Guía Frontend (`03_FRONTEND_INTEGRATION_GUIDE.md`).
 
 ### In Progress
 - [ ] Rate limiting for authentication endpoints

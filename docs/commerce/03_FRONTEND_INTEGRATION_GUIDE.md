@@ -546,15 +546,26 @@ export class CloudinaryPipe implements PipeTransform {
 ---
 
 ## 🏷️ 4. Inventario Físico por Caja (`/api/commerce/products`)
+
+Representa las existencias físicas reales de cada producto dentro de un lote o caja de importación específica.
+
+### A. Listar Inventario Físico
 ```http
-GET /api/commerce/products/?batch_id=<uuid>&master_product_id=<uuid>&status=AVAILABLE
+GET /api/commerce/products/?offset=0&limit=50&batch_id=<uuid>&master_product_id=<uuid>&status=AVAILABLE&search=reloj
 ```
 
-#### Propiedades Delegadas Automáticas:
-Para evitar que el frontend deba realizar peticiones secundarias, cada producto físico incluye automáticamente las propiedades heredadas de su ficha maestra y su lote:
-- `name`: Nombre de la ficha maestra (`master_product.name`).
-- `official_price`, `minimum_price`, `published_price`: Precios de referencia.
-- `batch_name`: Nombre de la caja física (`batch.name`, ej: `"Ataúd 2"`).
+#### Parámetros Query:
+- `offset`: Desplazamiento para paginación (default: `0`).
+- `limit`: Cantidad por página (default: `100`, con protección backend clamped entre 1 y 500).
+- `sort_by`: Campo de ordenación (`created_at`, `status`, etc.).
+- `sort_order`: `'asc'` o `'desc'`.
+- `search`: Búsqueda insensible a mayúsculas que busca en el nombre de la ficha maestra (`master_product.name`), código de lote y variante.
+- `batch_id`: Filtrar por caja/lote de importación específico.
+- `master_product_id`: Filtrar todas las unidades de una ficha maestra en diferentes cajas.
+- `status`: Filtrar por estado: `'AVAILABLE'`, `'SOLD_OUT'`, `'SCRAPPED'`.
+
+#### Propiedades Enriquecidas Automáticas (`ProductRead`):
+Cada producto físico incluye automáticamente las propiedades calculadas y delegadas de su Ficha Maestra y de su Lote para poblar tablas y tarjetas sin llamadas adicionales:
 
 ```json
 [
@@ -562,10 +573,21 @@ Para evitar que el frontend deba realizar peticiones secundarias, cada producto 
     "id": "01a1c786-1122-3344-5566-778899aabbcc",
     "master_product_id": "01a1c785-02b3-7641-bb12-9988aa112233",
     "batch_id": "01a1b8dc-ddb0-71f4-bbec-6966db6633ef",
+    "name": "Aspiradora de Mano Inalámbrica Plegable, Alta Succión, Portátil",
+    "item_number": 149,
+    "master_code": null,
+    "image_url": "https://res.cloudinary.com/test/image/upload/v1/uyuni/products/149/catalog/aud.webp",
+    "category_name": "🚗 Accesorios para Autos & Taller",
     "batch_name": "Ataúd 2",
-    "name": "Almohadilla Térmica Eléctrica",
-    "variant_name": "Modelo TK-HP2412",
-    "cost_price": 80.0,
+    "batch_code": "BOX-02",
+    "currency": "BOB",
+    "variant_name": "Color Negro",
+    "cost_price": 52.98,
+    "published_price": 120.0,
+    "minimum_price": 100.0,
+    "official_price": 120.0,
+    "estimated_margin": 67.02,
+    "discount_margin": 20.0,
     "initial_quantity": 1,
     "sold_quantity": 0,
     "merma_quantity": 0,
@@ -573,27 +595,123 @@ Para evitar que el frontend deba realizar peticiones secundarias, cada producto 
     "status": "AVAILABLE",
     "physical_condition": "OPERATIONAL",
     "defect_detail": null,
-    "is_reviewed": true,
-    "official_price": 180.0,
-    "minimum_price": 140.0,
-    "published_price": 160.0
+    "is_reviewed": true
   }
 ]
 ```
 
-### B. Registrar Merma o Producto Dañado
-Para registrar una unidad defectuosa o actualizar el estado tras una prueba física:
+> [!NOTE]
+> **Tri-Precio y Rentabilidad:**
+> - `published_price`: Precio oficial de venta publicado al público (cotización de entrada).
+> - `minimum_price`: Piso mínimo protegido de negociación (no se permite vender por debajo sin autorización).
+> - `official_price`: Precio de lista referencial investigado en mercado local (Bolivia).
+> - `cost_price`: Costo real unitario asignado.
+> - `estimated_margin` = `published_price - cost_price` (Ganancia bruta estimada).
+> - `discount_margin` = `published_price - minimum_price` (Margen máximo de rebaja autorizado).
+
+---
+
+### B. Editar Datos y Registrar Merma (`PUT /api/commerce/products/{id}`)
+
 ```http
 PUT /api/commerce/products/<product_id>
 ```
+
+#### Reglas de Edición en el Frontend:
+
+| Campo | ¿Editable? | Regla de Negocio / Comportamiento |
+| :--- | :---: | :--- |
+| `published_price` | ✅ Sí | Permite fijar un precio publicado menor específico para este lote físico (ej. si llegó con empaque abierto). |
+| `minimum_price` | ✅ Sí | Piso protegido de regateo para esta unidad física. |
+| `cost_price` | ⚠️ Condicional | **Bloqueado** en lotes tipo Amazon/Liquidación (`WEIGHTED_RETAIL`, calculado automáticamente por costeo relativo). **Editable** en lotes de compra directa (`SPECIFIC_ITEM`). |
+| `initial_quantity`| ✅ Sí | Cantidad física recibida en almacén. |
+| `merma_quantity` | ✅ Sí | Cantidad declarada rota o defectuosa. |
+| `sold_quantity` | ❌ No | **Solo lectura**: Administrado automáticamente por transacciones atómicas de venta (`commerce_sale_item`). |
+| `available_quantity`| ❌ No | **Auto-calculado**: `initial_quantity - sold_quantity - merma_quantity`. |
+| `status` | ❌ No | **Auto-calculado**: `AVAILABLE` si `available > 0`; `SOLD_OUT` si `available == 0` y `sold > 0`; `SCRAPPED` si `available == 0` y `sold == 0`. |
+| `physical_condition`| ✅ Sí | `OPERATIONAL`, `DAMAGED_SCRAP`, `FOR_PARTS`, `INCOMPLETE`. |
+| `defect_detail` | ✅ Sí | Texto descriptivo de la falla, rasguño o accesorio faltante. |
+| `is_reviewed` | ✅ Sí | Checkbox de prueba física en mesa de trabajo antes de exhibir. |
+
 ```json
 {
-  "merma_quantity": 1,
-  "physical_condition": "DAMAGED_SCRAP",
-  "defect_detail": "Conector roto, no enciende."
+  "published_price": 110.0,
+  "minimum_price": 95.0,
+  "merma_quantity": 0,
+  "physical_condition": "INCOMPLETE",
+  "defect_detail": "Llegó sin cargador USB-C, funciona con cualquier cargador estándar.",
+  "is_reviewed": true
 }
 ```
-*El backend recalcula automáticamente `available_quantity = initial - sold - merma` y si es 0, cambia el estado a `"SCRAPPED"`.*
+
+---
+
+### C. Fotografías Reales de Almacén (`/api/commerce/products/{id}/images`)
+
+Permite capturar y adjuntar fotografías reales de desempaque, estado físico o prueba de banco a un producto físico específico. Se almacenan en Cloudinary bajo la jerarquía: `uyuni/products/{item_number}/real/`.
+
+#### 1. Listar Fotos Reales del Producto
+```http
+GET /api/commerce/products/{id}/images
+```
+
+#### 2. Subir Fotos Reales (Multipart)
+```http
+POST /api/commerce/products/{id}/images
+Content-Type: multipart/form-data
+```
+- `files`: Archivos de imagen (`JPG`, `PNG`, `WEBP`, `AVIF`, máx 10MB).
+- `is_public`: (Opcional, `boolean`, default: `false`).
+  - `false`: Fotografía privada para uso interno (reclamos, inspección, o para compartir manualmente a clientes por WhatsApp).
+  - `true`: Fotografía autorizada para exhibirse en el catálogo público de clientes.
+
+#### 3. Conmutar Visibilidad Pública o Título (`PATCH`)
+```http
+PATCH /api/commerce/products/{id}/images/{image_id}
+Content-Type: application/json
+```
+```json
+{
+  "is_public": true,
+  "title": "Foto real de unboxing en almacén"
+}
+```
+
+#### 4. Reordenar Secuencia (Drag & Drop)
+```http
+PUT /api/commerce/products/{id}/images/reorder
+Content-Type: application/json
+```
+```json
+[
+  { "id": "01a1d6b6-bb2c-7326-9164-1b3172dc5669", "sort_order": 1 },
+  { "id": "01a1d6b6-c249-7110-bde2-688e19332615", "sort_order": 2 }
+]
+```
+
+#### 5. Eliminar Fotografía Individual
+```http
+DELETE /api/commerce/products/{id}/images/{image_id}
+```
+*Destruye el recurso en Cloudinary mediante su `public_id` y remueve el registro de la base de datos.*
+
+#### 6. Eliminación Masiva en Lote (`POST .../bulk-delete`)
+> [!TIP]
+> **Recomendado para el botón «Eliminar (X)» del frontend:** En lugar de lanzar múltiples peticiones `DELETE` paralelas en `forkJoin`, utiliza este endpoint para eliminar todas las fotos seleccionadas en **una sola llamada HTTP y una sola transacción atómica**.
+
+```http
+POST /api/commerce/products/{id}/images/bulk-delete
+Content-Type: application/json
+```
+```json
+{
+  "image_ids": [
+    "01a1d6b6-bb2c-7326-9164-1b3172dc5669",
+    "01a1d6b6-c249-7110-bde2-688e19332615"
+  ]
+}
+```
+*(También disponible para Fichas Maestras en: `POST /api/commerce/product-masters/{id}/images/bulk-delete`)*
 
 ---
 

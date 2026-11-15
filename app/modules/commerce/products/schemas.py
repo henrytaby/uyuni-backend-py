@@ -1,6 +1,7 @@
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class ProductBase(BaseModel):
@@ -9,6 +10,8 @@ class ProductBase(BaseModel):
     sheet_row_id: int | None = None
     variant_name: str | None = None
     cost_price: float | None = None
+    published_price: float | None = None
+    minimum_price: float | None = None
     initial_quantity: int = 1
     sold_quantity: int = 0
     merma_quantity: int = 0
@@ -29,6 +32,8 @@ class ProductUpdate(BaseModel):
     sheet_row_id: int | None = None
     variant_name: str | None = None
     cost_price: float | None = None
+    published_price: float | None = None
+    minimum_price: float | None = None
     initial_quantity: int | None = None
     sold_quantity: int | None = None
     merma_quantity: int | None = None
@@ -42,7 +47,33 @@ class ProductUpdate(BaseModel):
 class ProductRead(ProductBase):
     id: UUID
     name: str = ""
+    item_number: int | None = None
+    master_code: str | None = None
+    image_url: str | None = None
+    category_name: str | None = None
+    batch_code: str | None = None
+    batch_name: str | None = None
+    currency: str = "BOB"
     official_price: float = 0.0
     minimum_price: float = 0.0
     published_price: float = 0.0
-    batch_name: str | None = None
+    estimated_margin: float | None = None
+    discount_margin: float = 0.0
+
+    @model_validator(mode="before")
+    @classmethod
+    def fallback_prices(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            pub = getattr(data, "published_price", None)
+            min_p = getattr(data, "minimum_price", None)
+            master = getattr(data, "master_product", None)
+            if (pub is None or min_p is None) and master:
+                d = {k: getattr(data, k) for k in dir(data) if not k.startswith("_")}
+                if pub is None:
+                    d["published_price"] = (
+                        getattr(master, "published_price", 0.0) or 0.0
+                    )
+                if min_p is None:
+                    d["minimum_price"] = getattr(master, "minimum_price", 0.0) or 0.0
+                return d
+        return data

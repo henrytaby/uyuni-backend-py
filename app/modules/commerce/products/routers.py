@@ -1,12 +1,18 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 
 from app.auth.permissions import PermissionAction, PermissionChecker
 from app.auth.schemas import UserModulePermission
 from app.core.db import SessionDep
 from app.core.exceptions import NotFoundException
 from app.modules.commerce.constants import CommerceModuleSlug
+from app.modules.commerce.product_masters.schemas import (
+    ProductMasterImageBulkDelete,
+    ProductMasterImageRead,
+    ProductMasterImageReorderItem,
+    ProductMasterImageUpdate,
+)
 from app.modules.commerce.products.models import Product
 from app.modules.commerce.products.schemas import (
     ProductCreate,
@@ -159,3 +165,124 @@ def delete_product(
     if not service.delete(id):
         raise NotFoundException(detail="Product not found")
     return {"message": "Product deleted successfully"}
+
+
+@router.get("/{id}/images", response_model=list[ProductMasterImageRead])
+def get_product_images(
+    id: UUID,
+    session: SessionDep,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
+        )
+    ),
+):
+    service = ProductService(session)
+    images = service.get_images(id)
+    return [ProductMasterImageRead.model_validate(img) for img in images]
+
+
+@router.post("/{id}/images", response_model=list[ProductMasterImageRead])
+async def upload_product_images(
+    id: UUID,
+    session: SessionDep,
+    files: list[UploadFile] = File(
+        ..., description="Archivos de fotos reales tomadas en almacén"
+    ),
+    is_public: bool = Form(
+        default=False,
+        description="¿Publicar en catálogo web público? (Por defecto False)",
+    ),
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.UPDATE,
+        )
+    ),
+):
+    service = ProductService(session)
+    files_data = []
+    for f in files:
+        content = await f.read()
+        files_data.append(
+            {
+                "content": content,
+                "filename": f.filename or "real_product.webp",
+                "content_type": f.content_type or "image/jpeg",
+            }
+        )
+    created = service.add_images(id, files_data, is_public=is_public)
+    return [ProductMasterImageRead.model_validate(img) for img in created]
+
+
+@router.put("/{id}/images/reorder", response_model=list[ProductMasterImageRead])
+def reorder_product_images(
+    id: UUID,
+    items: list[ProductMasterImageReorderItem],
+    session: SessionDep,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.UPDATE,
+        )
+    ),
+):
+    service = ProductService(session)
+    images = service.reorder_images(id, items)
+    return [ProductMasterImageRead.model_validate(img) for img in images]
+
+
+@router.patch("/{id}/images/{image_id}", response_model=ProductMasterImageRead)
+def update_product_image(
+    id: UUID,
+    image_id: UUID,
+    data: ProductMasterImageUpdate,
+    session: SessionDep,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.UPDATE,
+        )
+    ),
+):
+    service = ProductService(session)
+    img = service.update_image(id, image_id, data)
+    return ProductMasterImageRead.model_validate(img)
+
+
+@router.delete("/{id}/images/{image_id}")
+def delete_product_image(
+    id: UUID,
+    image_id: UUID,
+    session: SessionDep,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.DELETE,
+        )
+    ),
+):
+    service = ProductService(session)
+    service.delete_image(id, image_id)
+    return {"message": "Fotografía eliminada correctamente"}
+
+
+@router.post("/{id}/images/bulk-delete")
+def bulk_delete_product_images(
+    id: UUID,
+    data: ProductMasterImageBulkDelete,
+    session: SessionDep,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.DELETE,
+        )
+    ),
+):
+    service = ProductService(session)
+    count = service.delete_images_bulk(id, data.image_ids)
+    return {
+        "message": f"{count} fotografías eliminadas correctamente",
+        "deleted_count": count,
+    }

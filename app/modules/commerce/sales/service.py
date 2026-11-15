@@ -47,14 +47,15 @@ class SaleService:
                 raise BadRequestException(detail=msg)
 
             # Business rule: check minimum price threshold
+            effective_min = product.effective_minimum_price
             if (
-                product.minimum_price > 0
-                and item_data.unit_price < product.minimum_price
+                effective_min > 0
+                and item_data.unit_price < effective_min
                 and not data.allow_below_minimum
             ):
                 msg = (
                     f"Precio pactado ({item_data.unit_price}) menor al mínimo "
-                    f"({product.minimum_price}) para '{product.name}'. "
+                    f"({effective_min}) para '{product.name}'. "
                     "Requiere autorización (allow_below_minimum=True)."
                 )
                 raise BadRequestException(detail=msg)
