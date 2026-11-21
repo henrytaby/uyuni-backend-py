@@ -27,13 +27,22 @@ class ProductRepository(BaseRepository[Product]):
         search_filters: list[Any] = [
             col(ProductMaster.name).ilike(search_term),
             col(ProductMaster.code).ilike(search_term),
+            col(ProductMaster.brand).ilike(search_term),
+            col(ProductMaster.model).ilike(search_term),
             col(Product.variant_name).ilike(search_term),
             col(Product.status).ilike(search_term),
             col(Product.physical_condition).ilike(search_term),
             col(Product.defect_detail).ilike(search_term),
         ]
-        if search.strip().isdigit():
-            num = int(search.strip())
+        cleaned = (
+            search.strip()
+            .replace("#", "")
+            .replace("NOV-", "")
+            .replace("nov-", "")
+            .strip()
+        )
+        if cleaned.isdigit():
+            num = int(cleaned)
             search_filters.append(col(ProductMaster.item_number) == num)
             search_filters.append(col(Product.sheet_row_id) == num)
 

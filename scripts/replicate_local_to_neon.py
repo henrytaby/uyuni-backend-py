@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
 """
-Replicate all tables and data from local PostgreSQL to remote Neon PostgreSQL.
+Replicate all tables and data from local / production PostgreSQL to Neon PostgreSQL.
 Safely handles dependency order, self-referential user FKs, and sequence recalibration.
 """
+
+import os
 
 import psycopg2
 from psycopg2 import extras
 
-LOCAL_URL = "postgresql://postgres:postgres@localhost/uyuni_prod"
+SRC_URL = os.getenv(
+    "DATABASE_URL", "postgresql://postgres:postgres@172.23.51.247/uyuni_prod"
+)
+# Use direct unpooled Neon connection for DDL / migrations
 NEON_URL = (
     "postgresql://neondb_owner:npg_9jMObHTc6tWV@"
-    "ep-proud-butterfly-bbrv4ndr-pooler.c-15.us-east-1.aws.neon.tech/uyuni_prod"
+    "ep-proud-butterfly-bbrv4ndr.c-15.us-east-1.aws.neon.tech/uyuni_prod"
     "?sslmode=require&channel_binding=require"
 )
 
 TABLES_IN_ORDER = [
+    "alembic_version",
     "role",
     "user",
     "user_role",
@@ -40,16 +46,22 @@ TABLES_IN_ORDER = [
 
 
 def replicate():
-    print("🚀 Iniciando replicación de Local PostgreSQL -> Neon PostgreSQL...")
-    src_conn = psycopg2.connect(LOCAL_URL)
+    print("🚀 Iniciando replicación de PostgreSQL -> Neon PostgreSQL...")
+    print(f"Origen : {SRC_URL.split('@')[-1]}")
+    print(f"Destino: {NEON_URL.split('@')[-1]}")
+
+    src_conn = psycopg2.connect(SRC_URL)
     src_cur = src_conn.cursor()
+    src_cur.execute("SET search_path TO public;")
 
     dest_conn = psycopg2.connect(NEON_URL)
     dest_cur = dest_conn.cursor()
+    dest_cur.execute("SET search_path TO public;")
 
     try:
-        print("🧹 Limpiando tablas previas en destino en orden inverso...")
-        for table in reversed(TABLES_IN_ORDER):
+        print("🧹 Limpiando tablas previas en destino atómicamente...")
+        existing_tables = []
+        for table in TABLES_IN_ORDER:
             dest_cur.execute(
                 """
                 SELECT 1 FROM information_schema.tables
@@ -58,7 +70,10 @@ def replicate():
                 (table,),
             )
             if dest_cur.fetchone():
-                dest_cur.execute(f'TRUNCATE TABLE "{table}" CASCADE;')
+                existing_tables.append(f'"{table}"')
+
+        if existing_tables:
+            dest_cur.execute(f"TRUNCATE TABLE {', '.join(existing_tables)} CASCADE;")
         dest_conn.commit()
         print("✨ Tablas limpiadas correctamente.\n")
 
@@ -84,12 +99,12 @@ def replicate():
             row_count = len(rows)
 
             if row_count == 0:
-                print(f"ℹ️  {table}: 0 filas en local.")
+                print(f"ℹ️  {table}: 0 filas en origen.")
                 continue
 
-            # Serialize dict objects as JSON for psycopg2
+            # Serialize dict/list objects as JSON for psycopg2
             formatted_rows = [
-                tuple(extras.Json(v) if isinstance(v, dict) else v for v in row)
+                tuple(extras.Json(v) if isinstance(v, (dict, list)) else v for v in row)
                 for row in rows
             ]
 
@@ -158,23 +173,23 @@ def replicate():
 
         # Verification step
         print("\n" + "=" * 65)
-        print("📊 VERIFICACIÓN DE CONTEOS ENTRE LOCAL Y NEON")
+        print("📊 VERIFICACIÓN DE CONTEOS ENTRE ORIGEN Y NEON")
         print("=" * 65)
-        print(f"{'Tabla':<40} {'Local':>8} {'Neon':>8} {'Estado':>8}")
+        print(f"{'Tabla':<40} {'Origen':>8} {'Neon':>8} {'Estado':>8}")
         print("-" * 65)
 
         all_ok = True
         for table in TABLES_IN_ORDER:
             src_cur.execute(f'SELECT count(*) FROM "{table}";')
-            local_cnt = src_cur.fetchone()[0]
+            src_cnt = src_cur.fetchone()[0]
 
             dest_cur.execute(f'SELECT count(*) FROM "{table}";')
             neon_cnt = dest_cur.fetchone()[0]
 
-            status = "OK" if local_cnt == neon_cnt else "MISMATCH"
+            status = "OK" if src_cnt == neon_cnt else "MISMATCH"
             if status != "OK":
                 all_ok = False
-            print(f"{table:<40} {local_cnt:>8} {neon_cnt:>8} {status:>8}")
+            print(f"{table:<40} {src_cnt:>8} {neon_cnt:>8} {status:>8}")
 
         print("-" * 65)
         if all_ok:

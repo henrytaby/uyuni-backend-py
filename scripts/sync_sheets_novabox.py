@@ -204,10 +204,14 @@ def normalize_payment_method(val: Any) -> str:
 
 def normalize_delivery_status(val: Any) -> str:
     s = clean_str(val).upper()
-    if "PENDIENTE" in s:
+    if (
+        "PENDIENTE" in s
+        or "FLOTA" in s
+        or "ENVIADO" in s
+        or "CAMINO" in s
+        or "EMPAQUETADO" in s
+    ):
         return "PENDING"
-    if "FLOTA" in s or "ENVIADO" in s:
-        return "SHIPPED"
     return "DELIVERED"
 
 
@@ -929,7 +933,7 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
             net_profit = round(total_collected - line_cost, 2)
             unit_price = round(total_collected / qty, 2) if qty > 0 else official_p
 
-            sale_number = f"VTA-{str(sheet_sale_id).zfill(4)}"
+            sale_number = sheet_sale_id
 
             existing_sale = session.exec(
                 select(Sale).where(Sale.sale_number == sale_number)
@@ -950,6 +954,8 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
                     delivery_cost=delivery_cost,
                     delivery_cost_paid_by=norm_del_paid,
                     delivery_status=norm_del_status,
+                    amount_tendered=total_collected,
+                    change_given=0.0,
                     total_collected=total_collected,
                     total_cost=line_cost,
                     net_profit=net_profit,

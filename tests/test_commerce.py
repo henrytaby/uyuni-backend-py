@@ -2578,3 +2578,288 @@ def test_product_master_images_filter_warehouse_real(
         assert res_p_imgs.status_code == 200
         assert len(res_p_imgs.json()) == 1
         assert res_p_imgs.json()[0]["url"] == mock_real["url"]
+
+
+def test_product_search_by_item_number_with_hash(
+    client: TestClient, session: Session, superuser_token_headers: dict
+):
+    master_service = ProductMasterService(session)
+    product_service = ProductService(session)
+
+    m54 = master_service.create(
+        ProductMaster(
+            item_number=54,
+            name="Proyector Inteligente Aurzen EAZZE D1",
+            brand="Aurzen",
+            model="EAZZE D1",
+            official_price=1200.0,
+            minimum_price=850.0,
+            published_price=1000.0,
+        )
+    )
+    p54 = product_service.create(
+        Product(
+            master_product_id=m54.id,
+            initial_quantity=2,
+        )
+    )
+
+    m99 = master_service.create(
+        ProductMaster(
+            item_number=99,
+            name="Otro Producto Distinto",
+            official_price=100.0,
+            minimum_price=80.0,
+        )
+    )
+    product_service.create(
+        Product(
+            master_product_id=m99.id,
+            initial_quantity=1,
+        )
+    )
+
+    # 1. Búsqueda directa en servicio con '#54'
+    results_hash = product_service.get_all(search="#54")
+    assert any(p.id == p54.id for p in results_hash)
+    assert not any(p.master_product_id == m99.id for p in results_hash)
+
+    # 2. Conteo en servicio con '#54'
+    count_hash = product_service.count(search="#54")
+    assert count_hash >= 1
+
+    # 3. Búsqueda con 'NOV-54'
+    results_nov = product_service.get_all(search="NOV-54")
+    assert any(p.id == p54.id for p in results_nov)
+
+    # 4. Búsqueda por marca 'Aurzen'
+    results_brand = product_service.get_all(search="Aurzen")
+    assert any(p.id == p54.id for p in results_brand)
+
+    # 5. Endpoint API GET /api/commerce/products/?search=%2354
+    res_api_list = client.get(
+        "/api/commerce/products/?search=%2354",
+        headers=superuser_token_headers,
+    )
+    assert res_api_list.status_code == 200
+    items = res_api_list.json()
+    assert any(i["id"] == str(p54.id) for i in items)
+    assert not any(i["master_product_id"] == str(m99.id) for i in items)
+
+    # 6. Endpoint API GET /api/commerce/products/count?search=%2354
+    res_api_count = client.get(
+        "/api/commerce/products/count?search=%2354",
+        headers=superuser_token_headers,
+    )
+    assert res_api_count.status_code == 200
+    assert res_api_count.json()["total"] >= 1
+
+
+def test_sale_sequential_number_search_and_cash_handling(
+    client: TestClient, session: Session, superuser_token_headers: dict
+):
+    master_service = ProductMasterService(session)
+    product_service = ProductService(session)
+    sale_service = SaleService(session)
+
+    m = master_service.create(
+        ProductMaster(
+            item_number=201,
+            name="Smart TV Stick 4K",
+            official_price=300.0,
+            minimum_price=220.0,
+        )
+    )
+    p = product_service.create(
+        Product(
+            master_product_id=m.id,
+            cost_price=150.0,
+            initial_quantity=5,
+        )
+    )
+
+    # 1. Crear venta 1 con cobro en efectivo y vuelto
+    # Precio 250 Bs, cliente entrega 300 Bs en efectivo -> vuelto = 50 Bs
+    # Delivery tienda (STORE) 15 Bs -> net_profit = 250 - 150 - 15 = 85 Bs
+    sale1 = sale_service.create(
+        SaleCreate(
+            customer_name="Carlos Vendedor",
+            payment_method="CASH",
+            payment_status="COLLECTED",
+            delivery_modality="HOME_DELIVERY",
+            delivery_cost=15.0,
+            delivery_cost_paid_by="STORE",
+            amount_tendered=300.0,
+            total_collected=250.0,
+            items=[
+                SaleItemCreate(
+                    product_id=p.id,
+                    quantity=1,
+                    unit_price=250.0,
+                )
+            ],
+        )
+    )
+
+    assert sale1.id is not None
+    assert isinstance(sale1.sale_number, int)
+    assert sale1.sale_number >= 1
+    assert sale1.amount_tendered == 300.0
+    assert sale1.change_given == 50.0  # 300 - 250
+    # Net profit: 250 - 150 (cost) - 15 (store delivery) = 85 Bs
+    assert sale1.net_profit == 85.0
+
+    # 2. Crear venta 2 vinculada a un canal y verificar secuencia incremental
+    channel_service = SalesChannelService(session)
+    ch = channel_service.create(
+        SalesChannel(
+            code="TIKTOK_LIVE",
+            name="TikTok Live Oficial",
+            is_active=True,
+        )
+    )
+
+    sale2 = sale_service.create(
+        SaleCreate(
+            customer_name="María Cliente",
+            channel_id=ch.id,
+            payment_method="QR",
+            payment_status="COLLECTED",
+            total_collected=250.0,
+            items=[
+                SaleItemCreate(
+                    product_id=p.id,
+                    quantity=1,
+                    unit_price=250.0,
+                )
+            ],
+        )
+    )
+    assert sale2.sale_number == sale1.sale_number + 1
+    assert sale2.amount_tendered == 250.0
+    assert sale2.change_given == 0.0
+    assert sale2.channel == "TikTok Live Oficial"
+    assert sale2.channel_name == "TikTok Live Oficial"
+
+    # 3. Búsqueda por '#<sale_number>'
+    search_hash = f"#{sale1.sale_number}"
+    results_hash = sale_service.get_all(search=search_hash)
+    assert any(s.id == sale1.id for s in results_hash)
+    assert not any(s.id == sale2.id for s in results_hash)
+
+    # 4. Búsqueda por número directo '<sale_number>'
+    results_num = sale_service.get_all(search=str(sale1.sale_number))
+    assert any(s.id == sale1.id for s in results_num)
+
+    # 5. Endpoint API GET /api/commerce/sales/?search=%23...
+    res_api = client.get(
+        f"/api/commerce/sales/?search=%23{sale1.sale_number}",
+        headers=superuser_token_headers,
+    )
+    assert res_api.status_code == 200
+    sales_data = res_api.json()
+    assert any(s["id"] == str(sale1.id) for s in sales_data)
+    target = next(s for s in sales_data if s["id"] == str(sale1.id))
+    assert target["sale_number"] == sale1.sale_number
+    assert target["amount_tendered"] == 300.0
+    assert target["change_given"] == 50.0
+
+
+def test_commerce_delivery_statuses_provider_binary_options(session: Session) -> None:
+    """Verifica que el catálogo de entrega solo exponga 'DELIVERED' y 'PENDING'."""
+    from app.modules.commerce.catalogs.providers import CommerceDeliveryStatusesProvider
+
+    provider = CommerceDeliveryStatusesProvider()
+    items = provider.get_items(session)
+
+    assert len(items) == 2
+    item_map = {it.value: it.label for it in items}
+    assert "DELIVERED" in item_map
+    assert item_map["DELIVERED"] == "Entregado"
+    assert "PENDING" in item_map
+    assert item_map["PENDING"] == "Pendiente de Entrega"
+    assert "SHIPPED" not in item_map
+
+
+def test_sales_available_products_endpoint(
+    session: Session, client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    """Verifica que el catálogo de venta filtre stock y exponga el tri-precio."""
+    from app.modules.commerce.batches.models import Batch
+    from app.modules.commerce.batches.service import BatchService
+
+    batch = BatchService(session).create(
+        Batch(name="Caja POS", code="POS-01", initial_items_count=10)
+    )
+    product_service = ProductService(session)
+
+    # 1. Producto disponible con stock (item_number 77)
+    m1 = make_master(
+        session,
+        77,
+        "Regleta Multitoma Smart",
+        official_price=120.0,
+        published_price=80.0,
+        minimum_price=60.0,
+    )
+    p1 = product_service.create(
+        Product(
+            master_product_id=m1.id,
+            batch_id=batch.id,
+            initial_quantity=5,
+            available_quantity=5,
+            status="AVAILABLE",
+        )
+    )
+
+    # 2. Producto agotado (stock 0, SOLD_OUT)
+    m2 = make_master(
+        session,
+        78,
+        "Cable HDMI 4K Agotado",
+        official_price=50.0,
+        published_price=35.0,
+        minimum_price=25.0,
+    )
+    product_service.create(
+        Product(
+            master_product_id=m2.id,
+            batch_id=batch.id,
+            initial_quantity=2,
+            sold_quantity=2,
+        )
+    )
+
+    # 3. Consultar endpoint
+    res = client.get(
+        "/api/commerce/sales/available-products",
+        headers=superuser_token_headers,
+    )
+    assert res.status_code == 200
+    items = res.json()
+    assert any(it["id"] == str(p1.id) for it in items)
+    assert not any(it["item_number"] == 78 for it in items)
+
+    # 4. Verificar datos del producto disponible y el tri-precio comercial
+    target = next(it for it in items if it["id"] == str(p1.id))
+    assert target["name"] == "Regleta Multitoma Smart"
+    assert target["item_number"] == 77
+    assert target["published_price"] == 80.0
+    assert target["minimum_price"] == 60.0
+    assert target["official_price"] == 120.0
+    assert target["discount_margin"] == 20.0
+    assert target["available_quantity"] == 5
+
+    # 5. Búsqueda por #77
+    res_search = client.get(
+        "/api/commerce/sales/available-products?search=%2377",
+        headers=superuser_token_headers,
+    )
+    assert res_search.status_code == 200
+    found = res_search.json()
+    assert len(found) >= 1
+    assert any(it["id"] == str(p1.id) for it in found)
+
+
+
+

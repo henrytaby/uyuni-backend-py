@@ -136,8 +136,7 @@ class CommerceDeliveryStatusesProvider(CatalogProvider):
     def get_items(self, session: Session, **kwargs) -> list[CatalogItemSchema]:
         return [
             CatalogItemSchema(value="DELIVERED", label="Entregado"),
-            CatalogItemSchema(value="PENDING", label="Pendiente de Envío"),
-            CatalogItemSchema(value="SHIPPED", label="Enviado por Flota"),
+            CatalogItemSchema(value="PENDING", label="Pendiente de Entrega"),
         ]
 
 

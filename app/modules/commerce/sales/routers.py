@@ -8,6 +8,7 @@ from app.core.db import SessionDep
 from app.core.exceptions import NotFoundException
 from app.modules.commerce.constants import CommerceModuleSlug
 from app.modules.commerce.sales.schemas import (
+    AvailableProductForSale,
     SaleCreate,
     SaleRead,
     SaleUpdate,
@@ -86,6 +87,26 @@ def count_sales(
             delivery_status=delivery_status,
         )
     }
+
+
+@router.get("/available-products", response_model=list[AvailableProductForSale])
+def get_available_products_for_sale(
+    session: SessionDep,
+    search: str | None = Query(
+        None, description="Búsqueda por nombre, código o #item_number"
+    ),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
+        )
+    ),
+):
+    """Catálogo rápido de productos con stock físico disponible para ventas."""
+    service = SaleService(session)
+    return service.get_available_products(search=search, limit=limit, offset=offset)
 
 
 @router.get("/{id}", response_model=SaleRead)

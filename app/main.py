@@ -76,6 +76,15 @@ async def lifespan(app: FastAPI):
                     "FROM commerce_product_master), 1), 1), "
                     "(SELECT MAX(item_number) "
                     "FROM commerce_product_master) IS NOT NULL); "
+                    "END IF; "
+                    "IF EXISTS (SELECT 1 FROM pg_sequences "
+                    "WHERE sequencename = "
+                    "'commerce_sale_sale_number_seq') THEN "
+                    "PERFORM setval('commerce_sale_sale_number_seq', "
+                    "GREATEST(COALESCE((SELECT MAX(sale_number) "
+                    "FROM commerce_sale), 1), 1), "
+                    "(SELECT MAX(sale_number) "
+                    "FROM commerce_sale) IS NOT NULL); "
                     "END IF; END $$;"
                 )
                 session.execute(text(calib_sql))

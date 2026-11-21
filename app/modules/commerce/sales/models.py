@@ -16,11 +16,11 @@ if TYPE_CHECKING:
 class Sale(BaseModel, AuditMixin, table=True):
     __tablename__ = "commerce_sale"
 
-    sale_number: str = Field(
+    sale_number: int = Field(
+        default=None,
         index=True,
         unique=True,
-        max_length=50,
-        description="Código de venta único (Ej: VTA-2026-0001)",
+        description="Número de venta secuencial único (#1, #2, #29...)",
     )
     sheet_sale_id: int | None = Field(
         default=None, index=True, description="ID Venta de origen en Google Sheets"
@@ -72,10 +72,18 @@ class Sale(BaseModel, AuditMixin, table=True):
     delivery_status: str = Field(
         default="DELIVERED",
         max_length=50,
-        description="DELIVERED, SHIPPED, PENDING",
+        description="DELIVERED, PENDING",
     )
 
     # Consolidado Financiero
+    amount_tendered: float | None = Field(
+        default=None,
+        description="Monto entregado por el cliente en efectivo (ej: 100 Bs)",
+    )
+    change_given: float | None = Field(
+        default=None,
+        description="Cambio o vuelto devuelto al cliente (ej: 15 Bs)",
+    )
     total_collected: float = Field(
         default=0.0, description="Monto final efectivamente cobrado al cliente"
     )
@@ -95,6 +103,12 @@ class Sale(BaseModel, AuditMixin, table=True):
     # Relationships
     items: List["SaleItem"] = Relationship(back_populates="sale")
     sales_channel: Optional["SalesChannel"] = Relationship(back_populates="sales")
+
+    @property
+    def channel_name(self) -> str:
+        if self.sales_channel and self.sales_channel.name:
+            return self.sales_channel.name
+        return self.channel or ""
 
 
 class SaleItem(BaseModel, AuditMixin, table=True):
