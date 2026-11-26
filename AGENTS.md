@@ -120,3 +120,9 @@ Este backend actúa como motor transaccional y ERP de Marca Blanca para empresas
 ## Tests
 - Ejecuta siempre pytest con: `venv/bin/pytest <archivo> -q --tb=short --disable-warnings`.
 - Si todos los tests pasan, detente e informa el resultado; nunca los vuelvas a ejecutar en modo detallado ni para revisar warnings.
+
+## Angular 21
+- Usa siempre Standalone Components (nunca NgModules).
+- Usa Signals (`signal`, `computed`, `input()`, `output()`, `model()`).
+- Usa el control flow nativo (`@if`, `@for`, `@switch`), nunca `*ngIf` ni `*ngFor`.
+- Inyección de dependencias con `inject()` en lugar de constructor.
