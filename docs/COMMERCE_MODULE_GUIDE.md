@@ -17,7 +17,7 @@ La documentación completa, modular y profesional del módulo de **Commerce** se
 
 3. **[02. Diccionario de Base de Datos](./commerce/02_DATABASE_DICTIONARY.md):**
    - Diagrama Entidad-Relación (ERD) oficial en Mermaid.
-   - Diccionario exhaustivo campo por campo de las 10 tablas, tipos, índices, claves foráneas y columnas de auditoría.
+   - Diccionario exhaustivo campo por campo de las 11 tablas, tipos, índices, claves foráneas y columnas de auditoría.
 
 4. **[03. Guía de Integración Frontend](./commerce/03_FRONTEND_INTEGRATION_GUIDE.md):**
    - Consumo de API para Angular 21 y React PWA.

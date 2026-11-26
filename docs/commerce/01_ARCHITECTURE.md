@@ -178,28 +178,57 @@ En el modelo comercial minorista y de importaciones de Uyuni ERP, cada ficha mae
 
 ### 2. Contabilidad de Costos por Lote y Modalidades de Adquisición
 
-El backend soporta tres modalidades de costeo empresarial configurables en `Batch.costing_method`:
+El backend soporta tres modalidades de costeo canónicas, configurables en
+`Batch.costing_method` (valores por defecto del modelo: `WEIGHTED_RETAIL`):
+
+| `costing_method` | Escenario típico | Cómo se calcula `Product.cost_price` |
+| :--- | :--- | :--- |
+| `WEIGHTED_RETAIL` | Caja mixta / liquidación comprada a precio ciego | Prorrateo ponderado por valor comercial (Retail Inventory Method). |
+| `SPECIFIC_ITEM` | Compra a pedido, bazar, manufactura, costo real conocido | Costo unitario ingresado manualmente por producto (Bottom-Up). |
+| `FLAT_AVERAGE` | Lote mayorista homogéneo | Costo total repartido en partes iguales entre unidades vendibles. |
+
+> **Compatibilidad:** el servicio también reconoce `ON_DEMAND` y `WHOLESALE` como alias de
+> costeo directo por ítem (`SPECIFIC_ITEM`) al recalcular lotes y ventas históricas.
 
 1. **Modalidad 1: Caja Mixta / Liquidación (`WEIGHTED_RETAIL` - Retail Inventory Method):**
-   - **Regla:** Al comprar una caja o pallet cerrado a precio ciego (ej: $2,000 Bs por la caja), los productos vendibles absorben el costo total y las mermas (rotos) se excluyen de la ponderación.
+   - **Regla:** Al comprar una caja o pallet cerrado a precio ciego (ej: 2.000 Bs por la caja), los productos vendibles absorben el costo total y las mermas (`physical_condition = DAMAGED_SCRAP`) se excluyen de la ponderación.
    - **Prorrateo Ponderado por Valor Comercial:** Para evitar distorsiones donde un accesorio barato genere pérdidas y un ítem costoso infle márgenes artificialmente, el costo se distribuye en función del valor esperado de venta (`published_price` con fallback a `official_price` o `minimum_price`):
      $$w_i = \frac{\text{precio\_referencia}_i \times \text{cantidad}_i}{\sum (\text{precio\_referencia}_j \times \text{cantidad}_j)}$$
      $$\text{cost\_price}_i = \frac{w_i \times \text{total\_cost}}{\text{cantidad}_i}$$
    - **Reconciliación de Centavos:** El último ítem absorbe la diferencia por redondeo, garantizando que $\sum (\text{cost\_price} \times \text{cantidad}) = \text{total\_cost}$ al centavo exacto.
+   - **Inmutabilidad:** en lotes `WEIGHTED_RETAIL` y `FLAT_AVERAGE` el `cost_price` de cada producto
+     es derivado del lote; el `PUT /api/commerce/products/{id}` descarta cualquier valor manual.
 
 2. **Modalidad 2: Reposición Bajo Demanda (`SPECIFIC_ITEM` / Bottom-Up):**
    - **Regla:** Para compras puntuales a pedido de clientes, el costo real específico se registra en el producto (`Product.cost_price`).
    - El lote acumula automáticamente de abajo hacia arriba:
-     $$\text{Batch.purchase\_price} = \sum (\text{Product.cost\_price} \times \text{cantidad})$$
+     $$\text{Batch.purchase\_price} = \sum (\text{Product.cost\_price} \times \text{unidades})$$
      $$\text{Batch.total\_cost} = \text{Batch.purchase\_price} + \text{Batch.freight\_cost}$$
 
-3. **Modalidad 3: Compra Mayorista Tradicional (`WHOLESALE` / Costeo por Factura):**
-   - Cada producto mantiene su costo unitario negociado de factura y el flete general se prorratea o suma al total del lote.
+3. **Modalidad 3: Compra Mayorista Homogénea (`FLAT_AVERAGE`):**
+   - Lote de unidades equivalentes; el `unit_cost` del lote se calcula como
+     `total_cost / sellable_items_count` y sirve de costo de referencia para el costeo plano.
+   - El `cost_price` de la unidad física no se edita a mano (el `PUT` lo descarta); se gestiona
+     desde el lote y sus recalculos.
+
+- **Fórmulas transversales del lote (siempre recalculadas por `BatchService`):**
+  $$\text{Batch.total\_cost} = \text{purchase\_price} + \text{freight\_cost}$$
+  $$\text{Batch.sellable\_items\_count} = \max(0,\ \text{initial\_items\_count} - \text{merma\_items\_count})$$
+  $$\text{Batch.unit\_cost} = \frac{\text{total\_cost}}{\text{sellable\_items\_count}}$$
 
 - **Sincronización Automática con la Ronda de Inversión (`InvestmentRound`):**
   Cada vez que se crea, actualiza, recalcula o elimina un lote (`Batch`), el servicio notifica a la ronda asociada para actualizar su capital invertido:
   $$\text{InvestmentRound.capital\_invested} = \sum \text{Batch.total\_cost}$$
-  Y al registrarse ventas (`SaleService`), la ronda evalúa en tiempo real el capital recuperado y avanza su estado hacia el Punto de Equilibrio (`IN_RECOVERY` → `NEAR_BREAKEVEN` → `RECOVERED` → `LIQUIDATED`).
+  Y al registrarse ventas (`SaleService`), la ronda evalúa en tiempo real el capital recuperado y
+  avanza su estado hacia el Punto de Equilibrio:
+  `ACTIVE` → `IN_RECOVERY` (recuperado > 0) → `NEAR_BREAKEVEN` (≥ 80 %) → `RECOVERED` (≥ 100 %)
+  → `LIQUIDATED` (capital recuperado y sin stock disponible).
+  > El valor por defecto del modelo es `active`; el servicio `InvestmentRoundService.recalculate_round`
+  > normaliza el estado a mayúsculas según las ventas y el stock reales.
+
+- **Estados financieros del lote (`Batch.financial_status`):** `EN_RECUPERACION`, `CASI_TABLAS`
+  (≥ 80 % del costo recuperado) y `RECUPERADO` (≥ 100 %). Son recalculados automáticamente por
+  `BatchService.sync_financial_status` tras cada venta, edición o recálculo de lote.
 
 ### 3. Transacción Atómica de Ventas (`SaleService`)
 - **Regla:** Una venta debe ser indivisible. Si la transacción falla en cualquier punto (por ejemplo, stock insuficiente en el segundo producto de un carrito con 3 ítems), la base de datos revierte completamente la operación sin dejar registros parciales.
@@ -305,4 +334,29 @@ Para evitar cualquier posibilidad de colisión, duplicados o errores cuando múl
    - Ni en `POST` ni en `PUT` el usuario puede definir o alterar `item_number`. Ambos endpoints descartan cualquier valor manual recibido y delegan la numeración a PostgreSQL.
 4. **Hook de Auto-Calibración en Arranque (`main.py`):**
    - Al iniciar la aplicación, un hook ejecuta `SELECT setval('commerce_product_master_item_number_seq', GREATEST(COALESCE(MAX(item_number), 1), 1), MAX(item_number) IS NOT NULL)` para asegurar sincronía perfecta incluso tras restauraciones con Navicat o backups manuales de base de datos sin errores de rango cuando la tabla está vacía.
+
+---
+
+### 7. Correlativo Atómico de Ventas (`sale_number`)
+
+El número de venta es un **entero secuencial** (no un código alfanumérico) y se obtiene de la
+secuencia PostgreSQL `commerce_sale_sale_number_seq`:
+
+- `SaleService.get_next_sale_number()` consume `nextval('commerce_sale_sale_number_seq')` en
+  PostgreSQL; en SQLite (tests) usa `MAX(sale_number) + 1`.
+- El `POST /api/commerce/sales/` ignora un `sale_number <= 0` y genera el siguiente correlativo.
+- `main.py` calibra la secuencia al arranque con `MAX(sale_number)`, igual que `item_number`.
+- En la UI debe mostrarse como `#1`, `#2`, `#29`, etc.
+
+---
+
+### 8. Catálogos Dinámicos y Caché de Lectura
+
+- Los `CatalogProvider` del dominio (`app/modules/commerce/catalogs/providers.py`) alimentan
+  `POST /api/catalogs/bulk` y `GET /api/catalogs/{name}` sin acoplar el frontend a endpoints
+  individuales.
+- `ProductMaster.cover_image_url` actúa como caché desnormalizada para tablas y PWA, evitando un
+  `JOIN` a `commerce_product_master_image` en lecturas de alta frecuencia.
+- Los consolidados de stock (`total_available_stock`, `total_sold_stock`, `total_merma_stock`) se
+  calculan con `ProductMasterService.get_stock_summary` para las fichas maestras.
 

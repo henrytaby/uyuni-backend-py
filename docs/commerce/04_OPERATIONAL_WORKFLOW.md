@@ -24,7 +24,8 @@ flowchart TD
 Esta es la **receta inicial obligatoria** antes de desempaque o ventas:
 
 1. **Paso 1: Apertura de la Ronda de Inversión (`InvestmentRound`):**
-   - Se crea en el módulo de Catálogos (`/commerce/catalogs` $\rightarrow$ Pestaña *Rondas de Inversión*) o vía `POST /api/commerce/rounds/`.
+   - Se crea en el módulo **Rondas de Inversión** (`/commerce/rounds`) o vía
+     `POST /api/commerce/rounds/`.
    - **Caso Importación de Cajas:** `RONDA-02` con capital inicial previsto (ej: Bs. 15,000).
    - **Caso Bazar / Cosas Propias de Socios:** Se crea con `capital_invested = 0.0`. No hay deuda inicial que cubrir; el sistema irá sumando de abajo hacia arriba solo si se añaden compromisos de pago.
 2. **Paso 2: Registro del Lote o Caja (`Batch`):**
@@ -33,7 +34,9 @@ Esta es la **receta inicial obligatoria** antes de desempaque o ventas:
      - `WEIGHTED_RETAIL`: Cajas sorpresa o liquidaciones de Amazon con costo fijo global adelantado (ej. compra 4.000 Bs + flete 300 Bs = 4.300 Bs), cuyo costo se distribuye ponderadamente según el precio comercial de los productos buenos.
      - `SPECIFIC_ITEM`: Lotes abiertos dinámicos (bazar familiar, compras a pedido, artesanías/manufactura) con costo de compra inicial de 0 Bs, donde cada producto nuevo ingresado suma su propio costo o costo nominal.
      - `FLAT_AVERAGE`: Lotes mayoristas homogéneos repartidos en partes iguales entre las unidades vendibles.
-   - Estado financiero inicial: `ACTIVE` o `IN_RECOVERY`.
+   - Estados iniciales: `Batch.status = "active"` (operativo) y
+     `Batch.financial_status = "EN_RECUPERACION"` (financiero). El estado financiero evoluciona
+     automáticamente a `CASI_TABLAS` (≥ 80 %) y `RECUPERADO` (≥ 100 %).
 
 ---
 
@@ -78,6 +81,7 @@ Antes de la transmisión en vivo, el equipo organiza los productos para facilita
      - `C3 Hogar & Cocina`: Afiladores eléctricos, luces solares, almohadillas térmicas.
      - `C4 Salud & Belleza`: Masajeadores, secadores iónicos, perfiladores.
      - `C+1 Remate Flash`: Productos especiales para dinamizar el live en momentos de alto tráfico.
+     - `FONDO` / `NONE`: Reserva de catálogo o productos sin canasta asignada.
 2. **Publicación Multicanal:**
    - Se publican las fotos WebP en Facebook Marketplace (`is_published_marketplace = True`) y en catálogos de WhatsApp.
    - Los clientes pueden ver el catálogo público en tiempo real mediante la **PWA de Clientes** (`/apps/catalog-pwa`), la cual consulta directamente los productos con stock disponible sin necesidad de recompilar la web.
@@ -109,9 +113,13 @@ Durante el live o por chat de Marketplace, un cliente expresa interés en un pro
 
 ### Fase 6: Cierre Financiero y Retorno de Inversión (Break-Even)
 1. **Seguimiento del Lote:**
-   - Con cada venta registrada, el sistema suma el capital recuperado de esa caja específica.
+   - Con cada venta registrada, `BatchService.sync_financial_status` suma los
+     `SaleItem.total_price` de los productos de esa caja específica.
 2. **Punto de Equilibrio (*Break-Even*):**
-   - En cuanto las ventas de la caja superan los Bs. 4,300 iniciales, el campo `financial_status` del lote cambia a `"RECUPERADO"`.
+   - Al alcanzar el 80 % del costo total, `financial_status` pasa a `"CASI_TABLAS"`.
+   - Al igualar o superar los Bs. 4,300 iniciales, cambia a `"RECUPERADO"`.
+   - La ronda asociada (`InvestmentRound`) se recalcula en paralelo y avanza a
+     `NEAR_BREAKEVEN`, `RECOVERED` o `LIQUIDATED` según corresponda.
 3. **Distribución de Utilidades:**
    - A partir de ese momento, cada venta subsiguiente de esa caja representa **100% utilidad neta**, permitiendo a los administradores generar los reportes de liquidación para los inversionistas de la ronda.
 

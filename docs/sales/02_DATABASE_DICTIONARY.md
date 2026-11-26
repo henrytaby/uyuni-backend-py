@@ -103,7 +103,7 @@ Almacena el encabezado consolidado de cada venta física o en línea.
 | `channel` | `VARCHAR(50)` | No | `'Marketplace'`| — | Nombre textual legible del canal (fallback desnormalizado). |
 | `payment_method` | `VARCHAR(50)` | No | `'QR'` | — | Método de pago: `QR`, `CASH`, `TRANSFER`, `COURTESY`. |
 | `payment_status` | `VARCHAR(50)` | No | `'COLLECTED'`| — | Estado del cobro: `COLLECTED`, `PENDING`, `COURTESY`, `REFUNDED`. |
-| `delivery_modality`| `VARCHAR(100)`| No | `'FREE_MEETING_POINT'`| — | Forma de despacho (`FREE_MEETING_POINT`, `HOME_DELIVERY`, etc.). |
+| `delivery_modality`| `VARCHAR(100)`| No | `'FREE_MEETING_POINT'`| — | Forma de despacho (`FREE_MEETING_POINT`, `HOME_DELIVERY`, `TERMINAL_BUS`, `NATIONAL_COURIER`, `STORE_PICKUP`, `PARCEL_SERVICE`). |
 | `delivery_address` | `VARCHAR(255)`| Sí | `NULL` | — | Dirección específica, destino provincial o punto de encuentro. |
 | `delivery_cost` | `DOUBLE PRECISION`| No | `0.0` | — | Costo monetario del flete o transporte contratado. |
 | `delivery_cost_paid_by`| `VARCHAR(50)`| No | `'FREE'`| — | Quién asume el flete: `FREE` (gratis), `CUSTOMER`, `STORE`. |

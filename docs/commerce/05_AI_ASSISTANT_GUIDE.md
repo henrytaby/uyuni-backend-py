@@ -97,7 +97,7 @@ Prefijo base: `/api/commerce/assistant`
 | Campo | Tipo | Utilidad para el Frontend |
 | :--- | :--- | :--- |
 | **`reply`** | `string` | Respuesta final generada en Markdown lista para pintar en la burbuja de chat. |
-| **`provider_used`** | `string` | Identifica qué proveedor resolvió la consulta (`"groq"` o `"mistral"`). Útil para mostrar un badge como `"⚡ Groq"`. |
+| **`provider_used`** | `string` | Identifica qué proveedor resolvió la consulta (`"groq"`, `"mistral"` o `"gemini"`). Útil para mostrar un badge como `"⚡ Groq"`. |
 | **`model_used`** | `string` | Modelo exacto ejecutado (`"openai/gpt-oss-120b"`). |
 | **`matched_products`** | `array` | **Clave para UI/UX:** Lista estructurada de las fichas maestras encontradas en BD con stock real y precios. El frontend puede pintar debajo de la respuesta tarjetas de producto con botón directo a *"Crear Venta"* o *"Ver Ficha"*. |
 | **`fallback_occurred`**| `boolean` | Indica si el proveedor primario falló y se activó el respaldo automáticamente sin error para el usuario. |
@@ -116,6 +116,17 @@ Prefijo base: `/api/commerce/assistant`
   }
   ```
 * **Utilidad Frontend:** Permite poblar un selector en la barra superior del chat con los proveedores que realmente tienen claves válidas en el servidor.
+
+### C. Proveedores y Modelos Soportados
+
+| Proveedor | Variable de API key | Modelo por defecto | Rol |
+| :--- | :--- | :--- | :--- |
+| `groq` | `GROQ_API_KEY` | `openai/gpt-oss-120b` | Principal (baja latencia). |
+| `mistral` | `MISTRAL_API_KEY` | `ministral-8b-latest` | Fallback automático. |
+| `gemini` | `GEMINI_API_KEY` | `gemini-3.5-flash` | Opcional / banca. |
+
+`configured_providers` solo incluye los proveedores con clave no vacía (se excluyen valores
+placeholder como `your_...`). `all_providers` lista siempre los tres soportados por el código.
 
 ---
 

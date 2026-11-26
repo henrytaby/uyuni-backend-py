@@ -33,6 +33,9 @@ Las respuestas de error siguen el estándar de excepciones tipadas del backend:
 > [!TIP]
 > **Optimización de Rendimiento:** Nunca realices peticiones HTTP separadas para poblar cada `<p-dropdown>` o `<select>`. Utiliza el endpoint masivo para obtener todos los catálogos en **una sola llamada HTTP**.
 
+El cuerpo es un mapa `{ "nombre_catalogo": { parámetros } }`. Cada valor es un objeto de filtros
+del proveedor; `{}` significa "sin filtros".
+
 ### Petición:
 ```http
 POST /api/catalogs/bulk
@@ -42,15 +45,37 @@ POST /api/catalogs/bulk
 {
   "commerce_categories": {},
   "commerce_live_baskets": {},
+  "commerce_investment_rounds": {},
   "commerce_batches": {},
   "commerce_product_masters": {},
   "commerce_physical_conditions": {},
   "commerce_product_statuses": {},
   "commerce_sales_channels": {},
   "commerce_payment_methods": {},
-  "commerce_delivery_modalities": {}
+  "commerce_payment_statuses": {},
+  "commerce_delivery_modalities": {},
+  "commerce_delivery_paid_by": {},
+  "commerce_delivery_statuses": {}
 }
 ```
+
+### Catálogos registrados en Commerce
+
+| Clave | Origen | Notas |
+| :--- | :--- | :--- |
+| `commerce_categories` | `commerce_category` | Label con emoji + nombre. |
+| `commerce_live_baskets` | `commerce_live_basket` | Label comercial de la canasta. |
+| `commerce_investment_rounds` | `commerce_investment_round` | Label `CODE - Nombre`. |
+| `commerce_batches` | `commerce_batch` | Label `Nombre (Código)`. |
+| `commerce_product_masters` | `commerce_product_master` | Solo activos; label `#N - Nombre`. |
+| `commerce_physical_conditions` | Enum estático | `OPERATIONAL`, `DAMAGED_SCRAP`, `FOR_PARTS`, `INCOMPLETE`, `REPAIRED`. |
+| `commerce_product_statuses` | Enum estático | `AVAILABLE`, `SOLD_OUT`, `SCRAPPED` (además de `RESERVED`, expuesto por catálogo pero no generado automáticamente por el backend actual). |
+| `commerce_sales_channels` | `commerce_channel` | Solo canales activos. |
+| `commerce_payment_methods` | Enum estático | `QR`, `CASH`, `TRANSFER`, `COURTESY`. |
+| `commerce_payment_statuses` | Enum estático | `COLLECTED`, `PENDING`, `COURTESY`, `REFUNDED`. |
+| `commerce_delivery_modalities` | Enum estático | `FREE_MEETING_POINT`, `HOME_DELIVERY`, `TERMINAL_BUS`, `NATIONAL_COURIER`, `STORE_PICKUP`, `PARCEL_SERVICE`. |
+| `commerce_delivery_paid_by` | Enum estático | `FREE`, `CUSTOMER`, `STORE`. |
+| `commerce_delivery_statuses` | Enum estático | `DELIVERED`, `PENDING`. |
 
 ### Respuesta Consolidada:
 ```json
@@ -162,6 +187,12 @@ Content-Type: application/json
 }
 ```
 
+> **Enlaces iniciales opcionales:** `marketplace_url` y `external_info_url` pueden enviarse en la
+> creación. El backend los convierte automáticamente en `commerce_product_master_external_link`
+> (`MARKETPLACE` / `REFERENCE`, primarios) con **`is_public=True` forzado**. No uses estos campos
+> para URLs de proveedores mayoristas o información confidencial: para eso usa
+> `POST /api/commerce/product-masters/{id}/links` con `is_public: false`.
+
 ### C. Actualizar Ficha Maestra (`PUT /api/commerce/product-masters/{id}`)
 
 * **`item_number`**: **Es inmutable**. No se puede modificar una vez creada la ficha.
@@ -233,7 +264,8 @@ Content-Type: multipart/form-data
 #### Parámetros del Formulario (`multipart/form-data`):
 - `files`: Lista de archivos binarios (JPG, PNG, WEBP, GIF, AVIF, máx 10 MB por archivo).
 - `image_type`: `"CATALOG"` (default), `"REAL"`, `"MARKETING"`, o `"BANNER"`.
-- `is_cover`: `true` | `false` (si es `true`, o si la ficha aún no tiene foto de portada, la primera imagen de esta tanda se asigna automáticamente como portada oficial).
+- `is_cover`: `true` | `false`. Solo las imágenes `CATALOG` pueden ser portada. Si es `true`, o si la
+  ficha aún no tiene portada `CATALOG`, la primera imagen de esta tanda se asigna como portada.
 - `product_id`: `UUID | null` (opcional: si se desea vincular la foto a una unidad física específica de lote).
 
 #### Ejemplo de Respuesta:
@@ -331,22 +363,76 @@ Elimina el archivo físico de Cloudinary (usando su `public_id`) y el registro d
     (onUpload)="onUploadSuccess($event)">
 </p-fileupload>
 
-<!-- Galería con badges y acciones -->
+<!-- Galería con badges y acciones (control flow nativo de Angular 21) -->
 <div class="grid grid-cols-4 gap-4 mt-4">
-  <div *ngFor="let img of master.images" class="relative group border rounded-lg overflow-hidden">
-    <img [src]="img.url" [alt]="img.title" class="w-full h-36 object-cover" />
-    <span *ngIf="img.is_cover" class="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
-      Portada
-    </span>
-    <span class="absolute top-2 right-2 bg-slate-800/80 text-white text-xs px-1.5 py-0.5 rounded">
-      {{ img.image_type }}
-    </span>
-    <div class="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-      <button *ngIf="!img.is_cover" (click)="setAsCover(img)" class="p-button-sm p-button-secondary" title="Fijar como portada">★</button>
-      <button (click)="deleteImage(img)" class="p-button-sm p-button-danger" title="Eliminar">🗑</button>
+  @for (img of master.images; track img.id) {
+    <div class="relative group border rounded-lg overflow-hidden">
+      <img [src]="img.url" [alt]="img.title" class="w-full h-36 object-cover" />
+      @if (img.is_cover) {
+        <span class="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+          Portada
+        </span>
+      }
+      <span class="absolute top-2 right-2 bg-slate-800/80 text-white text-xs px-1.5 py-0.5 rounded">
+        {{ img.image_type }}
+      </span>
+      <div class="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        @if (!img.is_cover) {
+          <button (click)="setAsCover(img)" class="p-button-sm p-button-secondary" title="Fijar como portada">★</button>
+        }
+        <button (click)="deleteImage(img)" class="p-button-sm p-button-danger" title="Eliminar">🗑</button>
+      </div>
     </div>
-  </div>
+  }
 </div>
+```
+
+---
+
+### I. Extracción e Importación de Imágenes Externas (Scraping)
+
+**1. Previsualizar imágenes de una URL** (Amazon, eBay, Alibaba o web genérica):
+
+```http
+POST /api/commerce/product-masters/{id}/images/scrape-preview
+Content-Type: application/json
+```
+```json
+{ "url": "https://www.amazon.com/dp/B08XYZ123" }
+```
+```json
+{
+  "source_url": "https://www.amazon.com/dp/B08XYZ123",
+  "platform": "AMAZON",
+  "images": [
+    { "url": "https://m.media-amazon.com/images/I/...jpg", "thumbnail_url": null, "width": 1600, "height": 1600, "alt": null }
+  ],
+  "warning": null
+}
+```
+
+**2. Importar las imágenes seleccionadas a Cloudinary** (servidor-a-servidor):
+
+```http
+POST /api/commerce/product-masters/{id}/images/import-external
+Content-Type: application/json
+```
+```json
+{
+  "image_urls": ["https://m.media-amazon.com/images/I/...jpg"],
+  "image_type": "CATALOG",
+  "set_first_as_cover": true
+}
+```
+
+**3. Eliminación masiva atómica** (también disponible para la ficha maestra):
+
+```http
+POST /api/commerce/product-masters/{id}/images/bulk-delete
+Content-Type: application/json
+```
+```json
+{ "image_ids": ["01a1d6b6-bb2c-7326-9164-1b3172dc5669"] }
 ```
 
 ---
@@ -545,7 +631,76 @@ export class CloudinaryPipe implements PipeTransform {
 
 ---
 
-## 🏷️ 4. Inventario Físico por Caja (`/api/commerce/products`)
+## 🧾 4. Lotes y Cajas (`/api/commerce/batches`)
+
+`Batch` representa una caja, palet o lote importado. El backend calcula y mantiene:
+
+- `total_cost = purchase_price + freight_cost`
+- `sellable_items_count = max(0, initial_items_count - merma_items_count)`
+- `unit_cost = total_cost / sellable_items_count` (o `0.0` si no hay vendibles)
+- `financial_status`: `EN_RECUPERACION`, `CASI_TABLAS` (≥ 80 % recuperado) o `RECUPERADO`.
+- `status`: `active`, `liquidated`, `archived` (operativo).
+
+### A. CRUD
+
+```http
+GET    /api/commerce/batches/?offset=0&limit=50&sort_by=code&sort_order=asc&search=amazon
+GET    /api/commerce/batches/count?search=amazon
+GET    /api/commerce/batches/{id}
+POST   /api/commerce/batches/
+PUT    /api/commerce/batches/{id}
+DELETE /api/commerce/batches/{id}
+```
+
+#### Crear lote (payload mínimo)
+
+```json
+{
+  "name": "Caja Amazon Next",
+  "investment_round_id": "019324a1-b8dc-73cb-8e37-99fb5265bd0e",
+  "costing_method": "WEIGHTED_RETAIL",
+  "purchase_price": 4000.0,
+  "freight_cost": 300.0,
+  "initial_items_count": 50,
+  "merma_items_count": 2,
+  "currency": "BOB"
+}
+```
+
+> `code` es opcional: si se omite, el backend genera `CAJA-01`, `CAJA-02`, etc. Si se envía, se
+> normaliza a mayúsculas. `costing_method` canónico: `WEIGHTED_RETAIL`, `SPECIFIC_ITEM`,
+> `FLAT_AVERAGE` (los alias `ON_DEMAND`/`WHOLESALE` se tratan como costeo directo por ítem).
+
+> [!IMPORTANT]
+> **Protecciones del backend:**
+> - `DELETE` se rechaza con `400` si el lote tiene productos asociados.
+> - Si el lote ya tiene productos, `PUT` ignora `initial_items_count`, `merma_items_count`,
+>   `sellable_items_count`, `unit_cost` y `financial_status`: se derivan de la tabla de productos.
+> - `total_cost` nunca se acepta del cliente; siempre se recalcula.
+
+### B. Recalcular conteos y costos desde los productos
+
+```http
+POST /api/commerce/batches/{id}/recalculate?revalue_sales=true&force_product_counts=false
+```
+
+- `revalue_sales`: revalúa `commerce_sale_item.unit_cost`, `net_margin` y la cabecera de ventas.
+- `force_product_counts`: si `true`, sobreescribe los conteos del lote con la suma real de productos.
+
+### C. Prorratear costos relativos (Retail Inventory Method)
+
+```http
+POST /api/commerce/batches/{id}/allocate-relative-costs?basis=published_price&revalue_sales=true
+```
+
+- `basis`: `published_price` (default), `official_price` o `minimum_price`.
+- Excluye productos con `physical_condition = DAMAGED_SCRAP`.
+- Reconcilia centavos en el último producto para que la suma de costos iguale `total_cost`.
+- Si `revalue_sales=true`, actualiza las ventas históricas del lote.
+
+---
+
+## 🏷️ 5. Inventario Físico por Caja (`/api/commerce/products`)
 
 Representa las existencias físicas reales de cada producto dentro de un lote o caja de importación específica.
 
@@ -559,7 +714,9 @@ GET /api/commerce/products/?offset=0&limit=50&batch_id=<uuid>&master_product_id=
 - `limit`: Cantidad por página (default: `100`, con protección backend clamped entre 1 y 500).
 - `sort_by`: Campo de ordenación (`created_at`, `status`, etc.).
 - `sort_order`: `'asc'` o `'desc'`.
-- `search`: Búsqueda insensible a mayúsculas que busca en el nombre de la ficha maestra (`master_product.name`), código de lote y variante.
+- `search`: Búsqueda insensible a mayúsculas en `ProductMaster.name`, `ProductMaster.code`,
+  `brand`, `model`, `Product.variant_name`, `status`, `physical_condition`, `defect_detail` y
+  `#item_number`/`sheet_row_id` numéricos. No busca por código de lote.
 - `batch_id`: Filtrar por caja/lote de importación específico.
 - `master_product_id`: Filtrar todas las unidades de una ficha maestra en diferentes cajas.
 - `status`: Filtrar por estado: `'AVAILABLE'`, `'SOLD_OUT'`, `'SCRAPPED'`.
@@ -611,7 +768,19 @@ Cada producto físico incluye automáticamente las propiedades calculadas y dele
 
 ---
 
-### B. Editar Datos y Registrar Merma (`PUT /api/commerce/products/{id}`)
+### B. Búsqueda Directa por SKU / Código de Barras
+
+```http
+GET /api/commerce/products/by-sku/7751234567890
+```
+
+Retorna el primer `Product` físico cuyo `ProductMaster.code` coincide. Útil para escaneo en
+almacén o POS. Para el conteo paginado usa `GET /api/commerce/products/count` (respuesta:
+`{ "total": N }`).
+
+---
+
+### C. Editar Datos y Registrar Merma (`PUT /api/commerce/products/{id}`)
 
 ```http
 PUT /api/commerce/products/<product_id>
@@ -623,13 +792,13 @@ PUT /api/commerce/products/<product_id>
 | :--- | :---: | :--- |
 | `published_price` | ✅ Sí | Permite fijar un precio publicado menor específico para este lote físico (ej. si llegó con empaque abierto). |
 | `minimum_price` | ✅ Sí | Piso protegido de regateo para esta unidad física. |
-| `cost_price` | ⚠️ Condicional | **Bloqueado** en lotes tipo Amazon/Liquidación (`WEIGHTED_RETAIL`, calculado automáticamente por costeo relativo). **Editable** en lotes de compra directa (`SPECIFIC_ITEM`). |
+| `cost_price` | ⚠️ Condicional | **Bloqueado** en lotes `WEIGHTED_RETAIL` y `FLAT_AVERAGE` (derivado del lote). **Editable** en `SPECIFIC_ITEM` y alias `ON_DEMAND`/`WHOLESALE`. |
 | `initial_quantity`| ✅ Sí | Cantidad física recibida en almacén. |
 | `merma_quantity` | ✅ Sí | Cantidad declarada rota o defectuosa. |
 | `sold_quantity` | ❌ No | **Solo lectura**: Administrado automáticamente por transacciones atómicas de venta (`commerce_sale_item`). |
 | `available_quantity`| ❌ No | **Auto-calculado**: `initial_quantity - sold_quantity - merma_quantity`. |
 | `status` | ❌ No | **Auto-calculado**: `AVAILABLE` si `available > 0`; `SOLD_OUT` si `available == 0` y `sold > 0`; `SCRAPPED` si `available == 0` y `sold == 0`. |
-| `physical_condition`| ✅ Sí | `OPERATIONAL`, `DAMAGED_SCRAP`, `FOR_PARTS`, `INCOMPLETE`. |
+| `physical_condition`| ✅ Sí | `OPERATIONAL`, `DAMAGED_SCRAP`, `FOR_PARTS`, `INCOMPLETE`, `REPAIRED`. |
 | `defect_detail` | ✅ Sí | Texto descriptivo de la falla, rasguño o accesorio faltante. |
 | `is_reviewed` | ✅ Sí | Checkbox de prueba física en mesa de trabajo antes de exhibir. |
 
@@ -646,7 +815,7 @@ PUT /api/commerce/products/<product_id>
 
 ---
 
-### C. Fotografías Reales de Almacén (`/api/commerce/products/{id}/images`)
+### D. Fotografías Reales de Almacén (`/api/commerce/products/{id}/images`)
 
 Permite capturar y adjuntar fotografías reales de desempaque, estado físico o prueba de banco a un producto físico específico. Se almacenan en Cloudinary bajo la jerarquía: `uyuni/products/{item_number}/real/`.
 
@@ -715,7 +884,7 @@ Content-Type: application/json
 
 ---
 
-## 💰 5. Transacciones de Venta (`/api/commerce/sales`)
+## 💰 6. Transacciones de Venta (`/api/commerce/sales`)
 
 Permite registrar transacciones comerciales atómicas con soporte para logística y pagos bolivianos.
 
@@ -752,16 +921,20 @@ POST /api/commerce/sales/
 ```
 
 ### B. Respuesta de Venta Creada:
-El backend genera el código de venta (`VTA-YYYYMMDD-XXXXXX`), asocia el costo unitario del lote, calcula la ganancia neta y descuenta el stock:
+El backend asigna el **correlativo entero** (`sale_number`) desde
+`commerce_sale_sale_number_seq`, asocia el costo unitario del lote, calcula la ganancia neta y
+descuenta el stock:
 
 ```json
 {
   "id": "01a1c787-9988-7766-5544-33221100aabb",
-  "sale_number": "VTA-20261110-D8E9F0",
+  "sale_number": 30,
   "sale_date": "2026-11-10T20:30:00Z",
   "customer_name": "Gonzalo Morales",
   "customer_phone": "79712345",
+  "channel_id": "01a1c1d9-7bd8-7453-a5c3-6bae663dd49e",
   "channel": "TikTok Live",
+  "channel_name": "TikTok Live",
   "payment_method": "QR",
   "payment_status": "COLLECTED",
   "delivery_modality": "TERMINAL_BUS",
@@ -792,49 +965,81 @@ El backend genera el código de venta (`VTA-YYYYMMDD-XXXXXX`), asocia el costo u
 
 ---
 
-## 🎛️ 6. Módulo Unificado de Catálogos y Parámetros (`/commerce/catalogs`)
+### C. Consultar y Gestionar Ventas
 
-### 5.1. Estándar de Industria: Separación de Flujo Operativo vs. Catálogos Maestros
+```http
+GET    /api/commerce/sales/?offset=0&limit=50&sort_by=sale_number&sort_order=desc
+GET    /api/commerce/sales/count?search=&channel=&payment_status=&delivery_status=
+GET    /api/commerce/sales/{id}
+PUT    /api/commerce/sales/{id}
+DELETE /api/commerce/sales/{id}
+```
+
+- Filtros de lista: `search`, `channel`, `payment_status`, `delivery_status`.
+- Orden por defecto: `sale_number desc` (más reciente primero).
+- `PUT /sales/{id}` puede reemplazar `items`; el servicio devuelve el stock de los ítems anteriores y
+  reaplica la venta en una transacción.
+- `DELETE /sales/{id}` restaura el stock y recalcula lote/ronda afectados.
+
+### D. Catálogo POS de Productos Disponibles
+
+```http
+GET /api/commerce/sales/available-products?search=%2353&limit=50&offset=0
+```
+
+`search` admite nombre, código, marca, modelo, variante o `#item_number`. Solo retorna
+`status = AVAILABLE` con `available_quantity > 0`. Cada ítem incluye `display_name`,
+`batch_code`, `batch_name`, `published_price`, `minimum_price`, `official_price`,
+`discount_margin` e `image_url` para pintar la barra del Tri-Precio.
+
+---
+
+## 🎛️ 7. Módulo Unificado de Catálogos y Parámetros (`/commerce/catalogs`)
+
+### 7.1. Estándar de Industria: Separación de Flujo Operativo vs. Catálogos Maestros
 En sistemas ERP de clase mundial (Shopify, Stripe, Odoo, SAP), los elementos de la interfaz se dividen en:
 1. **Flujo Transaccional Diario (Alta Frecuencia):** Pantallas como Ventas, Productos y Lotes, accesibles directamente desde la barra lateral.
-2. **Datos de Referencia y Catálogos (Baja Frecuencia):** Tablas de parametrización como Categorías, Canales de Venta y Rondas de Inversión, que se configuran esporádicamente.
+2. **Datos de Referencia y Catálogos (Baja Frecuencia):** Tablas de parametrización como Categorías, Canales de Venta y Canastas Live, que se configuran esporádicamente.
 
-Para evitar saturar la barra lateral con 8 o 10 accesos directos (*efecto menú sábana*), el módulo `commerce` implementa el **Unified Catalog Hub Pattern**:
-- En la barra lateral solo se expone un acceso: **`Catálogos`** (ruta: `commerce/catalogs`, slug: `commerce-catalogs`, icono: `LucideSlidersHorizontal`).
+Para evitar saturar la barra lateral con accesos directos (*efecto menú sábana*), el módulo `commerce` implementa el **Unified Catalog Hub Pattern**:
+- En la barra lateral se expone **`Catálogos`** (ruta: `commerce/catalogs`, slug: `commerce-catalogs`, icono PrimeIcons `pi pi-sliders-h`). Las Rondas de Inversión se exponen aparte en `/commerce/rounds` por ser el paso 1 del ciclo.
 - Al ingresar, la pantalla presenta una interfaz basada en **Pestañas (Cejas / Tabs de PrimeNG 21)** donde cada pestaña gestiona un grupo de datos independiente con su propia tabla y formulario.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │  Comercio / Catálogos y Parámetros                                     │
 ├─────────────────┬───────────────────┬──────────────────────────────────┤
-│  🏷️ Categorías   │  📢 Canales Venta │  📈 Rondas de Inversión          │
+│  🏷️ Categorías   │  📢 Canales Venta │  🎥 Canastas Live                │
 ├─────────────────┴───────────────────┴──────────────────────────────────┤
 │                                                [+ Nueva Categoría]     │
 │  Buscar categoría: [ Q Buscar... ]                                     │
 │                                                                        │
-│  Nombre             Slug           Estado      Acciones                │
+│  Código   Nombre               Icono   Acciones                        │
 │  ─────────────────────────────────────────────────────────────         │
-│  Electrónica        electronica    Activo      [Editar] [Eliminar]     │
-│  Hogar y Cocina     hogar-cocina   Activo      [Editar] [Eliminar]     │
-│  Herramientas       herramientas   Activo      [Editar] [Eliminar]     │
+│  CAT-01   Hogar & Iluminación    💡    [Editar] [Eliminar]             │
+│  CAT-02   Audio & Sonido         🎧    [Editar] [Eliminar]             │
+│  CAT-03   Accesorios Auto        🚗    [Editar] [Eliminar]             │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### 5.2. Cejas / Pestañas y sus Endpoints de Backend
+### 7.2. Cejas / Pestañas y sus Endpoints de Backend
 
-Cada pestaña ("ceja") en el componente de Angular se conecta a su propio submódulo CRUD en FastAPI:
+Cada pestaña ("ceja") en el componente de Angular se conecta a su propio submódulo CRUD en FastAPI.
+El módulo de Rondas (independiente del Hub) se documenta al final de esta sección:
 
 #### Ceja 1: Categorías de Producto (`/api/commerce/categories`)
 Permite clasificar el catálogo de productos (ej. Electrónica, Iluminación, Hogar, Herramientas):
 - **Listar:** `GET /api/commerce/categories/?offset=0&limit=50&search=`
-- **Crear:** `POST /api/commerce/categories/`
+- **Crear:** `POST /api/commerce/categories/` (`code` requerido)
   ```json
   {
+    "code": "CAT-10",
     "name": "Electrónica y Audio",
+    "icon": "🎧",
     "description": "Auriculares, micrófonos, parlantes y adaptadores bluetooth",
-    "is_active": true
+    "typical_products": "Audífonos TWS, barras de sonido, micrófonos"
   }
   ```
 - **Editar:** `PUT /api/commerce/categories/{id}`
@@ -843,9 +1048,10 @@ Permite clasificar el catálogo de productos (ej. Electrónica, Iluminación, Ho
 #### Ceja 2: Canales de Venta (`/api/commerce/channels`)
 Gestiona los canales comerciales por donde ingresan los pedidos (TikTok Live, Facebook Marketplace, WhatsApp, Tienda Física):
 - **Listar:** `GET /api/commerce/channels/?offset=0&limit=50&search=`
-- **Crear:** `POST /api/commerce/channels/`
+- **Crear:** `POST /api/commerce/channels/` (`code` requerido)
   ```json
   {
+    "code": "TIKTOK_LIVE",
     "name": "TikTok Live",
     "description": "Ventas directas durante transmisiones de remate en vivo",
     "is_active": true
@@ -855,7 +1061,8 @@ Gestiona los canales comerciales por donde ingresan los pedidos (TikTok Live, Fa
 - **Eliminar:** `DELETE /api/commerce/channels/{id}`
 
 #### Ceja 3: Canastas Live (`/api/commerce/live-baskets`)
-Agrupaciones temáticas de productos para subastas en vivo (C1 Taller & Auto, C2 Cables & Iluminación, C3 Hogar & Cocina, C+1 Flash):
+Agrupaciones temáticas de productos para subastas en vivo (`C1` Taller & Auto, `C2` Cables &
+Regletas, `C3` Hogar & Cocina, `C4` Salud & Belleza, `C+1` Flash, `FONDO`/`NONE` sin canasta):
 - **Listar:** `GET /api/commerce/live-baskets/?offset=0&limit=50&search=`
 - **Crear:** `POST /api/commerce/live-baskets/`
   ```json
@@ -871,14 +1078,17 @@ Agrupaciones temáticas de productos para subastas en vivo (C1 Taller & Auto, C2
 - **Editar:** `PUT /api/commerce/live-baskets/{id}`
 - **Eliminar:** `DELETE /api/commerce/live-baskets/{id}`
 
-#### Ceja 4: Rondas de Inversión (`/api/commerce/rounds`)
+#### Módulo: Rondas de Inversión (`/api/commerce/rounds`)
 
 Gestión y control de fondos de inversión, aportes de capital y retorno financiero (Break-Even).
 
 > [!NOTE]
 > **Ubicación en UI y Arquitectura:**  
-> Por diseño del sistema (*Unified Catalog Hub Pattern*), las Rondas de Inversión se gestionan actualmente dentro del módulo **Catálogos** (`/commerce/catalogs`), en la **pestaña 4 ("Rondas de Inversión")**, para evitar saturar la barra lateral con catálogos auxiliares.  
-> Sin embargo, dado que en la operativa comercial la Ronda es el **Paso 1 del ciclo de vida** (Ronda $\rightarrow$ Lotes $\rightarrow$ Productos $\rightarrow$ Ventas), esta guía detalla tanto el uso dentro del Hub de Catálogos como los pasos para promoverlo a un módulo independiente en el Sidebar si el equipo de Frontend/Producto así lo requiere.
+> La Ronda es el **Paso 1 del ciclo de vida** (Ronda → Lotes → Productos → Ventas). Por ello el
+> `manifest.py` la expone como **módulo propio** en la barra lateral: `/commerce/rounds`
+> (`pi pi-chart-line`, orden 1). El Hub de Catálogos (`/commerce/catalogs`) queda para categorías,
+> canales y canastas Live. Si tu frontend conserva una pestaña heredada de Rondas dentro de
+> Catálogos, puede seguir consumiendo los mismos endpoints.
 
 ##### Endpoints y Contrato de API:
 
@@ -897,12 +1107,13 @@ Gestión y control de fondos de inversión, aportes de capital y retorno financi
       "capital_invested": 2250.0,
       "currency": "BOB",
       "status": "ACTIVE",
-      "observations": "Campaña de liquidación navideña y bazar familiar",
-      "created_at": "2026-11-01T10:00:00Z",
-      "updated_at": "2026-11-14T10:30:00Z"
+      "observations": "Campaña de liquidación navideña y bazar familiar"
     }
   ]
   ```
+  > `InvestmentRoundRead` expone `id`, `code`, `name`, `disbursement_date`, `capital_invested`,
+  > `currency`, `status` y `observations`. No incluye `created_at`/`updated_at`; si el frontend los
+  > necesita para auditoría, debe solicitarlos a un endpoint de auditoría o extender el schema.
 
 - **2. Crear Ronda de Inversión:**
   ```http
@@ -919,14 +1130,22 @@ Gestión y control de fondos de inversión, aportes de capital y retorno financi
     "observations": "Ronda abierta para bazar familiar a costo cero y consignaciones"
   }
   ```
-  *Nota:* `capital_invested` puede crearse en `0.0`. Se sincronizará automáticamente cuando se vinculen lotes o se recalculen productos.
+  *Nota:* `code` es opcional; si se omite, el backend genera `RONDA-01`, `RONDA-02`, etc.
+  `capital_invested` puede crearse en `0.0` y se sincronizará automáticamente cuando se vinculen
+  lotes o se recalculen productos. `status` por defecto es `ACTIVE`.
 
-- **3. Obtener Detalle por ID:**
+- **3. Conteo de Rondas:**
+  ```http
+  GET /api/commerce/rounds/count?search=bazar
+  ```
+  **Respuesta:** `{ "total": N }`
+
+- **4. Obtener Detalle por ID:**
   ```http
   GET /api/commerce/rounds/{id}
   ```
 
-- **4. Actualizar Ronda:**
+- **5. Actualizar Ronda:**
   ```http
   PUT /api/commerce/rounds/{id}
   ```
@@ -938,7 +1157,7 @@ Gestión y control de fondos de inversión, aportes de capital y retorno financi
   }
   ```
 
-- **5. Eliminar Ronda (con Validación de Seguridad Obligatoria):**
+- **6. Eliminar Ronda (con Validación de Seguridad Obligatoria):**
   ```http
   DELETE /api/commerce/rounds/{id}
   ```
@@ -954,7 +1173,7 @@ Gestión y control de fondos de inversión, aportes de capital y retorno financi
   >   ```
   > El Frontend debe capturar `err?.error?.detail` y mostrarlo directamente en un Toast de alerta roja (`severity: 'error'`).
 
-- **6. Consultar Métricas Financieras y Break-Even en Tiempo Real:**
+- **7. Consultar Métricas Financieras y Break-Even en Tiempo Real:**
   ```http
   GET /api/commerce/rounds/{id}/metrics
   ```
@@ -979,12 +1198,12 @@ Gestión y control de fondos de inversión, aportes de capital y retorno financi
   ```
   **Estados Financieros Posibles (`status`):**
   - `"ACTIVE"`: Ronda recién creada sin recaudación de ventas aún.
-  - `"IN_RECOVERY"`: En proceso de recuperación de capital ($< 80\%$ del capital recuperado).
+  - `"IN_RECOVERY"`: Recuperación iniciada pero aún por debajo del 80 % del capital invertido.
   - `"NEAR_BREAKEVEN"`: Próximo al equilibrio ($\ge 80\%$ y $< 100\%$ recuperado).
   - `"RECOVERED"`: **Punto de equilibrio alcanzado** ($\ge 100\%$ recuperado; toda venta posterior es ganancia pura).
   - `"LIQUIDATED"`: Capital recuperado y **todo el inventario vendido** (`available_items == 0`).
 
-- **7. Forzar Recálculo Manual:**
+- **8. Forzar Recálculo Manual:**
   ```http
   POST /api/commerce/rounds/{id}/recalculate
   ```
@@ -1003,12 +1222,10 @@ export interface CommerceRound {
   currency: string;
   status: 'ACTIVE' | 'IN_RECOVERY' | 'NEAR_BREAKEVEN' | 'RECOVERED' | 'LIQUIDATED';
   observations: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface CommerceRoundCreate {
-  code: string;
+  code?: string; // Si se omite, el backend genera RONDA-XX
   name: string;
   disbursement_date?: string | null;
   capital_invested?: number;
@@ -1037,36 +1254,30 @@ export interface CommerceRoundMetrics {
 
 ---
 
-##### Guía para Promover "Rondas de Inversión" al Menú Lateral (Sidebar)
+##### Estado Actual del Menú Lateral
 
-Si el equipo de Frontend y Producto decide que las Rondas de Inversión deben tener su propio botón directo en el Menú Lateral (`/commerce/rounds`), se deben seguir estos 3 pasos:
+Rondas de Inversión **ya está promovido** en `app/modules/commerce/manifest.py` como módulo
+independiente. No se requiere configuración adicional en el backend:
 
-1. **Registrar el submódulo en el Manifiesto Backend (`app/modules/commerce/manifest.py`):**
-   ```python
-   ModuleDefinition(
-       name="Rondas de Inversión",
-       slug="investment-rounds",
-       description="Control de aportes de capital, lotes asociados y punto de equilibrio",
-       group_slug="commerce",
-       sort_order=1,  # Paso 1 antes de Lotes
-       icon="pi pi-chart-line",
-       route="commerce/rounds",
-       is_active=True,
-   )
-   ```
-2. **Definir la Ruta en Angular (`src/app/features/commerce/commerce.routes.ts`):**
-   ```typescript
-   {
-     path: 'rounds',
-     loadChildren: () => import('./rounds/rounds.routes').then(m => m.ROUNDS_ROUTES),
-     canActivate: [authGuard]
-   }
-   ```
-3. **Consumir los Servicios:** Reutilizar el servicio existente `CommerceCatalogService` o crear un `RoundService` dedicado consumiendo los endpoints `/api/commerce/rounds`.
+```python
+ModuleDefinition(
+    name="Rondas de Inversión",
+    slug="investment-rounds",
+    description="Fondos de inversión, aportes de capital y punto de equilibrio",
+    group_slug="commerce",
+    sort_order=1,  # Paso 1 antes de Lotes
+    icon="pi pi-chart-line",
+    route="commerce/rounds",
+    is_active=True,
+)
+```
+
+En Angular solo debes asegurar la ruta `commerce/rounds` en `commerce.routes.ts`, protegida por
+`authGuard`, y consumir los endpoints `/api/commerce/rounds`.
 
 ---
 
-### 5.3. Implementación Estándar en Angular 21 (PrimeNG 21 Tabs)
+### 7.3. Implementación Estándar en Angular 21 (PrimeNG 21 Tabs)
 
 Ejemplo de implementación recomendada para `CommerceCatalogsComponent` (`src/app/features/commerce/pages/catalogs`):
 
@@ -1076,7 +1287,7 @@ Ejemplo de implementación recomendada para `CommerceCatalogsComponent` (`src/ap
     <svg lucideSlidersHorizontal size="28" class="text-brand-500"></svg>
     <div>
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Catálogos de Comercio</h1>
-      <p class="text-sm text-gray-500">Gestión de categorías, canales comerciales, canastas live y rondas</p>
+      <p class="text-sm text-gray-500">Gestión de categorías, canales comerciales y canastas Live</p>
     </div>
   </div>
 
@@ -1090,9 +1301,6 @@ Ejemplo de implementación recomendada para `CommerceCatalogsComponent` (`src/ap
       </p-tab>
       <p-tab value="2">
         <i class="pi pi-video mr-2"></i> Canastas Live
-      </p-tab>
-      <p-tab value="3">
-        <i class="pi pi-chart-line mr-2"></i> Rondas de Inversión
       </p-tab>
     </p-tablist>
 
@@ -1110,11 +1318,6 @@ Ejemplo de implementación recomendada para `CommerceCatalogsComponent` (`src/ap
       <!-- CEJA 3: CANASTAS LIVE -->
       <p-tabpanel value="2">
         <app-commerce-live-baskets-tab></app-commerce-live-baskets-tab>
-      </p-tabpanel>
-
-      <!-- CEJA 4: RONDAS DE INVERSIÓN -->
-      <p-tabpanel value="3">
-        <app-commerce-rounds-tab></app-commerce-rounds-tab>
       </p-tabpanel>
     </p-tabpanels>
   </p-tabs>

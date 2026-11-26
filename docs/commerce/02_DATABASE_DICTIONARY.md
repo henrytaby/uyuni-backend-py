@@ -27,7 +27,7 @@ erDiagram
         date disbursement_date
         float capital_invested
         varchar currency "BOB"
-        varchar status "active"
+        varchar status "active (runtime: ACTIVE|IN_RECOVERY|NEAR_BREAKEVEN|RECOVERED|LIQUIDATED)"
     }
 
     COMMERCE_BATCH {
@@ -69,7 +69,7 @@ erDiagram
 
     COMMERCE_PRODUCT_MASTER {
         uuid id PK
-        int item_number UK "1..242 (Secuencia atómica PostgreSQL)"
+        int item_number UK "1..N (Secuencia atómica PostgreSQL)"
         varchar code "Código de barras opcional (NULL / '7751234567890')"
         varchar name "Almohadilla Térmica Eléctrica"
         uuid category_id FK
@@ -77,13 +77,24 @@ erDiagram
         float official_price "180.0"
         float minimum_price "140.0"
         float published_price "160.0"
-        varchar cover_image_url
-        varchar marketplace_url
+        varchar cover_image_url "Caché de portada (sincronizada desde la galería)"
         boolean is_reviewed
         boolean is_active
     }
 
-    COMMERCE_PRODUCT_IMAGE {
+    COMMERCE_PRODUCT_MASTER_EXTERNAL_LINK {
+        uuid id PK
+        uuid product_master_id FK
+        varchar url
+        varchar portal "AMAZON | FACEBOOK | OTHER..."
+        varchar link_type "REFERENCE | MARKETPLACE"
+        varchar label
+        boolean is_primary
+        boolean is_public
+        int sort_order
+    }
+
+    COMMERCE_PRODUCT_MASTER_IMAGE {
         uuid id PK
         uuid product_master_id FK
         uuid product_id FK
@@ -97,6 +108,7 @@ erDiagram
         int height
         varchar format "webp"
         boolean is_cover
+        boolean is_public
         int sort_order
     }
 
@@ -168,7 +180,7 @@ Representa las inyecciones de capital financiero para la adquisición de lotes d
 | `disbursement_date` | `DATE` | Sí | `NULL` | — | Fecha en que se liberaron los fondos de inversión. |
 | `capital_invested` | `DOUBLE PRECISION`| No | `0.0` | — | Monto total desembolsado en la moneda designada. |
 | `currency` | `VARCHAR(3)` | No | `'BOB'` | — | Código ISO 4217 de la moneda (`BOB`, `USD`). |
-| `status` | `VARCHAR(50)` | No | `'active'`| — | Estado de la ronda (`active`, `liquidated`, `closed`). |
+| `status` | `VARCHAR(50)` | No | `'active'`| — | Estado de la ronda. Default del modelo: `active`. En runtime `InvestmentRoundService.recalculate_round` lo normaliza a `ACTIVE`, `IN_RECOVERY`, `NEAR_BREAKEVEN`, `RECOVERED` o `LIQUIDATED` según ventas y stock. |
 | `observations` | `VARCHAR(1000)`| Sí | `NULL` | — | Notas adicionales o acuerdos de reparto de utilidades. |
 
 ---
@@ -195,7 +207,7 @@ Representa una caja, palet o lote de liquidación cerrado importado desde EEUU.
 | `sellable_items_count`| `INTEGER` | No | `0` | — | Ítems comercializables (`initial - merma`). |
 | `unit_cost` | `DOUBLE PRECISION`| No | `0.0` | — | Costo unitario promedio calculado (`total_cost / sellable_items`). |
 | `status` | `VARCHAR(50)` | No | `'active'`| — | Estado operativo (`active`, `liquidated`, `archived`). |
-| `financial_status` | `VARCHAR(50)` | No | `'EN_RECUPERACION'`| — | Estado de retorno de inversión (`EN_RECUPERACION`, `RECUPERADO`). |
+| `financial_status` | `VARCHAR(50)` | No | `'EN_RECUPERACION'`| — | Estado de retorno de inversión calculado por `BatchService.sync_financial_status`: `EN_RECUPERACION`, `CASI_TABLAS` (≥ 80 % recuperado) o `RECUPERADO` (≥ 100 %). |
 | `observations` | `VARCHAR(1000)`| Sí | `NULL` | — | Observaciones de desempaque o control de calidad. |
 
 ---
@@ -257,7 +269,7 @@ La ficha comercial e intelectual del producto. Es la entidad central de mercadot
 | `brand` | `VARCHAR(150)` | Sí | `NULL` | — | Marca del fabricante (ej: `Anker`, `Logitech`, `Genérico`). |
 | `model` | `VARCHAR(150)` | Sí | `NULL` | — | Modelo comercial del producto. |
 | `official_price` | `DOUBLE PRECISION`| No | `0.0` | — | **P. Lista (Mercado)**: Precio de referencia promedio investigado en el mercado local (Bolivia). Sirve como ancla referencial de ahorro frente a la competencia. |
-| `published_price` | `DOUBLE PRECISION`| Sí | `NULL` | — | **P. Publicado (Venta Cliente)**: **Precio oficial de venta al público** anunciado en Marketplace y redes. Monto principal cotizado de entrada al cliente. |
+| `published_price` | `DOUBLE PRECISION`| No | `0.0` | — | **P. Publicado (Venta Cliente)**: **Precio oficial de venta al público** anunciado en Marketplace y redes. Monto principal cotizado de entrada al cliente. |
 | `minimum_price` | `DOUBLE PRECISION`| No | `0.0` | — | **Piso Regateo (Mínimo Protegido)**: Límite mínimo de venta autorizado para cerrar trato si el cliente pide rebaja. Si es igual al publicado, el producto es de Precio Fijo. |
 | `currency` | `VARCHAR(3)` | No | `'BOB'` | — | Moneda de comercialización (`BOB`). |
 | `cover_image_url` | `VARCHAR(500)` | Sí | `NULL` | — | URL de la foto principal WebP para catálogos y PWA. |
@@ -292,7 +304,7 @@ Existencias físicas reales de un producto dentro de una caja de importación o 
 | `merma_quantity` | `INTEGER` | No | `0` | — | Unidades rotas o defectuosas descartadas de este lote (editable). |
 | `available_quantity`| `INTEGER` | No | `1` | — | Existencias físicas disponibles actualmente para venta (`initial - sold - merma`, calculado automáticamente). |
 | `status` | `VARCHAR(50)` | No | `'AVAILABLE'`| Index | Estado comercial estrictamente automático: `AVAILABLE`, `SOLD_OUT`, `SCRAPPED`. |
-| `physical_condition`| `VARCHAR(50)` | No | `'OPERATIONAL'`| — | Condición física: `OPERATIONAL`, `DAMAGED_SCRAP`, `FOR_PARTS`, `INCOMPLETE`. |
+| `physical_condition`| `VARCHAR(50)` | No | `'OPERATIONAL'`| — | Condición física: `OPERATIONAL`, `DAMAGED_SCRAP`, `FOR_PARTS`, `INCOMPLETE`, `REPAIRED`. |
 | `defect_detail` | `VARCHAR(500)` | Sí | `NULL` | — | Detalle descriptivo de fallas, accesorios faltantes o daños en la unidad. |
 | `is_reviewed` | `BOOLEAN` | No | `false` | — | ¿Fue probado físicamente en mesa de trabajo que enciende y funciona? |
 
@@ -313,7 +325,7 @@ Encabezado de la transacción comercial y control de cobro/caja.
 | `channel` | `VARCHAR(50)` | No | `'Marketplace'`| — | Nombre textual del canal (`Marketplace`, `TikTok Live`). |
 | `payment_method` | `VARCHAR(50)` | No | `'QR'` | — | Método de pago: `QR`, `CASH`, `TRANSFER`, `COURTESY`. |
 | `payment_status` | `VARCHAR(50)` | No | `'COLLECTED'`| — | Estado del cobro: `COLLECTED`, `PENDING`, `COURTESY`, `REFUNDED`. |
-| `delivery_modality`| `VARCHAR(100)` | No | `'FREE_MEETING_POINT'`| — | Modalidad: `FREE_MEETING_POINT`, `HOME_DELIVERY`, `TERMINAL_BUS`, `STORE_PICKUP`. |
+| `delivery_modality`| `VARCHAR(100)` | No | `'FREE_MEETING_POINT'`| — | Modalidad: `FREE_MEETING_POINT`, `HOME_DELIVERY`, `TERMINAL_BUS`, `NATIONAL_COURIER`, `STORE_PICKUP`, `PARCEL_SERVICE`. |
 | `delivery_address` | `VARCHAR(255)` | Sí | `NULL` | — | Dirección o punto de encuentro acordado (ej: `Plaza Colón`). |
 | `delivery_cost` | `DOUBLE PRECISION`| No | `0.0` | — | Costo de envío o transporte incurrido. |
 | `delivery_cost_paid_by`| `VARCHAR(50)` | No | `'FREE'` | — | Quién asume el flete: `FREE` (gratis), `CUSTOMER` (cliente), `STORE` (tienda). |
@@ -362,7 +374,7 @@ Almacena las referencias, metadatos y enlaces de Cloudinary para la galería de 
 | `height` | `INTEGER` | Sí | `NULL` | — | Alto en píxeles. |
 | `format` | `VARCHAR(10)` | Sí | `NULL` | — | Formato de compresión (`webp`, `png`, `jpg`, `avif`). |
 | `is_cover` | `BOOLEAN` | No | `false` | Index | ¿Es la fotografía de portada oficial del producto? |
-| `is_public` | `BOOLEAN` | No | `false` | Index | ¿Visible en el catálogo público de clientes? (`true` por defecto para `CATALOG`, `false` por defecto para fotos de almacén `REAL`). |
+| `is_public` | `BOOLEAN` | No | `false` | Index | ¿Visible en el catálogo público de clientes? Default de columna: `false`. La subida de galería de la ficha maestra fuerza `true` para `CATALOG` y `false` para `REAL`/`MARKETING`/`BANNER`; las fotos de almacén pueden publicarse luego con `PATCH`. |
 | `sort_order` | `INTEGER` | No | `0` | Index | Posición de secuencia para galerías y carruseles (1, 2, 3...). |
 
 ---

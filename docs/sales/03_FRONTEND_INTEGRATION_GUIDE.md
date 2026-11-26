@@ -42,7 +42,7 @@ export interface Sale {
   channel_name?: string | null;      // Nombre descriptivo resuelto por el backend
   payment_method: string;            // 'QR' | 'CASH' | 'TRANSFER' | 'COURTESY'
   payment_status: string;            // 'COLLECTED' | 'PENDING' | 'COURTESY'
-  delivery_modality: string;         // 'FREE_MEETING_POINT' | 'HOME_DELIVERY' | 'TERMINAL_BUS' | 'STORE_PICKUP'
+  delivery_modality: string;         // 'FREE_MEETING_POINT' | 'HOME_DELIVERY' | 'TERMINAL_BUS' | 'NATIONAL_COURIER' | 'STORE_PICKUP' | 'PARCEL_SERVICE'
   delivery_address?: string | null;
   delivery_cost: number;
   delivery_cost_paid_by: string;     // 'FREE' | 'CUSTOMER' | 'STORE'
