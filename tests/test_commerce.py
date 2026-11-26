@@ -140,8 +140,8 @@ def test_sale_atomic_transaction_success(session: Session):
         customer_name="Juan Perez",
         channel="TikTok Live",
         payment_method="QR",
-        payment_status="Cobrado",
-        delivery_modality="Punto de Encuentro Gratis",
+        payment_status="COLLECTED",
+        delivery_modality="FREE_MEETING_POINT",
         items=[
             SaleItemCreate(
                 product_id=product.id,
@@ -1688,7 +1688,7 @@ def test_investment_round_and_batch_costing_modalities(
         SaleCreate(
             customer_name="Cliente B",
             channel="WhatsApp",
-            payment_method="Efectivo",
+            payment_method="CASH",
             payment_status="COLLECTED",
             items=[
                 SaleItemCreate(product_id=p_taladro.id, quantity=2, unit_price=350.0)
@@ -2764,6 +2764,28 @@ def test_sale_sequential_number_search_and_cash_handling(
     assert target["amount_tendered"] == 300.0
     assert target["change_given"] == 50.0
 
+    # 6. Verificar orden por defecto: sale_number desc (última venta primero)
+    res_default = client.get(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+    )
+    assert res_default.status_code == 200
+    ordered_sales = res_default.json()
+    idx_sale1 = next(i for i, s in enumerate(ordered_sales) if s["id"] == str(sale1.id))
+    idx_sale2 = next(i for i, s in enumerate(ordered_sales) if s["id"] == str(sale2.id))
+    assert idx_sale2 < idx_sale1
+
+    # 7. Verificar GET /api/commerce/sales/{id} incluye item_number y code
+    res_detail = client.get(
+        f"/api/commerce/sales/{sale1.id}",
+        headers=superuser_token_headers,
+    )
+    assert res_detail.status_code == 200
+    detail_data = res_detail.json()
+    assert len(detail_data["items"]) == 1
+    assert detail_data["items"][0]["item_number"] == m.item_number
+    assert detail_data["items"][0]["code"] == m.code
+
 
 def test_commerce_delivery_statuses_provider_binary_options(session: Session) -> None:
     """Verifica que el catálogo de entrega solo exponga 'DELIVERED' y 'PENDING'."""
@@ -2844,6 +2866,7 @@ def test_sales_available_products_endpoint(
     target = next(it for it in items if it["id"] == str(p1.id))
     assert target["name"] == "Regleta Multitoma Smart"
     assert target["item_number"] == 77
+    assert target["display_name"] == "#77 · Regleta Multitoma Smart"
     assert target["published_price"] == 80.0
     assert target["minimum_price"] == 60.0
     assert target["official_price"] == 120.0
@@ -2859,6 +2882,277 @@ def test_sales_available_products_endpoint(
     found = res_search.json()
     assert len(found) >= 1
     assert any(it["id"] == str(p1.id) for it in found)
+
+
+def test_sale_rejects_invalid_catalog_enum_values(
+    session: Session, client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    """Verifica que POST y PUT rechacen valores inválidos como payment_method='QR2'."""
+    m = make_master(session, 199, "Producto Enum Check", official_price=100.0)
+    p = ProductService(session).create(
+        Product(master_product_id=m.id, initial_quantity=5)
+    )
+
+    # 1. POST con payment_method inválido ('QR2') debe devolver 422
+    res_bad_post = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Test Postman",
+            "payment_method": "QR2",
+            "items": [{"product_id": str(p.id), "quantity": 1, "unit_price": 100.0}],
+        },
+    )
+    assert res_bad_post.status_code == 422
+
+    # 2. Crear venta válida primero
+    res_ok = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Test Válido",
+            "payment_method": "QR",
+            "payment_status": "COLLECTED",
+            "delivery_modality": "FREE_MEETING_POINT",
+            "delivery_cost_paid_by": "FREE",
+            "delivery_status": "DELIVERED",
+            "items": [{"product_id": str(p.id), "quantity": 1, "unit_price": 100.0}],
+        },
+    )
+    assert res_ok.status_code == 200
+    sale_id = res_ok.json()["id"]
+
+    # 3. PUT con valores inválidos en cada campo del catálogo debe devolver 422
+    invalid_updates = [
+        {"payment_method": "QR2"},
+        {"payment_status": "PAGADO_NO_VALIDO"},
+        {"delivery_modality": "TELEPORT"},
+        {"delivery_cost_paid_by": "NADIE"},
+        {"delivery_status": "SHIPPED"},
+    ]
+    for bad_payload in invalid_updates:
+        res_bad_put = client.put(
+            f"/api/commerce/sales/{sale_id}",
+            headers=superuser_token_headers,
+            json=bad_payload,
+        )
+        assert res_bad_put.status_code == 422
+
+    # 4. PUT con valor válido ('CASH') debe funcionar
+    res_ok_put = client.put(
+        f"/api/commerce/sales/{sale_id}",
+        headers=superuser_token_headers,
+        json={"payment_method": "CASH"},
+    )
+    assert res_ok_put.status_code == 200
+    assert res_ok_put.json()["payment_method"] == "CASH"
+
+
+def test_sale_recalculates_change_given_authoritatively_on_create_and_update(
+    session: Session, client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    """Verifica recálculo autoritativo de change_given y net_profit en POST/PUT."""
+    m = make_master(session, 200, "Producto POS Audit", official_price=490.0)
+    p = ProductService(session).create(
+        Product(master_product_id=m.id, initial_quantity=5, cost_price=300.0)
+    )
+
+    # 1. POST con change_given manipulado (1 Bs) -> backend debe calcular 500 - 490 = 10
+    res_post = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Cliente POST",
+            "payment_method": "CASH",
+            "amount_tendered": 500,
+            "change_given": 1,
+            "items": [{"product_id": str(p.id), "quantity": 1, "unit_price": 490.0}],
+        },
+    )
+    assert res_post.status_code == 200
+    post_data = res_post.json()
+    assert post_data["total_collected"] == 490.0
+    assert post_data["amount_tendered"] == 500.0
+    assert post_data["change_given"] == 10.0
+    sale_id = post_data["id"]
+
+    # 2. PUT con total_collected inflado (1490), amount_tendered=600, change_given=10
+    # Backend debe ignorar total_collected=1490, mantener 490 y recalcular vuelto=110
+    res_put_cash = client.put(
+        f"/api/commerce/sales/{sale_id}",
+        headers=superuser_token_headers,
+        json={
+            "payment_method": "CASH",
+            "amount_tendered": 600,
+            "change_given": 10,
+            "total_collected": 1490,
+        },
+    )
+    assert res_put_cash.status_code == 200
+    put_cash = res_put_cash.json()
+    assert put_cash["total_collected"] == 490.0
+    assert put_cash["amount_tendered"] == 600.0
+    assert put_cash["change_given"] == 110.0
+
+    # 3. PUT cambiando a QR -> amount_tendered vuelve a 490 y change_given=0
+    res_put_qr = client.put(
+        f"/api/commerce/sales/{sale_id}",
+        headers=superuser_token_headers,
+        json={"payment_method": "QR"},
+    )
+    assert res_put_qr.status_code == 200
+    put_qr = res_put_qr.json()
+    assert put_qr["amount_tendered"] == 490.0
+    assert put_qr["change_given"] == 0.0
+
+    # 4. PUT agregando flete asumido por tienda (15 Bs) -> net_profit se recalcula
+    res_put_delivery = client.put(
+        f"/api/commerce/sales/{sale_id}",
+        headers=superuser_token_headers,
+        json={"delivery_cost": 15, "delivery_cost_paid_by": "STORE"},
+    )
+    assert res_put_delivery.status_code == 200
+    put_del = res_put_delivery.json()
+    assert put_del["net_profit"] == 175.0  # 490 - 300 - 15
+
+
+def test_commerce_search_handles_unicode_digits_and_large_barcodes(
+    client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    """Evita ValueError con dígitos Unicode ('³', '²') y overflows int32."""
+    endpoints = [
+        "/api/commerce/product-masters/",
+        "/api/commerce/product-masters/count",
+        "/api/commerce/products/",
+        "/api/commerce/products/count",
+        "/api/commerce/sales/",
+        "/api/commerce/sales/count",
+        "/api/commerce/sales/available-products",
+    ]
+    for query in ("³", "#³", "²", "7791234567890"):
+        for ep in endpoints:
+            res = client.get(
+                ep,
+                params={"search": query},
+                headers=superuser_token_headers,
+            )
+            assert res.status_code == 200, f"Fallo en {ep} con search={query!r}"
+
+
+def test_sale_update_items_reconciles_stock_and_delete_restores_stock(
+    session: Session, client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    """Opción A: PUT con items reconcilia stock/totales y DELETE restaura stock."""
+    m_a = make_master(
+        session, 210, "Item Swap A", official_price=250.0, minimum_price=150.0
+    )
+    m_b = make_master(
+        session, 211, "Item Swap B", official_price=120.0, minimum_price=80.0
+    )
+    prod_svc = ProductService(session)
+    p_a = prod_svc.create(
+        Product(master_product_id=m_a.id, initial_quantity=2, cost_price=100.0)
+    )
+    p_b = prod_svc.create(
+        Product(master_product_id=m_b.id, initial_quantity=3, cost_price=50.0)
+    )
+
+    # 1. Crear venta con 2x Producto A -> A queda SOLD_OUT (stock 0)
+    res_create = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Cliente Edición Ítems",
+            "payment_method": "QR",
+            "items": [{"product_id": str(p_a.id), "quantity": 2, "unit_price": 200.0}],
+        },
+    )
+    assert res_create.status_code == 200
+    sale_id = res_create.json()["id"]
+
+    session.refresh(p_a)
+    assert p_a.available_quantity == 0
+    assert p_a.status == "SOLD_OUT"
+
+    # 2. PUT con items=[] debe fallar 400 sin tocar stock
+    res_empty = client.put(
+        f"/api/commerce/sales/{sale_id}",
+        headers=superuser_token_headers,
+        json={"items": []},
+    )
+    assert res_empty.status_code == 400
+
+    # 3. PUT excediendo stock en B (pide 10) debe hacer rollback y dejar A en SOLD_OUT
+    res_excess = client.put(
+        f"/api/commerce/sales/{sale_id}",
+        headers=superuser_token_headers,
+        json={
+            "items": [
+                {"product_id": str(p_a.id), "quantity": 1, "unit_price": 200.0},
+                {"product_id": str(p_b.id), "quantity": 10, "unit_price": 100.0},
+            ]
+        },
+    )
+    assert res_excess.status_code == 400
+    session.expire_all()
+    p_a_after_fail = prod_svc.get_by_id(p_a.id)
+    assert p_a_after_fail is not None
+    assert p_a_after_fail.available_quantity == 0
+    assert p_a_after_fail.status == "SOLD_OUT"
+
+    # 4. PUT válido: baja A a 1 unidad y agrega 2x B, pagado en efectivo con 500 Bs
+    res_put = client.put(
+        f"/api/commerce/sales/{sale_id}",
+        headers=superuser_token_headers,
+        json={
+            "payment_method": "CASH",
+            "amount_tendered": 500.0,
+            "items": [
+                {"product_id": str(p_a.id), "quantity": 1, "unit_price": 220.0},
+                {"product_id": str(p_b.id), "quantity": 2, "unit_price": 100.0},
+            ],
+        },
+    )
+    assert res_put.status_code == 200
+    updated = res_put.json()
+    assert updated["total_collected"] == 420.0  # 220 + 200
+    assert updated["total_cost"] == 200.0  # 100 + 2*50
+    assert updated["net_profit"] == 220.0
+    assert updated["amount_tendered"] == 500.0
+    assert updated["change_given"] == 80.0
+    assert len(updated["items"]) == 2
+
+    session.expire_all()
+    p_a_ok = prod_svc.get_by_id(p_a.id)
+    p_b_ok = prod_svc.get_by_id(p_b.id)
+    assert p_a_ok is not None and p_b_ok is not None
+    assert p_a_ok.available_quantity == 1
+    assert p_a_ok.sold_quantity == 1
+    assert p_a_ok.status == "AVAILABLE"
+    assert p_b_ok.available_quantity == 1
+    assert p_b_ok.sold_quantity == 2
+
+    # 5. DELETE debe eliminar ítems y devolver todo el stock al almacén
+    res_del = client.delete(
+        f"/api/commerce/sales/{sale_id}",
+        headers=superuser_token_headers,
+    )
+    assert res_del.status_code == 200
+
+    session.expire_all()
+    p_a_del = prod_svc.get_by_id(p_a.id)
+    p_b_del = prod_svc.get_by_id(p_b.id)
+    assert p_a_del is not None and p_b_del is not None
+    assert p_a_del.available_quantity == 2
+    assert p_a_del.sold_quantity == 0
+    assert p_a_del.status == "AVAILABLE"
+    assert p_b_del.available_quantity == 3
+    assert p_b_del.sold_quantity == 0
+    assert p_b_del.status == "AVAILABLE"
+
+
+
+
 
 
 

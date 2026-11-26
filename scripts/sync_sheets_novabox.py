@@ -176,7 +176,7 @@ def normalize_delivery_modality(val: Any) -> str:
     if "COURIER" in s or "NACIONAL" in s:
         return "NATIONAL_COURIER"
     if "TIQUIPAYA" in s or "RECOJO" in s or "TIENDA" in s:
-        return "STORE_PICKUP_TIQUIPAYA"
+        return "STORE_PICKUP"
     if "PAQUETERIA" in s:
         return "PARCEL_SERVICE"
     return "FREE_MEETING_POINT"

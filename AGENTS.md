@@ -112,3 +112,11 @@ Este backend actúa como motor transaccional y ERP de Marca Blanca para empresas
   1. En el servicio de ventas, nunca permitir transacciones por debajo del `minimum_price` sin confirmación explícita, y asegurar que el producto se marque como `vendido` en la misma transacción atómica.
   2. En el Copiloto IA, las consultas de búsqueda por concepto evalúan un pool amplio de hasta 35 candidatos con stock real y expansión de sinónimos (`domotica`, `auto`, etc.), sincronizando las tarjetas interactivas únicamente con las fichas citadas y aprobadas por la IA.
 
+## Reglas de respuesta
+- Responde de forma ultra concisa, sin saludos ni explicaciones obvias.
+- No repitas bloques de código que no cambiaron; muestra solo el diff o la función modificada.
+- Antes de leer archivos completos, usa búsqueda para ubicar solo las líneas relevantes.
+
+## Tests
+- Ejecuta siempre pytest con: `venv/bin/pytest <archivo> -q --tb=short --disable-warnings`.
+- Si todos los tests pasan, detente e informa el resultado; nunca los vuelvas a ejecutar en modo detallado ni para revisar warnings.

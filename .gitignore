@@ -213,3 +213,7 @@ data/
 /deploy.sh
 
 ### End of .gitignore ###
+.kilo.json
+node_modules/
+package.json
+package-lock.json

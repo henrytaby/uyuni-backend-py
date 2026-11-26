@@ -139,3 +139,15 @@ class SaleItem(BaseModel, AuditMixin, table=True):
     @property
     def product_name(self) -> str:
         return self.product.name if self.product else ""
+
+    @property
+    def item_number(self) -> int | None:
+        return self.product.item_number if self.product else None
+
+    @property
+    def code(self) -> str | None:
+        return self.product.master_code if self.product else None
+
+    @property
+    def variant_name(self) -> str | None:
+        return self.product.variant_name if self.product else None

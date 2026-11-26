@@ -117,16 +117,19 @@ erDiagram
 
     COMMERCE_SALE {
         uuid id PK
-        varchar sale_number UK "VTA-2026-0001"
+        int sale_number UK "Correlativo atómico (#1, #2, #29)"
         datetime sale_date
         varchar customer_name "Juan Pérez"
         uuid channel_id FK
-        varchar payment_method "QR"
-        varchar payment_status "COLLECTED"
+        varchar payment_method "QR, CASH"
+        varchar payment_status "COLLECTED, PENDING"
         varchar delivery_modality "FREE_MEETING_POINT"
-        float total_collected "160.0"
-        float total_cost "80.0"
-        float net_profit "80.0"
+        varchar delivery_status "DELIVERED, PENDING"
+        float amount_tendered "100.0"
+        float change_given "20.0"
+        float total_collected "80.0"
+        float total_cost "40.0"
+        float net_profit "40.0"
     }
 
     COMMERCE_SALE_ITEM {
@@ -296,12 +299,12 @@ Existencias físicas reales de un producto dentro de una caja de importación o 
 ---
 
 ### 8. `commerce_sale` (Transacciones de Venta)
-Encabezado de la transacción comercial.
+Encabezado de la transacción comercial y control de cobro/caja.
 
 | Columna | Tipo SQL | Nulo | Default | Índice / Restricción | Descripción Semántica |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | `id` | `UUID` | No | UUIDv7 | PK, Index | Identificador único universal. |
-| `sale_number` | `VARCHAR(50)` | No | — | Unique, Index | Código de venta único generado (ej: `VTA-20261110-A1B2C3`). |
+| `sale_number` | `INTEGER` | No | Sequence | Unique, Index | Número de venta correlativo atómico (#1, #2, #29...). |
 | `sheet_sale_id` | `INTEGER` | Sí | `NULL` | Index | ID de venta histórica en Google Sheets. |
 | `sale_date` | `TIMESTAMP` | No | `now()` | Index | Fecha y hora exacta de la transacción. |
 | `customer_name` | `VARCHAR(150)` | No | `'Cliente Casual'`| — | Nombre o alias del comprador. |
@@ -314,10 +317,12 @@ Encabezado de la transacción comercial.
 | `delivery_address` | `VARCHAR(255)` | Sí | `NULL` | — | Dirección o punto de encuentro acordado (ej: `Plaza Colón`). |
 | `delivery_cost` | `DOUBLE PRECISION`| No | `0.0` | — | Costo de envío o transporte incurrido. |
 | `delivery_cost_paid_by`| `VARCHAR(50)` | No | `'FREE'` | — | Quién asume el flete: `FREE` (gratis), `CUSTOMER` (cliente), `STORE` (tienda). |
-| `delivery_status` | `VARCHAR(50)` | No | `'DELIVERED'`| — | Estado de logística: `DELIVERED`, `SHIPPED`, `PENDING`. |
+| `delivery_status` | `VARCHAR(50)` | No | `'DELIVERED'`| — | Estado de logística: **`DELIVERED`** o **`PENDING`**. |
+| `amount_tendered` | `DOUBLE PRECISION`| Sí | `NULL` | — | Monto en efectivo entregado por el cliente en caja (POS). |
+| `change_given` | `DOUBLE PRECISION`| Sí | `NULL` | — | Cambio o vuelto devuelto al cliente. |
 | `total_collected` | `DOUBLE PRECISION`| No | `0.0` | — | Monto final efectivamente cobrado al cliente. |
 | `total_cost` | `DOUBLE PRECISION`| No | `0.0` | — | Costo agregado de los productos vendidos según el lote físico. |
-| `net_profit` | `DOUBLE PRECISION`| No | `0.0` | — | Ganancia neta real de la transacción (`total_collected - total_cost`). |
+| `net_profit` | `DOUBLE PRECISION`| No | `0.0` | — | Ganancia neta real (`total_collected - total_cost - flete_tienda`). |
 | `currency` | `VARCHAR(3)` | No | `'BOB'` | — | Moneda de cobro (`BOB`). |
 | `observations` | `VARCHAR(1000)`| Sí | `NULL` | — | Notas de entrega o comentarios del cliente. |
 

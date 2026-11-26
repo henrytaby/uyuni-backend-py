@@ -5,6 +5,13 @@ from app.core.catalogs.schemas import CatalogItemSchema
 from app.modules.commerce.batches.models import Batch
 from app.modules.commerce.categories.models import Category
 from app.modules.commerce.channels.models import SalesChannel
+from app.modules.commerce.constants import (
+    SaleDeliveryModality,
+    SaleDeliveryPaidBy,
+    SaleDeliveryStatus,
+    SalePaymentMethod,
+    SalePaymentStatus,
+)
 from app.modules.commerce.live_baskets.models import LiveBasket
 from app.modules.commerce.product_masters.models import ProductMaster
 from app.modules.commerce.rounds.models import InvestmentRound
@@ -87,10 +94,19 @@ class CommerceSalesChannelsProvider(CatalogProvider):
 class CommercePaymentStatusesProvider(CatalogProvider):
     def get_items(self, session: Session, **kwargs) -> list[CatalogItemSchema]:
         return [
-            CatalogItemSchema(value="COLLECTED", label="Cobrado"),
-            CatalogItemSchema(value="PENDING", label="Pendiente"),
-            CatalogItemSchema(value="COURTESY", label="Cortesía / 0 Bs"),
-            CatalogItemSchema(value="REFUNDED", label="Reembolsado / Devolución"),
+            CatalogItemSchema(
+                value=SalePaymentStatus.COLLECTED.value, label="Cobrado"
+            ),
+            CatalogItemSchema(
+                value=SalePaymentStatus.PENDING.value, label="Pendiente"
+            ),
+            CatalogItemSchema(
+                value=SalePaymentStatus.COURTESY.value, label="Cortesía / 0 Bs"
+            ),
+            CatalogItemSchema(
+                value=SalePaymentStatus.REFUNDED.value,
+                label="Reembolsado / Devolución",
+            ),
         ]
 
 
@@ -98,45 +114,69 @@ class CommerceDeliveryModalitiesProvider(CatalogProvider):
     def get_items(self, session: Session, **kwargs) -> list[CatalogItemSchema]:
         return [
             CatalogItemSchema(
-                value="FREE_MEETING_POINT", label="Punto de Encuentro Gratis"
-            ),
-            CatalogItemSchema(value="HOME_DELIVERY", label="Delivery Domicilio"),
-            CatalogItemSchema(value="TERMINAL_BUS", label="Envío Flota (Terminal)"),
-            CatalogItemSchema(
-                value="NATIONAL_COURIER", label="Envío Courier (Nacional)"
+                value=SaleDeliveryModality.FREE_MEETING_POINT.value,
+                label="Punto de Encuentro Gratis",
             ),
             CatalogItemSchema(
-                value="STORE_PICKUP",
+                value=SaleDeliveryModality.HOME_DELIVERY.value,
+                label="Delivery Domicilio",
+            ),
+            CatalogItemSchema(
+                value=SaleDeliveryModality.TERMINAL_BUS.value,
+                label="Envío Flota (Terminal)",
+            ),
+            CatalogItemSchema(
+                value=SaleDeliveryModality.NATIONAL_COURIER.value,
+                label="Envío Courier (Nacional)",
+            ),
+            CatalogItemSchema(
+                value=SaleDeliveryModality.STORE_PICKUP.value,
                 label="Recojo en Tienda",
             ),
-            CatalogItemSchema(value="PARCEL_SERVICE", label="Paquetería"),
+            CatalogItemSchema(
+                value=SaleDeliveryModality.PARCEL_SERVICE.value, label="Paquetería"
+            ),
         ]
 
 
 class CommerceDeliveryPaidByProvider(CatalogProvider):
     def get_items(self, session: Session, **kwargs) -> list[CatalogItemSchema]:
         return [
-            CatalogItemSchema(value="FREE", label="Sin Costo"),
-            CatalogItemSchema(value="CUSTOMER", label="Cliente"),
-            CatalogItemSchema(value="STORE", label="Tienda / Empresa"),
+            CatalogItemSchema(value=SaleDeliveryPaidBy.FREE.value, label="Sin Costo"),
+            CatalogItemSchema(
+                value=SaleDeliveryPaidBy.CUSTOMER.value, label="Cliente"
+            ),
+            CatalogItemSchema(
+                value=SaleDeliveryPaidBy.STORE.value, label="Tienda / Empresa"
+            ),
         ]
 
 
 class CommercePaymentMethodsProvider(CatalogProvider):
     def get_items(self, session: Session, **kwargs) -> list[CatalogItemSchema]:
         return [
-            CatalogItemSchema(value="QR", label="Pago QR"),
-            CatalogItemSchema(value="CASH", label="Efectivo"),
-            CatalogItemSchema(value="TRANSFER", label="Transferencia Bancaria"),
-            CatalogItemSchema(value="COURTESY", label="Cortesía / Regalo (0 Bs)"),
+            CatalogItemSchema(value=SalePaymentMethod.QR.value, label="Pago QR"),
+            CatalogItemSchema(value=SalePaymentMethod.CASH.value, label="Efectivo"),
+            CatalogItemSchema(
+                value=SalePaymentMethod.TRANSFER.value,
+                label="Transferencia Bancaria",
+            ),
+            CatalogItemSchema(
+                value=SalePaymentMethod.COURTESY.value,
+                label="Cortesía / Regalo (0 Bs)",
+            ),
         ]
 
 
 class CommerceDeliveryStatusesProvider(CatalogProvider):
     def get_items(self, session: Session, **kwargs) -> list[CatalogItemSchema]:
         return [
-            CatalogItemSchema(value="DELIVERED", label="Entregado"),
-            CatalogItemSchema(value="PENDING", label="Pendiente de Entrega"),
+            CatalogItemSchema(
+                value=SaleDeliveryStatus.DELIVERED.value, label="Entregado"
+            ),
+            CatalogItemSchema(
+                value=SaleDeliveryStatus.PENDING.value, label="Pendiente de Entrega"
+            ),
         ]
 
 

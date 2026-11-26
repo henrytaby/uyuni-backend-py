@@ -3,6 +3,7 @@ from typing import Any
 from sqlmodel import Session, col, or_
 
 from app.core.repository import BaseRepository
+from app.modules.commerce.constants import parse_search_int
 from app.modules.commerce.sales.models import Sale, SaleItem
 
 
@@ -38,16 +39,8 @@ class SaleRepository(BaseRepository[Sale]):
         if Sale.observations is not None:
             search_filters.append(col(Sale.observations).ilike(search_term))
 
-        cleaned = (
-            search.strip()
-            .replace("#", "")
-            .replace("VTA-", "")
-            .replace("vta-", "")
-            .replace("Vta-", "")
-            .strip()
-        )
-        if cleaned.isdigit():
-            num = int(cleaned)
+        num = parse_search_int(search, prefixes=("#", "VTA-"))
+        if num is not None:
             search_filters.append(col(Sale.sale_number) == num)
             search_filters.append(col(Sale.sheet_sale_id) == num)
 

@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlmodel import Session, col, or_, select
 
 from app.core.repository import BaseRepository
+from app.modules.commerce.constants import parse_search_int
 from app.modules.commerce.product_masters.models import ProductMaster
 
 
@@ -26,11 +27,9 @@ class ProductMasterRepository(BaseRepository[ProductMaster]):
             col(ProductMaster.description).ilike(search_term),
             col(ProductMaster.features).ilike(search_term),
         ]
-        cleaned = (
-            search.strip().replace("#", "").replace("NOV-", "").replace("nov-", "")
-        )
-        if cleaned.isdigit():
-            search_filters.append(col(ProductMaster.item_number) == int(cleaned))
+        num = parse_search_int(search, prefixes=("#", "NOV-"))
+        if num is not None:
+            search_filters.append(col(ProductMaster.item_number) == num)
 
         return statement.where(or_(*search_filters))
 
