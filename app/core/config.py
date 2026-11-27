@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str | None = None
     CLOUDINARY_API_SECRET: str | None = None
 
-    # AI Commercial Assistant (Multi-Provider: Groq, Mistral, Gemini)
+    # AI Commercial Assistant (Multi-Provider: Groq, Mistral, Gemini, OrcaRouter)
     AI_DEFAULT_PROVIDER: str = "groq"
     AI_ENABLE_FALLBACK: bool = True
 
@@ -85,6 +85,10 @@ class Settings(BaseSettings):
     # 3. Google Gemini (Gemini 3.5 Flash)
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-3.5-flash"
+
+    # 4. OrcaRouter (DeepSeek V4.1 Flash Free, etc.)
+    ORCAROUTER_API_KEY: str | None = None
+    ORCAROUTER_MODEL: str = "deepseek/deepseek-v4.1-flash-free"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

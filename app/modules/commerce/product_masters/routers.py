@@ -1,3 +1,4 @@
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
@@ -24,6 +25,8 @@ from app.modules.commerce.product_masters.schemas import (
     ProductMasterExternalLinkRead,
     ProductMasterExternalLinkReorderItem,
     ProductMasterExternalLinkUpdate,
+    ProductMasterFilterParams,
+    ProductMasterListQuery,
     ProductMasterRead,
     ProductMasterUpdate,
     ScrapedImagesResponse,
@@ -200,14 +203,7 @@ def create_product_master(
 @router.get("/", response_model=list[ProductMasterRead])
 def get_product_masters(
     session: SessionDep,
-    offset: int = 0,
-    limit: int = 100,
-    sort_by: str | None = Query(None),
-    sort_order: str = Query("asc"),
-    search: str | None = Query(None),
-    category_id: UUID | None = Query(None),
-    live_basket_id: UUID | None = Query(None),
-    is_active: bool | None = Query(None),
+    query: Annotated[ProductMasterListQuery, Query()],
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CommerceModuleSlug.GENERAL,
@@ -217,14 +213,12 @@ def get_product_masters(
 ):
     service = ProductMasterService(session)
     masters = service.get_all(
-        offset=offset,
-        limit=limit,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        search=search,
-        category_id=category_id,
-        live_basket_id=live_basket_id,
-        is_active=is_active,
+        offset=query.offset,
+        limit=query.limit,
+        sort_by=query.sort_by,
+        sort_order=query.sort_order,
+        search=query.search,
+        filters=query,
     )
     return [
         _enrich_master_read(m, service, include_images=False, include_links=False)
@@ -235,10 +229,7 @@ def get_product_masters(
 @router.get("/count")
 def count_product_masters(
     session: SessionDep,
-    search: str | None = Query(None),
-    category_id: UUID | None = Query(None),
-    live_basket_id: UUID | None = Query(None),
-    is_active: bool | None = Query(None),
+    query: Annotated[ProductMasterFilterParams, Query()],
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CommerceModuleSlug.GENERAL,
@@ -247,12 +238,7 @@ def count_product_masters(
     ),
 ):
     service = ProductMasterService(session)
-    count = service.count(
-        search=search,
-        category_id=category_id,
-        live_basket_id=live_basket_id,
-        is_active=is_active,
-    )
+    count = service.count(search=query.search, filters=query)
     return {"total": count, "count": count}
 
 

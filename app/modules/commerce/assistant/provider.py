@@ -35,29 +35,41 @@ SUPPORTED_PROVIDERS: dict[str, ProviderEndpoint] = {
         url="https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
         default_model=settings.GEMINI_MODEL or "gemini-3.5-flash",
     ),
+    "orcarouter": ProviderEndpoint(
+        name="orcarouter",
+        url="https://api.orcarouter.ai/v1/chat/completions",
+        default_model=settings.ORCAROUTER_MODEL or "deepseek/deepseek-v4.1-flash-free",
+    ),
 }
 
 
 def get_provider_api_key(provider_name: str) -> str | None:
     """Obtiene la API key configurada para el proveedor."""
     provider = provider_name.lower().strip()
-    if provider == "groq":
-        return settings.GROQ_API_KEY
-    elif provider == "mistral":
-        return settings.MISTRAL_API_KEY
-    elif provider == "gemini":
-        return settings.GEMINI_API_KEY
-    return None
+    key_map = {
+        "groq": settings.GROQ_API_KEY,
+        "mistral": settings.MISTRAL_API_KEY,
+        "gemini": settings.GEMINI_API_KEY,
+        "orcarouter": settings.ORCAROUTER_API_KEY,
+    }
+    return key_map.get(provider)
+
+
+def _is_valid_api_key(api_key: str | None) -> bool:
+    """Verifica si una API key está configurada y no es un placeholder."""
+    if not api_key or not api_key.strip():
+        return False
+    stripped = api_key.strip()
+    return not stripped.startswith(("your_", "sk-orca-your_"))
 
 
 def get_configured_providers() -> list[str]:
     """Lista los proveedores que tienen una API key configurada no vacía."""
-    configured: list[str] = []
-    for prov in ("groq", "mistral", "gemini"):
-        key = get_provider_api_key(prov)
-        if key and key.strip() and not key.startswith("your_"):
-            configured.append(prov)
-    return configured
+    return [
+        prov
+        for prov in SUPPORTED_PROVIDERS
+        if _is_valid_api_key(get_provider_api_key(prov))
+    ]
 
 
 def call_llm(
@@ -88,7 +100,7 @@ def call_llm(
 
     provider_queue: list[str] = [primary_provider]
     if allow_fallback:
-        for prov in ("groq", "mistral", "gemini"):
+        for prov in SUPPORTED_PROVIDERS:
             if prov != primary_provider and prov not in provider_queue:
                 provider_queue.append(prov)
 
@@ -99,7 +111,7 @@ def call_llm(
         endpoint = SUPPORTED_PROVIDERS[prov_name]
         api_key = get_provider_api_key(prov_name)
 
-        if not api_key or not api_key.strip() or api_key.startswith("your_"):
+        if not api_key or not _is_valid_api_key(api_key):
             logger.debug(
                 "Skipping provider: no API key",
                 provider=prov_name,
@@ -168,7 +180,8 @@ def call_llm(
     if not configured:
         raise BadRequestException(
             "No se ha configurado ninguna API Key válida para los proveedores. "
-            "Define GROQ_API_KEY, MISTRAL_API_KEY o GEMINI_API_KEY en .env."
+            "Define GROQ_API_KEY, MISTRAL_API_KEY, GEMINI_API_KEY "
+            "u ORCAROUTER_API_KEY en .env."
         )
 
     raise InternalServerErrorException(

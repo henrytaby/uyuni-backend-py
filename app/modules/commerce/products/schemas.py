@@ -3,6 +3,43 @@ from uuid import UUID
 
 from pydantic import BaseModel, model_validator
 
+from app.core.filters import (
+    BaseFilterParams,
+    ListQueryMixin,
+    MultiStr,
+    MultiUUID,
+    OptBool,
+    OptFloat,
+    OptInt,
+    OptStr,
+    OptUUID,
+)
+
+
+class ProductFilterParams(BaseFilterParams):
+    """Filtros estándar para listado y conteo de productos físicos."""
+
+    batch_id: OptUUID = None
+    batch_ids: MultiUUID = None
+    without_batch: OptBool = None
+    master_product_id: OptUUID = None
+    category_id: OptUUID = None
+    status: OptStr = None
+    statuses: MultiStr = None
+    physical_condition: OptStr = None
+    physical_conditions: MultiStr = None
+    is_reviewed: OptBool = None
+    min_price: OptFloat = None
+    max_price: OptFloat = None
+    min_cost_price: OptFloat = None
+    max_cost_price: OptFloat = None
+    min_available_qty: OptInt = None
+    max_available_qty: OptInt = None
+
+
+class ProductListQuery(ListQueryMixin, ProductFilterParams):
+    """Query params completos para listado paginado de productos."""
+
 
 class ProductBase(BaseModel):
     master_product_id: UUID

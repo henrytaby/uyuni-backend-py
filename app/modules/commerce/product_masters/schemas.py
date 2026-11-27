@@ -3,6 +3,36 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from app.core.filters import (
+    BaseFilterParams,
+    ListQueryMixin,
+    MultiUUID,
+    OptBool,
+    OptFloat,
+    OptStr,
+    OptUUID,
+)
+
+
+class ProductMasterFilterParams(BaseFilterParams):
+    """Filtros estándar para listado y conteo de fichas maestras."""
+
+    category_id: OptUUID = None
+    category_ids: MultiUUID = None
+    live_basket_id: OptUUID = None
+    live_basket_ids: MultiUUID = None
+    is_active: OptBool = None
+    is_published_marketplace: OptBool = None
+    is_whatsapp_published: OptBool = None
+    min_price: OptFloat = None
+    max_price: OptFloat = None
+
+
+class ProductMasterListQuery(ListQueryMixin, ProductMasterFilterParams):
+    """Query params completos para listado paginado de fichas maestras."""
+
+    sort_by: OptStr = "item_number"
+
 
 class ProductMasterImageBase(BaseModel):
     url: str

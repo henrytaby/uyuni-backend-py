@@ -2,6 +2,7 @@ from typing import Any
 
 from sqlmodel import Session, col, or_
 
+from app.core.filters import FilterOp, FilterSpec
 from app.core.repository import BaseRepository
 from app.modules.commerce.constants import parse_search_int
 from app.modules.commerce.sales.models import Sale, SaleItem
@@ -18,6 +19,24 @@ class SaleRepository(BaseRepository[Sale]):
         "delivery_address",
         "observations",
     ]
+    filter_fields = {
+        "channel": FilterOp.EQ,
+        "channels": FilterSpec("channel", FilterOp.IN),
+        "channel_id": FilterOp.EQ,
+        "payment_method": FilterOp.EQ,
+        "payment_methods": FilterSpec("payment_method", FilterOp.IN),
+        "payment_status": FilterOp.EQ,
+        "payment_statuses": FilterSpec("payment_status", FilterOp.IN),
+        "delivery_status": FilterOp.EQ,
+        "delivery_modality": FilterOp.EQ,
+        "delivery_modalities": FilterSpec("delivery_modality", FilterOp.IN),
+        "sale_date_from": FilterSpec("sale_date", FilterOp.DATE_FROM),
+        "sale_date_to": FilterSpec("sale_date", FilterOp.DATE_TO),
+        "min_total": FilterSpec("total_collected", FilterOp.GTE),
+        "max_total": FilterSpec("total_collected", FilterOp.LTE),
+        "min_profit": FilterSpec("net_profit", FilterOp.GTE),
+        "max_profit": FilterSpec("net_profit", FilterOp.LTE),
+    }
 
     def __init__(self, session: Session):
         super().__init__(session, Sale)
@@ -50,4 +69,3 @@ class SaleRepository(BaseRepository[Sale]):
 class SaleItemRepository(BaseRepository[SaleItem]):
     def __init__(self, session: Session):
         super().__init__(session, SaleItem)
-

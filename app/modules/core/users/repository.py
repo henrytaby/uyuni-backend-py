@@ -1,9 +1,10 @@
 import uuid
-from typing import Any, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence
 
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
+from app.core.filters import BaseFilterParams, FilterOp, FilterSpec
 from app.core.repository import BaseRepository
 from app.models.user import User, UserRole
 
@@ -17,6 +18,15 @@ class UserRepository(BaseRepository[User]):
         "phone",
         "city",
     ]
+    filter_fields = {
+        "is_active": FilterOp.EQ,
+        "is_superuser": FilterOp.EQ,
+        "is_verified": FilterOp.EQ,
+        "country": FilterOp.EQ,
+        "city": FilterOp.ILIKE,
+        "created_from": FilterSpec("created_at", FilterOp.DATE_FROM),
+        "created_to": FilterSpec("created_at", FilterOp.DATE_TO),
+    }
 
     def __init__(self, session: Session):
         super().__init__(session, User)
@@ -39,13 +49,15 @@ class UserRepository(BaseRepository[User]):
         sort_order: str = "asc",
         search: Optional[str] = None,
         extra_filters: Optional[list[Any]] = None,
+        filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> Sequence[User]:
         statement = select(User).options(
             selectinload(User.user_roles).selectinload(UserRole.role)  # type: ignore[arg-type]
         )
         statement = self._apply_search(statement, search)
-        if extra_filters:
-            statement = statement.where(*extra_filters)
+        statement = self._apply_filters(
+            statement, filters=filters, extra_filters=extra_filters
+        )
         if sort_by and hasattr(self.model, sort_by):
             column = getattr(self.model, sort_by)
             if sort_order.lower() == "desc":

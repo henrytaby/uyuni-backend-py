@@ -3,6 +3,30 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from app.core.filters import (
+    BaseFilterParams,
+    ListQueryMixin,
+    MultiStr,
+    OptDate,
+    OptFloat,
+    OptStr,
+)
+
+
+class InvestmentRoundFilterParams(BaseFilterParams):
+    """Filtros estándar para listado y conteo de rondas de inversión."""
+
+    status: OptStr = None
+    statuses: MultiStr = None
+    disbursement_date_from: OptDate = None
+    disbursement_date_to: OptDate = None
+    min_capital: OptFloat = None
+    max_capital: OptFloat = None
+
+
+class InvestmentRoundListQuery(ListQueryMixin, InvestmentRoundFilterParams):
+    """Query params completos para listado paginado de rondas."""
+
 
 class InvestmentRoundBase(BaseModel):
     code: str | None = None

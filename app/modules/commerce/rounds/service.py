@@ -1,9 +1,10 @@
-from typing import Sequence
+from typing import Mapping, Sequence
 from uuid import UUID
 
 from sqlmodel import Session, col, func, select
 
 from app.core.exceptions import BadRequestException
+from app.core.filters import BaseFilterParams
 from app.modules.commerce.rounds.models import InvestmentRound
 from app.modules.commerce.rounds.repository import InvestmentRoundRepository
 
@@ -28,8 +29,11 @@ class InvestmentRoundService:
         sort_by: str | None = None,
         sort_order: str = "asc",
         search: str | None = None,
+        filters: BaseFilterParams | Mapping[str, object] | None = None,
     ) -> Sequence[InvestmentRound]:
-        return self.repository.get_all(offset, limit, sort_by, sort_order, search)
+        return self.repository.get_all(
+            offset, limit, sort_by, sort_order, search, filters=filters
+        )
 
     def get_by_id(self, id: UUID) -> InvestmentRound | None:
         return self.repository.get_by_id(id)
@@ -80,13 +84,44 @@ class InvestmentRoundService:
 
         return self.repository.delete(id)
 
-    def count(self, search: str | None = None) -> int:
-        return self.repository.count(search)
+    def count(
+        self,
+        search: str | None = None,
+        filters: BaseFilterParams | Mapping[str, object] | None = None,
+    ) -> int:
+        return self.repository.count(search, filters=filters)
+
+    def _sum_collected_sales(self, batch_ids: list[UUID]) -> float:
+        """Suma ventas efectivamente cobradas.
+
+        Excluye pendientes, cortesías y reembolsos.
+        """
+        if not batch_ids:
+            return 0.0
+
+        from app.modules.commerce.constants import (
+            SalePaymentMethod,
+            SalePaymentStatus,
+        )
+        from app.modules.commerce.products.models import Product
+        from app.modules.commerce.sales.models import Sale, SaleItem
+
+        sales_stmt = (
+            select(func.coalesce(func.sum(SaleItem.total_price), 0.0))
+            .join(Product, col(SaleItem.product_id) == col(Product.id))
+            .join(Sale, col(SaleItem.sale_id) == col(Sale.id))
+            .where(
+                col(Product.batch_id).in_(batch_ids),
+                col(Sale.payment_status) == SalePaymentStatus.COLLECTED.value,
+                col(Sale.payment_method) != SalePaymentMethod.COURTESY.value,
+            )
+        )
+        return float(self.session.exec(sales_stmt).one())
 
     def recalculate_round(self, round_id: UUID) -> InvestmentRound | None:
         """
         Recalcula automáticamente el capital invertido y el estado de la ronda
-        a partir de sus lotes asociados (commerce_batch) y ventas registradas.
+        a partir de sus lotes asociados (commerce_batch) y ventas cobradas.
         """
         round_obj = self.repository.get_by_id(round_id)
         if not round_obj:
@@ -94,7 +129,6 @@ class InvestmentRoundService:
 
         from app.modules.commerce.batches.models import Batch
         from app.modules.commerce.products.models import Product
-        from app.modules.commerce.sales.models import SaleItem
 
         # 1. Total capital invertido = suma de total_cost de los lotes de la ronda
         batches_stmt = select(Batch).where(Batch.investment_round_id == round_id)
@@ -102,19 +136,14 @@ class InvestmentRoundService:
         total_invested = round(sum(b.total_cost for b in batches), 2)
         round_obj.capital_invested = total_invested
 
-        # 2. Capital recuperado = suma de ventas de productos asociados a estos lotes
+        # 2. Capital recuperado = suma de ventas cobradas asociadas a estos lotes
         batch_ids = [b.id for b in batches]
         capital_recovered = 0.0
         total_available_qty = 0
         total_sellable_qty = 0
 
         if batch_ids:
-            sales_stmt = (
-                select(func.coalesce(func.sum(SaleItem.total_price), 0.0))
-                .join(Product)
-                .where(col(Product.batch_id).in_(batch_ids))
-            )
-            capital_recovered = float(self.session.exec(sales_stmt).one())
+            capital_recovered = self._sum_collected_sales(batch_ids)
 
             qty_stmt = select(
                 func.coalesce(func.sum(Product.available_quantity), 0),
@@ -161,7 +190,6 @@ class InvestmentRoundService:
 
         from app.modules.commerce.batches.models import Batch
         from app.modules.commerce.products.models import Product
-        from app.modules.commerce.sales.models import SaleItem
 
         batches_stmt = select(Batch).where(Batch.investment_round_id == round_id)
         batches = list(self.session.exec(batches_stmt).all())
@@ -175,12 +203,7 @@ class InvestmentRoundService:
         merma_items = 0
 
         if batch_ids:
-            sales_stmt = (
-                select(func.coalesce(func.sum(SaleItem.total_price), 0.0))
-                .join(Product)
-                .where(col(Product.batch_id).in_(batch_ids))
-            )
-            capital_recovered = round(float(self.session.exec(sales_stmt).one()), 2)
+            capital_recovered = round(self._sum_collected_sales(batch_ids), 2)
 
             counts_stmt = select(
                 func.coalesce(func.sum(Product.initial_quantity), 0),

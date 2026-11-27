@@ -5,6 +5,14 @@ from datetime import datetime
 from pydantic import ConfigDict, EmailStr, field_validator
 from sqlmodel import Field, SQLModel
 
+from app.core.filters import (
+    BaseFilterParams,
+    ListQueryMixin,
+    OptBool,
+    OptDate,
+    OptStr,
+)
+
 USERNAME_REGEX = re.compile(r"^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$")
 
 
@@ -227,3 +235,19 @@ class UserLogLoginRead(SQLModel):
     logged_out_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)  # type: ignore
+
+
+class UserFilterParams(BaseFilterParams):
+    """Filtros estándar para listado y conteo de usuarios."""
+
+    is_active: OptBool = None
+    is_superuser: OptBool = None
+    is_verified: OptBool = None
+    country: OptStr = None
+    city: OptStr = None
+    created_from: OptDate = None
+    created_to: OptDate = None
+
+
+class UserListQuery(ListQueryMixin, UserFilterParams):
+    """Query params completos para listado paginado de usuarios."""

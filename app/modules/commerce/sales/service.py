@@ -1,10 +1,11 @@
 from datetime import datetime
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 from uuid import UUID
 
 from sqlmodel import Session, col, or_, select
 
 from app.core.exceptions import BadRequestException, NotFoundException
+from app.core.filters import BaseFilterParams
 from app.modules.commerce.batches.models import Batch
 from app.modules.commerce.constants import parse_search_int
 from app.modules.commerce.product_masters.models import ProductMaster
@@ -299,10 +300,65 @@ class SaleService:
         self.session.commit()
         self.session.refresh(sale)
 
-        self._sync_affected_batches_and_rounds(
-            affected_batch_ids, affected_round_ids
-        )
+        self._sync_affected_batches_and_rounds(affected_batch_ids, affected_round_ids)
         return sale
+
+    @staticmethod
+    def _parse_optional_uuid(value: str) -> UUID | None:
+        try:
+            return UUID(value.strip())
+        except ValueError:
+            return None
+
+    @classmethod
+    def _resolve_filters_and_extra(
+        cls,
+        filters: BaseFilterParams | Mapping[str, Any] | None,
+        channel: str | None,
+        payment_status: str | None,
+        delivery_status: str | None,
+    ) -> tuple[dict[str, Any], list[Any] | None]:
+        merged: dict[str, Any] = (
+            filters.to_filter_dict()
+            if isinstance(filters, BaseFilterParams)
+            else dict(filters or {})
+        )
+        if channel is not None:
+            merged.setdefault("channel", channel)
+        if payment_status is not None:
+            merged.setdefault("payment_status", payment_status)
+        if delivery_status is not None:
+            merged.setdefault("delivery_status", delivery_status)
+
+        extra_filters: list[Any] = []
+        raw_channel = merged.get("channel")
+        if isinstance(raw_channel, str):
+            ch_uuid = cls._parse_optional_uuid(raw_channel)
+            if ch_uuid is not None:
+                merged.pop("channel", None)
+                extra_filters.append(
+                    or_(
+                        col(Sale.channel_id) == ch_uuid,
+                        col(Sale.channel) == raw_channel,
+                    )
+                )
+
+        raw_channels = merged.get("channels")
+        if isinstance(raw_channels, list) and raw_channels:
+            uuid_vals = [
+                u for item in raw_channels if (u := cls._parse_optional_uuid(str(item)))
+            ]
+            if uuid_vals:
+                merged.pop("channels", None)
+                str_vals = [str(item) for item in raw_channels]
+                extra_filters.append(
+                    or_(
+                        col(Sale.channel_id).in_(uuid_vals),
+                        col(Sale.channel).in_(str_vals),
+                    )
+                )
+
+        return merged, (extra_filters or None)
 
     def get_all(
         self,
@@ -314,14 +370,11 @@ class SaleService:
         channel: str | None = None,
         payment_status: str | None = None,
         delivery_status: str | None = None,
+        filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> Sequence[Sale]:
-        extra_filters: list[Any] = []
-        if channel:
-            extra_filters.append(Sale.channel == channel)
-        if payment_status:
-            extra_filters.append(Sale.payment_status == payment_status)
-        if delivery_status:
-            extra_filters.append(Sale.delivery_status == delivery_status)
+        resolved_filters, extra_filters = self._resolve_filters_and_extra(
+            filters, channel, payment_status, delivery_status
+        )
 
         # Default sort by sale_number desc (latest sale first) if not specified
         if not sort_by:
@@ -329,7 +382,13 @@ class SaleService:
             sort_order = "desc"
 
         return self.repository.get_all(
-            offset, limit, sort_by, sort_order, search, extra_filters=extra_filters
+            offset,
+            limit,
+            sort_by,
+            sort_order,
+            search,
+            extra_filters=extra_filters,
+            filters=resolved_filters,
         )
 
     def get_by_id(self, id: UUID) -> Sale | None:
@@ -356,6 +415,15 @@ class SaleService:
 
         affected_batch_ids: set[UUID] = set()
         affected_round_ids: set[UUID] = set()
+        status_or_method_changed = (
+            "payment_status" in data
+            and data["payment_status"] is not None
+            and data["payment_status"] != sale.payment_status
+        ) or (
+            "payment_method" in data
+            and data["payment_method"] is not None
+            and data["payment_method"] != sale.payment_method
+        )
 
         new_items_raw = data.pop("items", None)
         allow_below_minimum = bool(data.pop("allow_below_minimum", False))
@@ -397,6 +465,13 @@ class SaleService:
             data["total_cost"] = effective_total_cost
             affected_batch_ids = old_batches | new_batches
             affected_round_ids = old_rounds | new_rounds
+        elif status_or_method_changed:
+            for item in sale.items:
+                product = self.session.get(Product, item.product_id)
+                if product:
+                    self._collect_batch_round_ids(
+                        product, affected_batch_ids, affected_round_ids
+                    )
 
         # Recalcular efectivo/vuelto autoritativamente según el total real de la venta
         effective_method = data.get("payment_method", sale.payment_method)
@@ -438,9 +513,7 @@ class SaleService:
         self.session.commit()
         self.session.refresh(sale)
 
-        self._sync_affected_batches_and_rounds(
-            affected_batch_ids, affected_round_ids
-        )
+        self._sync_affected_batches_and_rounds(affected_batch_ids, affected_round_ids)
         return sale
 
     def delete(self, id: UUID) -> bool:
@@ -460,9 +533,7 @@ class SaleService:
         self.session.delete(sale)
         self.session.commit()
 
-        self._sync_affected_batches_and_rounds(
-            affected_batch_ids, affected_round_ids
-        )
+        self._sync_affected_batches_and_rounds(affected_batch_ids, affected_round_ids)
         return True
 
     def count(
@@ -471,16 +542,14 @@ class SaleService:
         channel: str | None = None,
         payment_status: str | None = None,
         delivery_status: str | None = None,
+        filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> int:
-        extra_filters: list[Any] = []
-        if channel:
-            extra_filters.append(Sale.channel == channel)
-        if payment_status:
-            extra_filters.append(Sale.payment_status == payment_status)
-        if delivery_status:
-            extra_filters.append(Sale.delivery_status == delivery_status)
-
-        return self.repository.count(search=search, extra_filters=extra_filters)
+        resolved_filters, extra_filters = self._resolve_filters_and_extra(
+            filters, channel, payment_status, delivery_status
+        )
+        return self.repository.count(
+            search=search, extra_filters=extra_filters, filters=resolved_filters
+        )
 
     def get_available_products(
         self,
@@ -549,4 +618,3 @@ class SaleService:
                 )
             )
         return result
-

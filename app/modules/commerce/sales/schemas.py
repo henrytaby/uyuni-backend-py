@@ -3,6 +3,15 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.filters import (
+    BaseFilterParams,
+    ListQueryMixin,
+    MultiStr,
+    OptDate,
+    OptFloat,
+    OptStr,
+    OptUUID,
+)
 from app.modules.commerce.constants import (
     SaleDeliveryModality,
     SaleDeliveryPaidBy,
@@ -10,6 +19,33 @@ from app.modules.commerce.constants import (
     SalePaymentMethod,
     SalePaymentStatus,
 )
+
+
+class SaleFilterParams(BaseFilterParams):
+    """Filtros estándar para listado y conteo de ventas."""
+
+    channel: OptStr = None
+    channels: MultiStr = None
+    channel_id: OptUUID = None
+    payment_method: OptStr = None
+    payment_methods: MultiStr = None
+    payment_status: OptStr = None
+    payment_statuses: MultiStr = None
+    delivery_status: OptStr = None
+    delivery_modality: OptStr = None
+    delivery_modalities: MultiStr = None
+    sale_date_from: OptDate = None
+    sale_date_to: OptDate = None
+    min_total: OptFloat = None
+    max_total: OptFloat = None
+    min_profit: OptFloat = None
+    max_profit: OptFloat = None
+
+
+class SaleListQuery(ListQueryMixin, SaleFilterParams):
+    """Query params completos para listado paginado de ventas."""
+
+    sort_order: str = "desc"
 
 
 class SaleItemBase(BaseModel):
@@ -134,5 +170,3 @@ class AvailableProductForSale(BaseModel):
     discount_margin: float
     currency: str = "BOB"
     image_url: str | None = None
-
-

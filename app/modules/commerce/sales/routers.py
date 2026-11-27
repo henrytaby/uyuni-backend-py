@@ -1,3 +1,4 @@
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -10,6 +11,8 @@ from app.modules.commerce.constants import CommerceModuleSlug
 from app.modules.commerce.sales.schemas import (
     AvailableProductForSale,
     SaleCreate,
+    SaleFilterParams,
+    SaleListQuery,
     SaleRead,
     SaleUpdate,
 )
@@ -36,14 +39,7 @@ def create_sale(
 @router.get("/", response_model=list[SaleRead])
 def get_sales(
     session: SessionDep,
-    offset: int = 0,
-    limit: int = 100,
-    sort_by: str | None = Query(None),
-    sort_order: str = Query("desc"),
-    search: str | None = Query(None),
-    channel: str | None = Query(None),
-    payment_status: str | None = Query(None),
-    delivery_status: str | None = Query(None),
+    query: Annotated[SaleListQuery, Query()],
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CommerceModuleSlug.GENERAL,
@@ -53,24 +49,19 @@ def get_sales(
 ):
     service = SaleService(session)
     return service.get_all(
-        offset=offset,
-        limit=limit,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        search=search,
-        channel=channel,
-        payment_status=payment_status,
-        delivery_status=delivery_status,
+        offset=query.offset,
+        limit=query.limit,
+        sort_by=query.sort_by,
+        sort_order=query.sort_order,
+        search=query.search,
+        filters=query,
     )
 
 
 @router.get("/count")
 def count_sales(
     session: SessionDep,
-    search: str | None = Query(None),
-    channel: str | None = Query(None),
-    payment_status: str | None = Query(None),
-    delivery_status: str | None = Query(None),
+    query: Annotated[SaleFilterParams, Query()],
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CommerceModuleSlug.GENERAL,
@@ -79,14 +70,7 @@ def count_sales(
     ),
 ):
     service = SaleService(session)
-    return {
-        "total": service.count(
-            search=search,
-            channel=channel,
-            payment_status=payment_status,
-            delivery_status=delivery_status,
-        )
-    }
+    return {"total": service.count(search=query.search, filters=query)}
 
 
 @router.get("/available-products", response_model=list[AvailableProductForSale])

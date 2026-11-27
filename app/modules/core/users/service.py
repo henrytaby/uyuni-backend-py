@@ -1,10 +1,11 @@
-from typing import Sequence
+from typing import Any, Mapping, Sequence
 from uuid import UUID
 
 from sqlmodel import Session, col, func, select
 
 from app.auth.utils import get_password_hash
 from app.core.exceptions import BadRequestException, NotFoundException
+from app.core.filters import BaseFilterParams
 from app.models.role import Role
 from app.models.user import User, UserLogLogin, UserRole
 from app.modules.core.users.repository import UserRepository
@@ -15,17 +16,22 @@ class UserService:
         self.repository = UserRepository(session)
         self.session = session
 
-    def _build_filters(
-        self,
-        is_active: bool | None = None,
-        is_superuser: bool | None = None,
-    ) -> list:
-        filters = []
+    @staticmethod
+    def _merge_legacy_filters(
+        filters: BaseFilterParams | Mapping[str, Any] | None,
+        is_active: bool | None,
+        is_superuser: bool | None,
+    ) -> dict[str, Any]:
+        merged: dict[str, Any] = (
+            filters.to_filter_dict()
+            if isinstance(filters, BaseFilterParams)
+            else dict(filters or {})
+        )
         if is_active is not None:
-            filters.append(User.is_active == is_active)
+            merged.setdefault("is_active", is_active)
         if is_superuser is not None:
-            filters.append(User.is_superuser == is_superuser)
-        return filters
+            merged.setdefault("is_superuser", is_superuser)
+        return merged
 
     def _validate_role_slugs(self, role_slugs: list[str]) -> list[Role]:
         validated_roles: list[Role] = []
@@ -107,10 +113,11 @@ class UserService:
         search: str | None = None,
         is_active: bool | None = None,
         is_superuser: bool | None = None,
+        filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> Sequence[User]:
-        filters = self._build_filters(is_active, is_superuser)
+        resolved_filters = self._merge_legacy_filters(filters, is_active, is_superuser)
         return self.repository.get_all(
-            offset, limit, sort_by, sort_order, search, extra_filters=filters
+            offset, limit, sort_by, sort_order, search, filters=resolved_filters
         )
 
     def get_by_id(self, id: UUID) -> User | None:
@@ -215,9 +222,10 @@ class UserService:
         search: str | None = None,
         is_active: bool | None = None,
         is_superuser: bool | None = None,
+        filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> int:
-        filters = self._build_filters(is_active, is_superuser)
-        return self.repository.count(search, extra_filters=filters)
+        resolved_filters = self._merge_legacy_filters(filters, is_active, is_superuser)
+        return self.repository.count(search, filters=resolved_filters)
 
     def get_login_history(
         self,

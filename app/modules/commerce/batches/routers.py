@@ -1,3 +1,4 @@
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -9,6 +10,11 @@ from app.core.exceptions import NotFoundException
 from app.modules.commerce.batches.models import Batch
 from app.modules.commerce.batches.schemas import (
     BatchCreate,
+    BatchFilterParams,
+    BatchListQuery,
+    BatchMetricsRead,
+    BatchPortfolioQuery,
+    BatchPortfolioReportRead,
     BatchRead,
     BatchUpdate,
 )
@@ -36,11 +42,7 @@ def create_batch(
 @router.get("/", response_model=list[BatchRead])
 def get_batches(
     session: SessionDep,
-    offset: int = 0,
-    limit: int = 100,
-    sort_by: str | None = Query(None),
-    sort_order: str = Query("asc"),
-    search: str | None = Query(None),
+    query: Annotated[BatchListQuery, Query()],
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CommerceModuleSlug.GENERAL,
@@ -49,13 +51,20 @@ def get_batches(
     ),
 ):
     service = BatchService(session)
-    return service.get_all(offset, limit, sort_by, sort_order, search)
+    return service.get_all(
+        offset=query.offset,
+        limit=query.limit,
+        sort_by=query.sort_by,
+        sort_order=query.sort_order,
+        search=query.search,
+        filters=query,
+    )
 
 
 @router.get("/count")
 def count_batches(
     session: SessionDep,
-    search: str | None = Query(None),
+    query: Annotated[BatchFilterParams, Query()],
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CommerceModuleSlug.GENERAL,
@@ -64,7 +73,27 @@ def count_batches(
     ),
 ):
     service = BatchService(session)
-    return {"total": service.count(search)}
+    return {"total": service.count(search=query.search, filters=query)}
+
+
+@router.get("/portfolio-metrics", response_model=BatchPortfolioReportRead)
+def get_batches_portfolio_metrics(
+    session: SessionDep,
+    query: Annotated[BatchPortfolioQuery, Query()],
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
+        )
+    ),
+):
+    service = BatchService(session)
+    return service.get_portfolio_metrics(
+        filters=query,
+        search=query.search,
+        sort_by=query.sort_by,
+        sort_order=query.sort_order,
+    )
 
 
 @router.get("/{id}", response_model=BatchRead)
@@ -83,6 +112,24 @@ def get_batch(
     if not batch:
         raise NotFoundException(detail="Batch not found")
     return batch
+
+
+@router.get("/{id}/metrics", response_model=BatchMetricsRead)
+def get_batch_metrics(
+    id: UUID,
+    session: SessionDep,
+    _: UserModulePermission = Depends(
+        PermissionChecker(
+            module_slug=CommerceModuleSlug.GENERAL,
+            required_permission=PermissionAction.READ,
+        )
+    ),
+):
+    service = BatchService(session)
+    metrics = service.get_batch_metrics(id)
+    if not metrics:
+        raise NotFoundException(detail="Batch not found")
+    return metrics
 
 
 @router.put("/{id}", response_model=BatchRead)

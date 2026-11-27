@@ -53,4 +53,8 @@ def get_assistant_providers(
         default_provider=settings.AI_DEFAULT_PROVIDER,
         configured_providers=get_configured_providers(),
         all_providers=list(SUPPORTED_PROVIDERS.keys()),
+        provider_models={
+            name: endpoint.default_model
+            for name, endpoint in SUPPORTED_PROVIDERS.items()
+        },
     )

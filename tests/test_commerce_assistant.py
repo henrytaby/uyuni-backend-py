@@ -158,6 +158,41 @@ def test_call_llm_fallback():
         assert fallback is True
 
 
+def test_call_llm_orcarouter():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": "Respuesta desde OrcaRouter DeepSeek.",
+                }
+            }
+        ]
+    }
+
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value = mock_client
+    mock_client.post.return_value = mock_resp
+
+    with (
+        patch("httpx2.Client", return_value=mock_client),
+        patch.object(settings, "ORCAROUTER_API_KEY", "sk-orca-test-key"),
+    ):
+        reply, provider, model, fallback = call_llm(
+            messages=[{"role": "user", "content": "¿Tienen stock?"}],
+            requested_provider="orcarouter",
+        )
+
+        assert reply == "Respuesta desde OrcaRouter DeepSeek."
+        assert provider == "orcarouter"
+        assert model == settings.ORCAROUTER_MODEL
+        assert fallback is False
+        call_args = mock_client.post.call_args
+        assert call_args.args[0] == "https://api.orcarouter.ai/v1/chat/completions"
+
+
 def test_call_llm_invalid_provider():
     try:
         call_llm(
@@ -184,6 +219,11 @@ def test_assistant_api_endpoints(client: TestClient, superuser_token_headers):
         assert "groq" in data["all_providers"]
         assert "mistral" in data["all_providers"]
         assert "gemini" in data["all_providers"]
+        assert "orcarouter" in data["all_providers"]
+        assert (
+            data["provider_models"]["orcarouter"]
+            == settings.ORCAROUTER_MODEL
+        )
 
     # 2. POST /api/commerce/assistant/chat con mock
     mock_resp = MagicMock()
@@ -230,6 +270,7 @@ def test_assistant_api_no_keys_configured(client: TestClient, superuser_token_he
         patch.object(settings, "GROQ_API_KEY", None),
         patch.object(settings, "MISTRAL_API_KEY", None),
         patch.object(settings, "GEMINI_API_KEY", None),
+        patch.object(settings, "ORCAROUTER_API_KEY", None),
     ):
         res = client.post(
             "/api/commerce/assistant/chat",

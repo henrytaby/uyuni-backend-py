@@ -3,6 +3,7 @@ from uuid import UUID
 
 from sqlmodel import Session, col, or_, select
 
+from app.core.filters import FilterOp, FilterSpec
 from app.core.repository import BaseRepository
 from app.modules.commerce.constants import parse_search_int
 from app.modules.commerce.product_masters.models import ProductMaster
@@ -10,6 +11,17 @@ from app.modules.commerce.product_masters.models import ProductMaster
 
 class ProductMasterRepository(BaseRepository[ProductMaster]):
     searchable_fields = ["code", "name", "brand", "model", "description", "features"]
+    filter_fields = {
+        "category_id": FilterOp.EQ,
+        "category_ids": FilterSpec("category_id", FilterOp.IN),
+        "live_basket_id": FilterOp.EQ,
+        "live_basket_ids": FilterSpec("live_basket_id", FilterOp.IN),
+        "is_active": FilterOp.EQ,
+        "is_published_marketplace": FilterOp.EQ,
+        "is_whatsapp_published": FilterOp.EQ,
+        "min_price": FilterSpec("published_price", FilterOp.GTE),
+        "max_price": FilterSpec("published_price", FilterOp.LTE),
+    }
 
     def __init__(self, session: Session):
         super().__init__(session, ProductMaster)

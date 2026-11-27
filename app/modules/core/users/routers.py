@@ -1,3 +1,4 @@
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -10,6 +11,8 @@ from app.models.user import User
 from app.modules.core.constants import CoreModuleSlug
 from app.modules.core.users.schemas import (
     UserCreate,
+    UserFilterParams,
+    UserListQuery,
     UserLogLoginRead,
     UserReadDetailed,
     UserUpdate,
@@ -40,13 +43,7 @@ def create_user(
 @router.get("/", response_model=list[UserReadDetailed])
 def get_users_list(
     session: SessionDep,
-    offset: int = 0,
-    limit: int = 100,
-    sort_by: str | None = Query(None),
-    sort_order: str = Query("asc"),
-    search: str | None = Query(None),
-    is_active: bool | None = Query(None),
-    is_superuser: bool | None = Query(None),
+    query: Annotated[UserListQuery, Query()],
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.USERS,
@@ -56,22 +53,19 @@ def get_users_list(
 ):
     service = UserService(session)
     return service.get_all(
-        offset=offset,
-        limit=limit,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        search=search,
-        is_active=is_active,
-        is_superuser=is_superuser,
+        offset=query.offset,
+        limit=query.limit,
+        sort_by=query.sort_by,
+        sort_order=query.sort_order,
+        search=query.search,
+        filters=query,
     )
 
 
 @router.get("/count")
 def count_users(
     session: SessionDep,
-    search: str | None = Query(None),
-    is_active: bool | None = Query(None),
-    is_superuser: bool | None = Query(None),
+    query: Annotated[UserFilterParams, Query()],
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CoreModuleSlug.USERS,
@@ -80,13 +74,7 @@ def count_users(
     ),
 ):
     service = UserService(session)
-    return {
-        "total": service.count(
-            search=search,
-            is_active=is_active,
-            is_superuser=is_superuser,
-        )
-    }
+    return {"total": service.count(search=query.search, filters=query)}
 
 
 @router.get("/{id}", response_model=UserReadDetailed)

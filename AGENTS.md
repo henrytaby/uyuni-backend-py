@@ -24,6 +24,7 @@ Each domain module contains: `routers.py`, `service.py`, `repository.py`, `model
 
 ## Key Patterns
 - **Repository Pattern**: Generic `BaseRepository[T]` with CRUD interface (`get_by_id`, `get_all`, `count`, `create`, `update`, `delete`)
+- **Unified Declarative Filtering (MANDATORY BACKEND STANDARD)**: All list/count/report endpoints MUST reuse `app/core/filters.py` (`BaseFilterParams`, `ListQueryMixin`, `SortQueryMixin`, `FilterOp`, `FilterSpec`, and `Opt*`/`Multi*` types) with FastAPI `Annotated[<Module>ListQuery, Query()]` / `Annotated[<Module>FilterParams, Query()]` and declare a whitelist `filter_fields` mapping on the module's `BaseRepository` subclass (supporting `eq`, `neq`, `in`, `gte`, `lte`, `gt`, `lt`, `ilike`, `is_null`, `date_from`, `date_to`). Never duplicate `if filter_x: extra_filters.append(...)` across `get_all()` and `count()` or repeat query parameters across `GET /`, `GET /count`, and report endpoints; reserve `extra_filters` strictly for relational subqueries/joins.
 - **Dependency Injection**: FastAPI `Depends()` throughout
 - **RBAC**: User → Role → RoleModule → Module + Permissions (`can_create`, `can_update`, `can_delete`, `scope_all`; read is implicit)
 - **Audit**: Middleware captures request context + SQLAlchemy hooks for CDC

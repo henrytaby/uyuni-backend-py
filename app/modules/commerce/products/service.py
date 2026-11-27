@@ -1,9 +1,11 @@
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 from uuid import UUID
 
+from sqlalchemy import and_, case, func
 from sqlmodel import Session, col, select
 
 from app.core.exceptions import NotFoundException
+from app.core.filters import BaseFilterParams
 from app.modules.commerce.product_masters.models import (
     ProductMaster,
     ProductMasterImage,
@@ -48,6 +50,61 @@ class ProductService:
 
         return created
 
+    @staticmethod
+    def _resolve_filters_and_extra(
+        filters: BaseFilterParams | Mapping[str, Any] | None,
+        batch_id: UUID | None,
+        master_product_id: UUID | None,
+        status: str | None,
+    ) -> tuple[dict[str, Any], list[Any] | None]:
+        merged: dict[str, Any] = (
+            filters.to_filter_dict()
+            if isinstance(filters, BaseFilterParams)
+            else dict(filters or {})
+        )
+        if batch_id is not None:
+            merged.setdefault("batch_id", batch_id)
+        if master_product_id is not None:
+            merged.setdefault("master_product_id", master_product_id)
+        if status is not None:
+            merged.setdefault("status", status)
+
+        extra_filters: list[Any] = []
+        category_id = merged.get("category_id")
+        if category_id is not None:
+            extra_filters.append(
+                col(Product.master_product_id).in_(
+                    select(col(ProductMaster.id)).where(
+                        col(ProductMaster.category_id) == category_id
+                    )
+                )
+            )
+
+        min_price = merged.get("min_price")
+        max_price = merged.get("max_price")
+        if min_price is not None or max_price is not None:
+            master_pub_sq = (
+                select(col(ProductMaster.published_price))
+                .where(col(ProductMaster.id) == col(Product.master_product_id))
+                .scalar_subquery()
+            )
+            eff_price_expr: Any = case(
+                (
+                    and_(
+                        col(Product.published_price).is_not(None),
+                        col(Product.published_price) > 0,
+                    ),
+                    col(Product.published_price),
+                ),
+                else_=func.coalesce(master_pub_sq, 0.0),
+            )
+            if min_price is not None:
+                extra_filters.append(eff_price_expr >= min_price)
+            if max_price is not None:
+                extra_filters.append(eff_price_expr <= max_price)
+
+        return merged, (extra_filters or None)
+
     def get_all(
         self,
         offset: int = 0,
@@ -58,17 +115,20 @@ class ProductService:
         batch_id: UUID | None = None,
         master_product_id: UUID | None = None,
         status: str | None = None,
+        filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> Sequence[Product]:
-        extra_filters: list[Any] = []
-        if batch_id:
-            extra_filters.append(Product.batch_id == batch_id)
-        if master_product_id:
-            extra_filters.append(Product.master_product_id == master_product_id)
-        if status:
-            extra_filters.append(Product.status == status)
+        resolved_filters, extra_filters = self._resolve_filters_and_extra(
+            filters, batch_id, master_product_id, status
+        )
 
         return self.repository.get_all(
-            offset, limit, sort_by, sort_order, search, extra_filters=extra_filters
+            offset,
+            limit,
+            sort_by,
+            sort_order,
+            search,
+            extra_filters=extra_filters,
+            filters=resolved_filters,
         )
 
     def get_by_id(self, id: UUID) -> Product | None:
@@ -159,16 +219,15 @@ class ProductService:
         batch_id: UUID | None = None,
         master_product_id: UUID | None = None,
         status: str | None = None,
+        filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> int:
-        extra_filters: list[Any] = []
-        if batch_id:
-            extra_filters.append(Product.batch_id == batch_id)
-        if master_product_id:
-            extra_filters.append(Product.master_product_id == master_product_id)
-        if status:
-            extra_filters.append(Product.status == status)
+        resolved_filters, extra_filters = self._resolve_filters_and_extra(
+            filters, batch_id, master_product_id, status
+        )
 
-        return self.repository.count(search=search, extra_filters=extra_filters)
+        return self.repository.count(
+            search=search, extra_filters=extra_filters, filters=resolved_filters
+        )
 
     def get_images(self, product_id: UUID) -> list[ProductMasterImage]:
         prod = self.get_by_id(product_id)

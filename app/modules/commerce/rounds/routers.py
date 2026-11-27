@@ -1,3 +1,4 @@
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -10,6 +11,8 @@ from app.modules.commerce.constants import CommerceModuleSlug
 from app.modules.commerce.rounds.models import InvestmentRound
 from app.modules.commerce.rounds.schemas import (
     InvestmentRoundCreate,
+    InvestmentRoundFilterParams,
+    InvestmentRoundListQuery,
     InvestmentRoundMetricsRead,
     InvestmentRoundRead,
     InvestmentRoundUpdate,
@@ -37,11 +40,7 @@ def create_round(
 @router.get("/", response_model=list[InvestmentRoundRead])
 def get_rounds(
     session: SessionDep,
-    offset: int = 0,
-    limit: int = 100,
-    sort_by: str | None = Query(None),
-    sort_order: str = Query("asc"),
-    search: str | None = Query(None),
+    query: Annotated[InvestmentRoundListQuery, Query()],
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CommerceModuleSlug.GENERAL,
@@ -50,13 +49,20 @@ def get_rounds(
     ),
 ):
     service = InvestmentRoundService(session)
-    return service.get_all(offset, limit, sort_by, sort_order, search)
+    return service.get_all(
+        offset=query.offset,
+        limit=query.limit,
+        sort_by=query.sort_by,
+        sort_order=query.sort_order,
+        search=query.search,
+        filters=query,
+    )
 
 
 @router.get("/count")
 def count_rounds(
     session: SessionDep,
-    search: str | None = Query(None),
+    query: Annotated[InvestmentRoundFilterParams, Query()],
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CommerceModuleSlug.GENERAL,
@@ -65,7 +71,7 @@ def count_rounds(
     ),
 ):
     service = InvestmentRoundService(session)
-    return {"total": service.count(search)}
+    return {"total": service.count(search=query.search, filters=query)}
 
 
 @router.get("/{id}", response_model=InvestmentRoundRead)

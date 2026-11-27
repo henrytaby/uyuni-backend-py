@@ -3151,9 +3151,657 @@ def test_sale_update_items_reconciles_stock_and_delete_restores_stock(
     assert p_b_del.status == "AVAILABLE"
 
 
+def test_batch_metrics_payment_statuses_and_projections(
+    session: Session, client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    """Verifica métricas por lote, payment_status y sync al cobrar pendientes."""
+    from datetime import timedelta
+
+    from app.util.datetime import get_current_time
+
+    round_svc = InvestmentRoundService(session)
+    batch_svc = BatchService(session)
+    product_svc = ProductService(session)
+
+    ronda = round_svc.create(InvestmentRound(code="RND-MET-01", name="Ronda Métricas"))
+    purchase_dt = get_current_time().date() - timedelta(days=10)
+    batch = batch_svc.create(
+        Batch(
+            code="CAJA-MET-01",
+            name="Caja Métricas",
+            investment_round_id=ronda.id,
+            purchase_date=purchase_dt,
+            purchase_price=900.0,
+            freight_cost=100.0,
+        )
+    )
+
+    m1 = make_master(
+        session, 951, "Producto Métrica A", published_price=250.0, minimum_price=200.0
+    )
+    m2 = make_master(
+        session, 952, "Producto Métrica B", published_price=200.0, minimum_price=150.0
+    )
+    p1 = product_svc.create(
+        Product(
+            master_product_id=m1.id,
+            batch_id=batch.id,
+            initial_quantity=5,
+            merma_quantity=1,
+        )
+    )
+    p2 = product_svc.create(
+        Product(
+            master_product_id=m2.id,
+            batch_id=batch.id,
+            initial_quantity=5,
+            merma_quantity=0,
+        )
+    )
+
+    # Venta 1: COLLECTED (2 x 300 = 600 Bs)
+    res_s1 = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Cliente Cobrado",
+            "payment_status": "COLLECTED",
+            "items": [{"product_id": str(p1.id), "quantity": 2, "unit_price": 300.0}],
+        },
+    )
+    assert res_s1.status_code == 200
+
+    # Venta 2: PENDING (1 x 200 = 200 Bs por cobrar)
+    res_s2 = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Cliente Pendiente",
+            "payment_status": "PENDING",
+            "items": [{"product_id": str(p2.id), "quantity": 1, "unit_price": 200.0}],
+        },
+    )
+    assert res_s2.status_code == 200
+    sale_pending_id = res_s2.json()["id"]
+
+    # Venta 3: COURTESY (1 unidad regalada a 0 Bs)
+    res_s3 = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Cliente Cortesía",
+            "payment_method": "COURTESY",
+            "payment_status": "COURTESY",
+            "allow_below_minimum": True,
+            "items": [{"product_id": str(p2.id), "quantity": 1, "unit_price": 0.0}],
+        },
+    )
+    assert res_s3.status_code == 200
+
+    # Venta 4: REFUNDED (excluida de cobrado y pendiente)
+    res_s4 = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Cliente Reembolsado",
+            "payment_status": "REFUNDED",
+            "items": [{"product_id": str(p1.id), "quantity": 1, "unit_price": 250.0}],
+        },
+    )
+    assert res_s4.status_code == 200
+
+    res_metrics = client.get(
+        f"/api/commerce/batches/{batch.id}/metrics",
+        headers=superuser_token_headers,
+    )
+    assert res_metrics.status_code == 200
+    m = res_metrics.json()
+
+    # 1000 / 9 vendibles = 111.11 Bs
+    assert m["round_code"] == "RND-MET-01"
+    assert m["days_in_inventory"] == 10
+    assert m["total_cost"] == 1000.0
+    assert m["unit_cost"] == 111.11
+    assert m["collected_amount"] == 600.0
+    assert m["pending_amount"] == 200.0
+    assert m["committed_sales_amount"] == 800.0
+    assert m["cash_balance"] == -400.0
+    assert m["committed_balance"] == -200.0
+    assert m["courtesy_items"] == 1
+    assert m["courtesy_cost"] == 111.11
+    assert m["financial_status"] == "EN_RECUPERACION"
+    assert m["recovery_progress_percent"] == 60.0
+    assert m["remaining_to_breakeven"] == 400.0
+    assert m["realized_cogs"] == 222.22
+    assert m["realized_gross_profit"] == 377.78
+    assert m["realized_gross_margin_percent"] == 62.96
+
+    # Stock disponible: p1=1 (4-2-1), p2=3 (5-1-1) -> 4 unidades
+    assert m["available_items"] == 4
+    assert m["remaining_stock_min_value"] == 650.0  # 1*200 + 3*150
+    assert m["remaining_stock_published_value"] == 850.0  # 1*250 + 3*200
+    assert m["projected_total_min_revenue"] == 1450.0  # 800 + 650
+    assert m["projected_total_published_revenue"] == 1650.0  # 800 + 850
+    assert m["projected_min_net_profit"] == 450.0
+    assert m["projected_published_net_profit"] == 650.0
+    assert m["projected_min_roi_percent"] == 45.0
+    assert m["projected_published_roi_percent"] == 65.0
+
+    # La ronda tampoco debe contar PENDING como recuperado (600 / 1000 = IN_RECOVERY)
+    session.expire_all()
+    round_before = round_svc.get_by_id(ronda.id)
+    assert round_before is not None
+    assert round_before.status == "IN_RECOVERY"
+
+    # Al cobrar la venta pendiente vía PUT -> pasa a CASI_TABLAS (800/1000 = 80%)
+    res_pay = client.put(
+        f"/api/commerce/sales/{sale_pending_id}",
+        headers=superuser_token_headers,
+        json={"payment_status": "COLLECTED"},
+    )
+    assert res_pay.status_code == 200
+
+    res_metrics_after = client.get(
+        f"/api/commerce/batches/{batch.id}/metrics",
+        headers=superuser_token_headers,
+    )
+    assert res_metrics_after.status_code == 200
+    m_after = res_metrics_after.json()
+    assert m_after["collected_amount"] == 800.0
+    assert m_after["pending_amount"] == 0.0
+    assert m_after["cash_balance"] == -200.0
+    assert m_after["financial_status"] == "CASI_TABLAS"
+    assert m_after["recovery_progress_percent"] == 80.0
+
+    session.expire_all()
+    batch_after = batch_svc.get_by_id(batch.id)
+    round_after = round_svc.get_by_id(ronda.id)
+    assert batch_after is not None and batch_after.financial_status == "CASI_TABLAS"
+    assert round_after is not None and round_after.status == "NEAR_BREAKEVEN"
+
+    # Batch inexistente -> 404
+    res_404 = client.get(
+        f"/api/commerce/batches/{uuid.uuid4()}/metrics",
+        headers=superuser_token_headers,
+    )
+    assert res_404.status_code == 404
 
 
+def test_batch_portfolio_metrics_report_and_filters(
+    session: Session, client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    """Verifica el reporte consolidado de portafolio y sus filtros."""
+    round_svc = InvestmentRoundService(session)
+    batch_svc = BatchService(session)
+    product_svc = ProductService(session)
+
+    r1 = round_svc.create(InvestmentRound(code="RND-PORT-1", name="Ronda Port 1"))
+    r2 = round_svc.create(InvestmentRound(code="RND-PORT-2", name="Ronda Port 2"))
+
+    b1 = batch_svc.create(
+        Batch(
+            code="PORT-B1",
+            name="Lote Portafolio 1",
+            investment_round_id=r1.id,
+            purchase_price=500.0,
+            freight_cost=0.0,
+        )
+    )
+    b2 = batch_svc.create(
+        Batch(
+            code="PORT-B2",
+            name="Lote Portafolio 2",
+            investment_round_id=r2.id,
+            purchase_price=400.0,
+            freight_cost=0.0,
+        )
+    )
+
+    m1 = make_master(
+        session, 953, "Port Item 1", published_price=300.0, minimum_price=250.0
+    )
+    p1 = product_svc.create(
+        Product(master_product_id=m1.id, batch_id=b1.id, initial_quantity=2)
+    )
+    p2 = product_svc.create(
+        Product(master_product_id=m1.id, batch_id=b2.id, initial_quantity=2)
+    )
+
+    # Vender 2 de p1 a 300 c/u = 600 Bs (b1 queda RECUPERADO)
+    res_sale1 = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Cliente Port 1",
+            "payment_status": "COLLECTED",
+            "items": [{"product_id": str(p1.id), "quantity": 2, "unit_price": 300.0}],
+        },
+    )
+    assert res_sale1.status_code == 200
+
+    # Vender 1 de p2 pendiente a 250 Bs (b2 sigue EN_RECUPERACION, 1 en stock)
+    res_sale2 = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Cliente Port 2",
+            "payment_status": "PENDING",
+            "items": [{"product_id": str(p2.id), "quantity": 1, "unit_price": 250.0}],
+        },
+    )
+    assert res_sale2.status_code == 200
+
+    # Filtrar por ronda r1
+    res_r1 = client.get(
+        "/api/commerce/batches/portfolio-metrics",
+        params={"investment_round_id": str(r1.id)},
+        headers=superuser_token_headers,
+    )
+    assert res_r1.status_code == 200
+    data_r1 = res_r1.json()
+    assert data_r1["summary"]["total_batches"] == 1
+    assert data_r1["summary"]["recovered_batches"] == 1
+    assert data_r1["summary"]["collected_amount"] == 600.0
+    assert data_r1["summary"]["cash_balance"] == 100.0
+    assert len(data_r1["items"]) == 1
+    assert data_r1["items"][0]["code"] == "PORT-B1"
+
+    # Filtrar por ronda r2
+    res_r2 = client.get(
+        "/api/commerce/batches/portfolio-metrics",
+        params={"investment_round_id": str(r2.id)},
+        headers=superuser_token_headers,
+    )
+    assert res_r2.status_code == 200
+    data_r2 = res_r2.json()
+    assert data_r2["summary"]["total_batches"] == 1
+    assert data_r2["summary"]["in_recovery_batches"] == 1
+    assert data_r2["summary"]["pending_amount"] == 250.0
+    assert data_r2["summary"]["remaining_stock_min_value"] == 250.0
+    assert data_r2["summary"]["remaining_stock_published_value"] == 300.0
+
+    # Reporte global sin filtros incluye ambos lotes
+    res_all = client.get(
+        "/api/commerce/batches/portfolio-metrics",
+        headers=superuser_token_headers,
+    )
+    assert res_all.status_code == 200
+    data_all = res_all.json()
+    codes = {it["code"] for it in data_all["items"]}
+    assert {"PORT-B1", "PORT-B2"}.issubset(codes)
+    assert data_all["summary"]["total_batches"] >= 2
 
 
+def test_batches_list_and_count_filters(
+    session: Session, client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    """Verifica filtros investment_round_id, status y financial_status."""
+    round_svc = InvestmentRoundService(session)
+    batch_svc = BatchService(session)
+    product_svc = ProductService(session)
+
+    r1 = round_svc.create(InvestmentRound(code="RND-FLT-1", name="Ronda Filtro 1"))
+    r2 = round_svc.create(InvestmentRound(code="RND-FLT-2", name="Ronda Filtro 2"))
+
+    b1 = batch_svc.create(
+        Batch(
+            code="FLT-B1",
+            name="Lote Filtro 1",
+            investment_round_id=r1.id,
+            purchase_price=300.0,
+            status="active",
+        )
+    )
+    batch_svc.create(
+        Batch(
+            code="FLT-B2",
+            name="Lote Filtro 2",
+            investment_round_id=r2.id,
+            purchase_price=400.0,
+            status="archived",
+        )
+    )
+
+    m1 = make_master(
+        session, 954, "Filtro Item", published_price=350.0, minimum_price=300.0
+    )
+    p1 = product_svc.create(
+        Product(master_product_id=m1.id, batch_id=b1.id, initial_quantity=1)
+    )
+    res_sale = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Cliente Filtro",
+            "payment_status": "COLLECTED",
+            "items": [{"product_id": str(p1.id), "quantity": 1, "unit_price": 350.0}],
+        },
+    )
+    assert res_sale.status_code == 200  # b1 queda RECUPERADO
+
+    # 1. Filtrar por investment_round_id
+    res_list_r1 = client.get(
+        "/api/commerce/batches/",
+        params={"investment_round_id": str(r1.id)},
+        headers=superuser_token_headers,
+    )
+    res_count_r1 = client.get(
+        "/api/commerce/batches/count",
+        params={"investment_round_id": str(r1.id)},
+        headers=superuser_token_headers,
+    )
+    assert res_list_r1.status_code == 200
+    assert res_count_r1.status_code == 200
+    assert [b["code"] for b in res_list_r1.json()] == ["FLT-B1"]
+    assert res_count_r1.json()["total"] == 1
+
+    # 2. Filtrar por status=archived + investment_round_id=r2
+    res_list_r2 = client.get(
+        "/api/commerce/batches/",
+        params={"investment_round_id": str(r2.id), "status": "archived"},
+        headers=superuser_token_headers,
+    )
+    res_count_r2 = client.get(
+        "/api/commerce/batches/count",
+        params={"investment_round_id": str(r2.id), "status": "archived"},
+        headers=superuser_token_headers,
+    )
+    assert res_list_r2.status_code == 200
+    assert res_count_r2.status_code == 200
+    assert [b["code"] for b in res_list_r2.json()] == ["FLT-B2"]
+    assert res_count_r2.json()["total"] == 1
+
+    # 3. Filtrar por financial_status=RECUPERADO + investment_round_id=r1
+    res_fin = client.get(
+        "/api/commerce/batches/",
+        params={
+            "investment_round_id": str(r1.id),
+            "financial_status": "RECUPERADO",
+        },
+        headers=superuser_token_headers,
+    )
+    res_fin_count = client.get(
+        "/api/commerce/batches/count",
+        params={
+            "investment_round_id": str(r1.id),
+            "financial_status": "RECUPERADO",
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_fin.status_code == 200
+    assert res_fin_count.status_code == 200
+    assert [b["code"] for b in res_fin.json()] == ["FLT-B1"]
+    assert res_fin_count.json()["total"] == 1
+
+    # 4. Combinación sin resultados (r1 + financial_status=EN_RECUPERACION)
+    res_empty = client.get(
+        "/api/commerce/batches/",
+        params={
+            "investment_round_id": str(r1.id),
+            "financial_status": "EN_RECUPERACION",
+        },
+        headers=superuser_token_headers,
+    )
+    res_empty_count = client.get(
+        "/api/commerce/batches/count",
+        params={
+            "investment_round_id": str(r1.id),
+            "financial_status": "EN_RECUPERACION",
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_empty.status_code == 200
+    assert res_empty_count.status_code == 200
+    assert res_empty.json() == []
+    assert res_empty_count.json()["total"] == 0
 
 
+def test_unified_filters_ranges_multiselect_booleans(
+    session: Session, client: TestClient, superuser_token_headers: dict[str, str]
+) -> None:
+    """Verifica rangos de fechas/precios, multiselección, booleanos e is_null."""
+    from datetime import date, datetime
+
+    round_svc = InvestmentRoundService(session)
+    batch_svc = BatchService(session)
+    product_svc = ProductService(session)
+    cat_svc = CategoryService(session)
+
+    cat_a = cat_svc.create(Category(code="FLT-CAT-A", name="Cat Filtro A"))
+    cat_b = cat_svc.create(Category(code="FLT-CAT-B", name="Cat Filtro B"))
+
+    r1 = round_svc.create(
+        InvestmentRound(
+            code="RND-U-1",
+            name="Ronda Unif 1",
+            disbursement_date=date(2026, 10, 1),
+            capital_invested=100.0,
+            status="ACTIVE",
+        )
+    )
+    round_svc.create(
+        InvestmentRound(
+            code="RND-U-2",
+            name="Ronda Unif 2",
+            disbursement_date=date(2026, 11, 20),
+            capital_invested=5000.0,
+            status="RECOVERED",
+        )
+    )
+
+    b1 = batch_svc.create(
+        Batch(
+            code="UNI-B1",
+            name="Lote Uni 1",
+            investment_round_id=r1.id,
+            purchase_date=date(2026, 10, 5),
+            purchase_price=300.0,
+            status="active",
+        )
+    )
+    b2 = batch_svc.create(
+        Batch(
+            code="UNI-B2",
+            name="Lote Uni 2",
+            investment_round_id=None,
+            purchase_date=date(2026, 11, 10),
+            purchase_price=1200.0,
+            status="archived",
+        )
+    )
+
+    m_a = ProductMasterService(session).create(
+        ProductMaster(
+            item_number=960,
+            name="Master Barato",
+            category_id=cat_a.id,
+            published_price=120.0,
+            minimum_price=100.0,
+            is_active=False,
+        )
+    )
+    m_b = ProductMasterService(session).create(
+        ProductMaster(
+            item_number=961,
+            name="Master Caro",
+            category_id=cat_b.id,
+            published_price=450.0,
+            minimum_price=400.0,
+            is_active=True,
+        )
+    )
+
+    p1 = product_svc.create(
+        Product(
+            master_product_id=m_a.id,
+            batch_id=b1.id,
+            initial_quantity=3,
+            is_reviewed=False,
+        )
+    )
+    p2 = product_svc.create(
+        Product(
+            master_product_id=m_b.id,
+            batch_id=b2.id,
+            published_price=280.0,  # Override dentro de [150, 350]
+            initial_quantity=2,
+            is_reviewed=True,
+        )
+    )
+
+    # Ventas con fechas exactas incluyendo tarde en la noche (23:30)
+    res_s1 = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Venta Noche",
+            "sale_date": datetime(2026, 11, 15, 23, 30, 0).isoformat(),
+            "payment_status": "COLLECTED",
+            "items": [{"product_id": str(p1.id), "quantity": 1, "unit_price": 120.0}],
+        },
+    )
+    res_s2 = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Venta Posterior",
+            "sale_date": datetime(2026, 11, 20, 10, 0, 0).isoformat(),
+            "payment_status": "PENDING",
+            "items": [{"product_id": str(p2.id), "quantity": 1, "unit_price": 420.0}],
+        },
+    )
+    assert res_s1.status_code == 200
+    assert res_s2.status_code == 200
+
+    # 1. Batches: rango de fechas, rango numérico, multiselección CSV y without_round
+    res_b_range = client.get(
+        "/api/commerce/batches/",
+        params={
+            "purchase_date_from": "2026-10-01",
+            "purchase_date_to": "2026-10-31",
+            "min_total_cost": "200",
+            "max_total_cost": "500",
+            "statuses": "active,archived",
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_b_range.status_code == 200
+    assert [b["code"] for b in res_b_range.json()] == ["UNI-B1"]
+
+    res_b_null = client.get(
+        "/api/commerce/batches/",
+        params={"without_round": "true", "investment_round_ids": ""},
+        headers=superuser_token_headers,
+    )
+    assert res_b_null.status_code == 200
+    assert any(b["code"] == "UNI-B2" for b in res_b_null.json())
+    assert all(b["investment_round_id"] is None for b in res_b_null.json())
+
+    # 2. Sales: sale_date_to debe incluir las 23:30 del mismo día, más rango de total
+    res_s_range = client.get(
+        "/api/commerce/sales/",
+        params={
+            "sale_date_from": "2026-11-15",
+            "sale_date_to": "2026-11-15",
+            "min_total": "100",
+            "max_total": "150",
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_s_range.status_code == 200
+    assert [s["customer_name"] for s in res_s_range.json()] == ["Venta Noche"]
+
+    res_s_multi = client.get(
+        "/api/commerce/sales/count",
+        params=[
+            ("sale_date_from", "2026-11-15"),
+            ("sale_date_to", "2026-11-20"),
+            ("payment_statuses", "COLLECTED"),
+            ("payment_statuses", "PENDING"),
+            ("min_total", "100"),
+            ("max_total", "450"),
+        ],
+        headers=superuser_token_headers,
+    )
+    assert res_s_multi.status_code == 200
+    assert res_s_multi.json()["total"] == 2
+
+    # 3. Products: rango de precio efectivo, booleano False, category_id, batch_ids
+    res_p_price = client.get(
+        "/api/commerce/products/",
+        params={
+            "min_price": "200",
+            "max_price": "350",
+            "batch_ids": f"{b1.id},{b2.id}",
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_p_price.status_code == 200
+    assert [p["id"] for p in res_p_price.json()] == [str(p2.id)]
+
+    res_p_bool_cat = client.get(
+        "/api/commerce/products/",
+        params={"is_reviewed": "false", "category_id": str(cat_a.id)},
+        headers=superuser_token_headers,
+    )
+    assert res_p_bool_cat.status_code == 200
+    assert [p["id"] for p in res_p_bool_cat.json()] == [str(p1.id)]
+
+    # 4. ProductMasters: is_active=false y rango de precio
+    res_pm = client.get(
+        "/api/commerce/product-masters/",
+        params={
+            "is_active": "false",
+            "min_price": "100",
+            "max_price": "150",
+            "category_ids": str(cat_a.id),
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_pm.status_code == 200
+    assert [m["item_number"] for m in res_pm.json()] == [960]
+
+    # 5. Rounds: rango de fechas de desembolso y capital
+    res_rnd = client.get(
+        "/api/commerce/rounds/",
+        params={
+            "disbursement_date_from": "2026-11-01",
+            "disbursement_date_to": "2026-11-30",
+            "min_capital": "4000",
+            "statuses": "ACTIVE,RECOVERED",
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_rnd.status_code == 200
+    assert [r["code"] for r in res_rnd.json()] == ["RND-U-2"]
+
+    # 6. Sales: filtrar por ?channel=<UUID> o ?channel_id=<UUID>
+    ch_svc = SalesChannelService(session)
+    ch = ch_svc.create(SalesChannel(code="CH-FLT-1", name="Canal UUID Test"))
+    res_s_ch = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "Venta Canal UUID",
+            "channel_id": str(ch.id),
+            "channel": "CANAL_LEGACY",
+            "payment_status": "COLLECTED",
+            "items": [{"product_id": str(p1.id), "quantity": 1, "unit_price": 120.0}],
+        },
+    )
+    assert res_s_ch.status_code == 200
+
+    res_by_ch_uuid = client.get(
+        "/api/commerce/sales/",
+        params={"channel": str(ch.id)},
+        headers=superuser_token_headers,
+    )
+    res_cnt_ch_uuid = client.get(
+        "/api/commerce/sales/count",
+        params={"channel": str(ch.id)},
+        headers=superuser_token_headers,
+    )
+    assert res_by_ch_uuid.status_code == 200
+    assert res_cnt_ch_uuid.status_code == 200
+    assert [s["customer_name"] for s in res_by_ch_uuid.json()] == ["Venta Canal UUID"]
+    assert res_cnt_ch_uuid.json()["total"] == 1

@@ -1,6 +1,6 @@
 import urllib.parse
 import urllib.request
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -10,6 +10,7 @@ from sqlalchemy.orm.exc import StaleDataError
 from sqlmodel import Session, col, func, or_, select
 
 from app.core.exceptions import BadRequestException, NotFoundException
+from app.core.filters import BaseFilterParams
 from app.core.storage.cloudinary_service import cloudinary_service
 from app.modules.commerce.product_masters.models import (
     ProductImage,
@@ -237,6 +238,26 @@ class ProductMasterService:
         except ValueError:
             return None
 
+    @staticmethod
+    def _merge_legacy_filters(
+        filters: BaseFilterParams | Mapping[str, Any] | None,
+        category_id: UUID | None,
+        live_basket_id: UUID | None,
+        is_active: bool | None,
+    ) -> dict[str, Any]:
+        merged: dict[str, Any] = (
+            filters.to_filter_dict()
+            if isinstance(filters, BaseFilterParams)
+            else dict(filters or {})
+        )
+        if category_id is not None:
+            merged.setdefault("category_id", category_id)
+        if live_basket_id is not None:
+            merged.setdefault("live_basket_id", live_basket_id)
+        if is_active is not None:
+            merged.setdefault("is_active", is_active)
+        return merged
+
     def get_all(
         self,
         offset: int = 0,
@@ -247,14 +268,11 @@ class ProductMasterService:
         category_id: UUID | None = None,
         live_basket_id: UUID | None = None,
         is_active: bool | None = None,
+        filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> Sequence[ProductMaster]:
-        filters: list[Any] = []
-        if category_id:
-            filters.append(ProductMaster.category_id == category_id)
-        if live_basket_id:
-            filters.append(ProductMaster.live_basket_id == live_basket_id)
-        if is_active is not None:
-            filters.append(ProductMaster.is_active == is_active)
+        resolved_filters = self._merge_legacy_filters(
+            filters, category_id, live_basket_id, is_active
+        )
 
         return self.repository.get_all(
             offset=offset,
@@ -262,7 +280,7 @@ class ProductMasterService:
             sort_by=sort_by or "item_number",
             sort_order=sort_order,
             search=search,
-            extra_filters=filters or None,
+            filters=resolved_filters,
         )
 
     def count(
@@ -271,16 +289,13 @@ class ProductMasterService:
         category_id: UUID | None = None,
         live_basket_id: UUID | None = None,
         is_active: bool | None = None,
+        filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> int:
-        filters: list[Any] = []
-        if category_id:
-            filters.append(ProductMaster.category_id == category_id)
-        if live_basket_id:
-            filters.append(ProductMaster.live_basket_id == live_basket_id)
-        if is_active is not None:
-            filters.append(ProductMaster.is_active == is_active)
+        resolved_filters = self._merge_legacy_filters(
+            filters, category_id, live_basket_id, is_active
+        )
 
-        return self.repository.count(search=search, extra_filters=filters or None)
+        return self.repository.count(search=search, filters=resolved_filters)
 
     def update(self, id: UUID, data: dict) -> ProductMaster | None:
         # item_number y cover_image_url son de solo lectura en este endpoint:

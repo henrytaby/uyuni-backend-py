@@ -418,3 +418,50 @@ def test_user_profile_fields_crud_and_search(
     assert response.status_code == 200
     search_results = response.json()
     assert any(u["id"] == user_id for u in search_results)
+
+
+def test_users_unified_filters(
+    client: TestClient, superuser_token_headers: dict
+) -> None:
+    """Verifica filtros declarativos is_active, is_superuser, country y city."""
+    res_create = client.post(
+        "/api/core/users/",
+        json={
+            "username": "inactive_cbba",
+            "email": "inactive_cbba@example.com",
+            "password": "password123",
+            "country": "BO",
+            "city": "Cochabamba",
+            "is_active": False,
+            "is_superuser": False,
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_create.status_code == 200
+    inactive_id = res_create.json()["id"]
+
+    # Filtrar por is_active=false y city parcial
+    res_list = client.get(
+        "/api/core/users/",
+        params={"is_active": "false", "is_superuser": "false", "city": "cocha"},
+        headers=superuser_token_headers,
+    )
+    res_count = client.get(
+        "/api/core/users/count",
+        params={"is_active": "false", "is_superuser": "false", "city": "cocha"},
+        headers=superuser_token_headers,
+    )
+    assert res_list.status_code == 200
+    assert res_count.status_code == 200
+    assert [u["id"] for u in res_list.json()] == [inactive_id]
+    assert res_count.json()["total"] == 1
+
+    # Filtrar por is_superuser=true
+    res_super = client.get(
+        "/api/core/users/",
+        params={"is_superuser": "true"},
+        headers=superuser_token_headers,
+    )
+    assert res_super.status_code == 200
+    assert len(res_super.json()) >= 1
+    assert all(u["is_superuser"] is True for u in res_super.json())

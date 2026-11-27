@@ -1,3 +1,4 @@
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
@@ -16,6 +17,8 @@ from app.modules.commerce.product_masters.schemas import (
 from app.modules.commerce.products.models import Product
 from app.modules.commerce.products.schemas import (
     ProductCreate,
+    ProductFilterParams,
+    ProductListQuery,
     ProductRead,
     ProductUpdate,
 )
@@ -42,14 +45,7 @@ def create_product(
 @router.get("/", response_model=list[ProductRead])
 def get_products(
     session: SessionDep,
-    offset: int = 0,
-    limit: int = 100,
-    sort_by: str | None = Query(None),
-    sort_order: str = Query("asc"),
-    search: str | None = Query(None),
-    batch_id: UUID | None = Query(None),
-    master_product_id: UUID | None = Query(None),
-    status: str | None = Query(None),
+    query: Annotated[ProductListQuery, Query()],
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CommerceModuleSlug.GENERAL,
@@ -59,24 +55,19 @@ def get_products(
 ):
     service = ProductService(session)
     return service.get_all(
-        offset=offset,
-        limit=limit,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        search=search,
-        batch_id=batch_id,
-        master_product_id=master_product_id,
-        status=status,
+        offset=query.offset,
+        limit=query.limit,
+        sort_by=query.sort_by,
+        sort_order=query.sort_order,
+        search=query.search,
+        filters=query,
     )
 
 
 @router.get("/count")
 def count_products(
     session: SessionDep,
-    search: str | None = Query(None),
-    batch_id: UUID | None = Query(None),
-    master_product_id: UUID | None = Query(None),
-    status: str | None = Query(None),
+    query: Annotated[ProductFilterParams, Query()],
     _: UserModulePermission = Depends(
         PermissionChecker(
             module_slug=CommerceModuleSlug.GENERAL,
@@ -85,14 +76,7 @@ def count_products(
     ),
 ):
     service = ProductService(session)
-    return {
-        "total": service.count(
-            search=search,
-            batch_id=batch_id,
-            master_product_id=master_product_id,
-            status=status,
-        )
-    }
+    return {"total": service.count(search=query.search, filters=query)}
 
 
 @router.get("/by-sku/{sku}", response_model=ProductRead)

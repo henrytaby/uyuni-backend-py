@@ -36,7 +36,7 @@ class ChatAssistantRequest(BaseModel):
     )
     provider: str | None = Field(
         default=None,
-        description="Proveedor opcional ('groq', 'mistral', 'gemini')",
+        description="Proveedor opcional ('groq', 'mistral', 'gemini', 'orcarouter')",
     )
     model: str | None = Field(
         default=None,
@@ -60,3 +60,4 @@ class ProviderInfoResponse(BaseModel):
     default_provider: str
     configured_providers: list[str]
     all_providers: list[str]
+    provider_models: dict[str, str] = Field(default_factory=dict)

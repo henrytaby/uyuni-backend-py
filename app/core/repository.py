@@ -1,16 +1,37 @@
 import uuid
-from typing import Any, Optional, Sequence, Type
+from typing import Any, Mapping, Optional, Sequence, Type
 
 from sqlalchemy import String, cast
 from sqlmodel import Session, SQLModel, col, func, or_, select
 
+from app.core.filters import (
+    BaseFilterParams,
+    FilterOp,
+    FilterSpec,
+    build_sqlalchemy_filters,
+)
+
 
 class BaseRepository[ModelType: SQLModel]:
     searchable_fields: list[str] = []
+    filter_fields: dict[str, FilterOp | FilterSpec] = {}
 
     def __init__(self, session: Session, model: Type[ModelType]):
         self.session = session
         self.model = model
+
+    def _apply_filters(
+        self,
+        statement: Any,
+        filters: BaseFilterParams | Mapping[str, Any] | None = None,
+        extra_filters: Optional[list[Any]] = None,
+    ) -> Any:
+        clauses = build_sqlalchemy_filters(self.model, self.filter_fields, filters)
+        if clauses:
+            statement = statement.where(*clauses)
+        if extra_filters:
+            statement = statement.where(*extra_filters)
+        return statement
 
     def _apply_search(self, statement, search: Optional[str]):
         if search and self.searchable_fields:
@@ -40,15 +61,15 @@ class BaseRepository[ModelType: SQLModel]:
         sort_order: str = "asc",
         search: Optional[str] = None,
         extra_filters: Optional[list[Any]] = None,
+        filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> Sequence[ModelType]:
         statement = select(self.model)
 
-        # Apply generic search
+        # Apply generic search and declarative filters
         statement = self._apply_search(statement, search)
-
-        # Apply extra filters if provided
-        if extra_filters:
-            statement = statement.where(*extra_filters)
+        statement = self._apply_filters(
+            statement, filters=filters, extra_filters=extra_filters
+        )
 
         if sort_by and hasattr(self.model, sort_by):
             column = getattr(self.model, sort_by)
@@ -63,16 +84,18 @@ class BaseRepository[ModelType: SQLModel]:
         return self.session.exec(statement).all()  # type: ignore[no-any-return]
 
     def count(
-        self, search: Optional[str] = None, extra_filters: Optional[list[Any]] = None
+        self,
+        search: Optional[str] = None,
+        extra_filters: Optional[list[Any]] = None,
+        filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> int:
         statement = select(func.count()).select_from(self.model)
 
-        # Apply generic search to count
+        # Apply generic search and declarative filters to count
         statement = self._apply_search(statement, search)
-
-        # Apply extra filters to count
-        if extra_filters:
-            statement = statement.where(*extra_filters)
+        statement = self._apply_filters(
+            statement, filters=filters, extra_filters=extra_filters
+        )
 
         result = self.session.exec(statement).one()
         return int(result)  # type: ignore[arg-type]
