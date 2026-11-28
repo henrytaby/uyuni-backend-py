@@ -6,22 +6,24 @@ from app.modules.commerce.catalogs.providers import (
     CommerceDeliveryPaidByProvider,
     CommerceDeliveryStatusesProvider,
     CommerceInvestmentRoundsProvider,
-    CommerceLiveBasketsProvider,
     CommercePaymentMethodsProvider,
     CommercePaymentStatusesProvider,
-    CommercePhysicalConditionsProvider,
     CommerceProductMastersProvider,
     CommerceProductStatusesProvider,
     CommerceSalesChannelsProvider,
+    CommerceStorageLocationsProvider,
+    CommerceStorageLocationTypesProvider,
 )
 
 # Auto-registro de proveedores del dominio Commerce en el Registry global
 global_registry.register("commerce_categories", CommerceCategoriesProvider())
-global_registry.register("commerce_live_baskets", CommerceLiveBasketsProvider())
-global_registry.register("commerce_batches", CommerceBatchesProvider())
 global_registry.register(
-    "commerce_physical_conditions", CommercePhysicalConditionsProvider()
+    "commerce_storage_locations", CommerceStorageLocationsProvider()
 )
+global_registry.register(
+    "commerce_storage_location_types", CommerceStorageLocationTypesProvider()
+)
+global_registry.register("commerce_batches", CommerceBatchesProvider())
 global_registry.register("commerce_product_statuses", CommerceProductStatusesProvider())
 global_registry.register(
     "commerce_investment_rounds", CommerceInvestmentRoundsProvider()

@@ -16,11 +16,11 @@ import app.models.user  # noqa: F401
 import app.modules.commerce.batches.models  # noqa: F401
 import app.modules.commerce.categories.models  # noqa: F401
 import app.modules.commerce.channels.models  # noqa: F401
-import app.modules.commerce.live_baskets.models  # noqa: F401
 import app.modules.commerce.product_masters.models  # noqa: F401
 import app.modules.commerce.products.models  # noqa: F401
 import app.modules.commerce.rounds.models  # noqa: F401
 import app.modules.commerce.sales.models  # noqa: F401
+import app.modules.commerce.storage_locations.models  # noqa: F401
 import app.modules.tasks.models  # noqa: F401
 
 # this is the Alembic Config object, which provides

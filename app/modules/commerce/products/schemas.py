@@ -26,8 +26,6 @@ class ProductFilterParams(BaseFilterParams):
     category_id: OptUUID = None
     status: OptStr = None
     statuses: MultiStr = None
-    physical_condition: OptStr = None
-    physical_conditions: MultiStr = None
     is_reviewed: OptBool = None
     min_price: OptFloat = None
     max_price: OptFloat = None
@@ -54,7 +52,6 @@ class ProductBase(BaseModel):
     merma_quantity: int = 0
     available_quantity: int = 1
     status: str = "AVAILABLE"
-    physical_condition: str = "OPERATIONAL"
     defect_detail: str | None = None
     is_reviewed: bool = False
 
@@ -76,7 +73,6 @@ class ProductUpdate(BaseModel):
     merma_quantity: int | None = None
     available_quantity: int | None = None
     status: str | None = None
-    physical_condition: str | None = None
     defect_detail: str | None = None
     is_reviewed: bool | None = None
 

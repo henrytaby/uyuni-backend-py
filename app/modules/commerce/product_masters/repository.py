@@ -1,12 +1,42 @@
 from typing import Any, Sequence
 from uuid import UUID
 
+from sqlalchemy import false
 from sqlmodel import Session, col, or_, select
 
-from app.core.filters import FilterOp, FilterSpec
+from app.core.filters import FilterOp, FilterSpec, accent_insensitive_ilike
 from app.core.repository import BaseRepository
 from app.modules.commerce.constants import parse_search_int
 from app.modules.commerce.product_masters.models import ProductMaster
+
+
+def build_product_master_search_filters(search: str) -> list[Any]:
+    """Construye las cláusulas de búsqueda global sobre ProductMaster."""
+    cleaned = search.strip()
+    if not cleaned:
+        return []
+
+    search_filters: list[Any] = [
+        accent_insensitive_ilike(col(ProductMaster.code), cleaned),
+        accent_insensitive_ilike(col(ProductMaster.name), cleaned),
+        accent_insensitive_ilike(col(ProductMaster.brand), cleaned),
+        accent_insensitive_ilike(col(ProductMaster.model), cleaned),
+        accent_insensitive_ilike(col(ProductMaster.description), cleaned),
+        accent_insensitive_ilike(col(ProductMaster.features), cleaned),
+    ]
+    num = parse_search_int(cleaned, prefixes=("#", "NOV-"))
+    if num is not None:
+        search_filters.append(col(ProductMaster.item_number) == num)
+
+    return search_filters
+
+
+def build_product_master_id_subquery(search: str) -> Any:
+    """Subconsulta de IDs de ProductMaster que coinciden con la búsqueda global."""
+    search_filters = build_product_master_search_filters(search)
+    if not search_filters:
+        return select(col(ProductMaster.id)).where(false())
+    return select(col(ProductMaster.id)).where(or_(*search_filters))
 
 
 class ProductMasterRepository(BaseRepository[ProductMaster]):
@@ -14,9 +44,10 @@ class ProductMasterRepository(BaseRepository[ProductMaster]):
     filter_fields = {
         "category_id": FilterOp.EQ,
         "category_ids": FilterSpec("category_id", FilterOp.IN),
-        "live_basket_id": FilterOp.EQ,
-        "live_basket_ids": FilterSpec("live_basket_id", FilterOp.IN),
+        "storage_location_id": FilterOp.EQ,
+        "storage_location_ids": FilterSpec("storage_location_id", FilterOp.IN),
         "is_active": FilterOp.EQ,
+        "has_video": FilterOp.EQ,
         "is_published_marketplace": FilterOp.EQ,
         "is_whatsapp_published": FilterOp.EQ,
         "min_price": FilterSpec("published_price", FilterOp.GTE),
@@ -30,18 +61,9 @@ class ProductMasterRepository(BaseRepository[ProductMaster]):
         if not search:
             return statement
 
-        search_term = f"%{search}%"
-        search_filters: list[Any] = [
-            col(ProductMaster.code).ilike(search_term),
-            col(ProductMaster.name).ilike(search_term),
-            col(ProductMaster.brand).ilike(search_term),
-            col(ProductMaster.model).ilike(search_term),
-            col(ProductMaster.description).ilike(search_term),
-            col(ProductMaster.features).ilike(search_term),
-        ]
-        num = parse_search_int(search, prefixes=("#", "NOV-"))
-        if num is not None:
-            search_filters.append(col(ProductMaster.item_number) == num)
+        search_filters = build_product_master_search_filters(search)
+        if not search_filters:
+            return statement
 
         return statement.where(or_(*search_filters))
 

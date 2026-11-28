@@ -220,10 +220,7 @@ def test_assistant_api_endpoints(client: TestClient, superuser_token_headers):
         assert "mistral" in data["all_providers"]
         assert "gemini" in data["all_providers"]
         assert "orcarouter" in data["all_providers"]
-        assert (
-            data["provider_models"]["orcarouter"]
-            == settings.ORCAROUTER_MODEL
-        )
+        assert data["provider_models"]["orcarouter"] == settings.ORCAROUTER_MODEL
 
     # 2. POST /api/commerce/assistant/chat con mock
     mock_resp = MagicMock()
@@ -493,3 +490,7 @@ def test_synonym_expansion_and_typo_item_numbers(session: Session):
     )
     assert len(direct_match) == 1
     assert direct_match[0].item_number == 888
+
+    # Búsqueda sin tildes encuentra ficha con tilde ("Vehículo")
+    accent_match = assistant_svc.search_relevant_products("soporte vehiculo")
+    assert 888 in [p.item_number for p in accent_match]

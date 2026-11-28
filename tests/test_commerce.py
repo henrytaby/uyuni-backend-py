@@ -12,8 +12,6 @@ from app.modules.commerce.categories.models import Category
 from app.modules.commerce.categories.service import CategoryService
 from app.modules.commerce.channels.models import SalesChannel
 from app.modules.commerce.channels.service import SalesChannelService
-from app.modules.commerce.live_baskets.models import LiveBasket
-from app.modules.commerce.live_baskets.service import LiveBasketService
 from app.modules.commerce.product_masters.models import (
     ProductImage,
     ProductMaster,
@@ -21,6 +19,7 @@ from app.modules.commerce.product_masters.models import (
 from app.modules.commerce.product_masters.service import (
     ProductMasterService,
     detect_portal,
+    resolve_video_embed,
 )
 from app.modules.commerce.products.models import Product
 from app.modules.commerce.products.service import ProductService
@@ -28,6 +27,8 @@ from app.modules.commerce.rounds.models import InvestmentRound
 from app.modules.commerce.rounds.service import InvestmentRoundService
 from app.modules.commerce.sales.schemas import SaleCreate, SaleItemCreate
 from app.modules.commerce.sales.service import SaleService
+from app.modules.commerce.storage_locations.models import StorageLocation
+from app.modules.commerce.storage_locations.service import StorageLocationService
 
 
 def make_master(
@@ -277,12 +278,23 @@ def test_commerce_catalog_providers(session: Session):
         )
     )
 
-    live_basket_service = LiveBasketService(session)
-    live_basket_service.create(
-        LiveBasket(
+    storage_location_service = StorageLocationService(session)
+    storage_location_service.create(
+        StorageLocation(
             code="C1",
             name="Taller & Auto",
             label="Canasta 1 - Taller & Auto",
+            location_type="BASKET",
+            is_active=True,
+        )
+    )
+    storage_location_service.create(
+        StorageLocation(
+            code="EST-OLD",
+            name="Estante Inactivo",
+            label="Estante Inactivo",
+            location_type="SHELF",
+            is_active=False,
         )
     )
 
@@ -292,10 +304,16 @@ def test_commerce_catalog_providers(session: Session):
     assert len(cat_items) >= 1
     assert any("Hogar & Iluminación" in item.label for item in cat_items)
 
-    baskets_provider = global_registry.get_provider("commerce_live_baskets")
-    basket_items = baskets_provider.get_items(session)
-    assert len(basket_items) >= 1
-    assert any("Canasta 1 - Taller & Auto" in item.label for item in basket_items)
+    locations_provider = global_registry.get_provider("commerce_storage_locations")
+    location_items = locations_provider.get_items(session)
+    assert len(location_items) >= 1
+    assert any("Canasta 1 - Taller & Auto" in item.label for item in location_items)
+    assert not any("Estante Inactivo" in item.label for item in location_items)
+
+    loc_types_provider = global_registry.get_provider("commerce_storage_location_types")
+    loc_type_items = loc_types_provider.get_items(session)
+    assert any(item.value == "SHELF" for item in loc_type_items)
+    assert any(item.value == "BASKET" for item in loc_type_items)
 
     channel_service = SalesChannelService(session)
     channel_service.create(
@@ -1505,6 +1523,190 @@ def test_product_master_external_links_api(
         == "https://www.facebook.com/marketplace/item/888222/"
     )
     assert m_data4["external_info_url"] == "https://www.amazon.es/dp/B00123456"
+
+    # 7.f PUT stale con is_published_marketplace=False no sobrescribe la evidencia real
+    res_stale_put = client.put(
+        f"/api/commerce/product-masters/{master.id}",
+        json={"is_published_marketplace": False},
+        headers=superuser_token_headers,
+    )
+    assert res_stale_put.status_code == 200
+    assert res_stale_put.json()["is_published_marketplace"] is True
+
+    # 7.g Al eliminar todos los links MARKETPLACE -> is_published_marketplace = False
+    for mkt_id in (mkt1["id"], mkt2["id"]):
+        r_del_mkt = client.delete(
+            f"/api/commerce/product-masters/{master.id}/links/{mkt_id}",
+            headers=superuser_token_headers,
+        )
+        assert r_del_mkt.status_code == 200
+
+    res_master5 = client.get(
+        f"/api/commerce/product-masters/{master.id}",
+        headers=superuser_token_headers,
+    )
+    assert res_master5.status_code == 200
+    assert res_master5.json()["is_published_marketplace"] is False
+    assert res_master5.json()["marketplace_links_count"] == 0
+
+
+def test_video_embed_resolution_and_multi_video_links_api(
+    client: TestClient, superuser_token_headers: dict, session: Session
+):
+    # 1. Validar parser seguro de embed_url y player_type
+    embed, mode = resolve_video_embed("https://www.youtube.com/shorts/dQw4w9WgXcQ")
+    assert embed == "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+    assert mode == "EMBED_IFRAME"
+
+    embed_yt, mode_yt = resolve_video_embed("https://youtu.be/abc123XYZ_-")
+    assert embed_yt == "https://www.youtube-nocookie.com/embed/abc123XYZ_-"
+    assert mode_yt == "EMBED_IFRAME"
+
+    embed_tt, mode_tt = resolve_video_embed(
+        "https://www.tiktok.com/@novabox/video/7399123456789012345"
+    )
+    assert embed_tt == "https://www.tiktok.com/embed/v2/7399123456789012345"
+    assert mode_tt == "EMBED_IFRAME"
+
+    embed_tt_short, mode_tt_short = resolve_video_embed(
+        "https://vm.tiktok.com/ZMjShortCode/"
+    )
+    assert embed_tt_short is None
+    assert mode_tt_short == "EXTERNAL_ONLY"
+
+    embed_ig, mode_ig = resolve_video_embed("https://www.instagram.com/reel/Cx123AbC/")
+    assert embed_ig == "https://www.instagram.com/reel/Cx123AbC/embed"
+    assert mode_ig == "EMBED_IFRAME"
+
+    embed_fb, mode_fb = resolve_video_embed("https://www.facebook.com/reel/987654321")
+    assert embed_fb is not None and embed_fb.startswith(
+        "https://www.facebook.com/plugins/video.php?href="
+    )
+    assert mode_fb == "EMBED_IFRAME"
+
+    embed_vm, mode_vm = resolve_video_embed("https://vimeo.com/123456789")
+    assert embed_vm == "https://player.vimeo.com/video/123456789"
+    assert mode_vm == "EMBED_IFRAME"
+
+    embed_mp4, mode_mp4 = resolve_video_embed(
+        "https://res.cloudinary.com/demo/video/upload/v1/uyuni/capibara.mp4"
+    )
+    assert (
+        embed_mp4
+        == "https://res.cloudinary.com/demo/video/upload/v1/uyuni/capibara.mp4"
+    )
+    assert mode_mp4 == "HTML5_VIDEO"
+
+    embed_unsafe, mode_unsafe = resolve_video_embed("https://evil.example.com/x")
+    assert embed_unsafe is None
+    assert mode_unsafe == "EXTERNAL_ONLY"
+
+    # 2. API multi-video en ProductMaster
+    service = ProductMasterService(session)
+    master = service.create(
+        ProductMaster(
+            name="Lámpara Capibara Video Test",
+            official_price=120.0,
+            minimum_price=95.0,
+            published_price=110.0,
+        )
+    )
+    assert master.has_video is False
+
+    # 2.a Agregar YouTube Shorts (VIDEO #1 -> marca has_video=True)
+    res_v1 = client.post(
+        f"/api/commerce/product-masters/{master.id}/links",
+        json={
+            "url": "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+            "link_type": "VIDEO",
+            "label": "Unboxing YouTube Shorts",
+            "is_public": True,
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_v1.status_code == 200
+    v1 = res_v1.json()
+    assert v1["link_type"] == "VIDEO"
+    assert v1["portal"] == "YOUTUBE"
+    assert v1["is_primary"] is True
+    assert v1["embed_url"] == "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"
+    assert v1["player_type"] == "EMBED_IFRAME"
+
+    # 2.b Agregar TikTok + video interno MP4 (is_public=False)
+    res_v2 = client.post(
+        f"/api/commerce/product-masters/{master.id}/links",
+        json={
+            "url": "https://www.tiktok.com/@novabox/video/7399123456789012345",
+            "link_type": "VIDEO",
+            "label": "Demo TikTok Live",
+            "is_public": True,
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_v2.status_code == 200
+    v2 = res_v2.json()
+    assert v2["is_primary"] is False
+    assert v2["player_type"] == "EMBED_IFRAME"
+
+    res_v3 = client.post(
+        f"/api/commerce/product-masters/{master.id}/links",
+        json={
+            "url": "https://res.cloudinary.com/demo/video/upload/v1/test.mp4",
+            "link_type": "VIDEO",
+            "label": "Video Interno Prueba",
+            "is_public": False,
+        },
+        headers=superuser_token_headers,
+    )
+    assert res_v3.status_code == 200
+    v3 = res_v3.json()
+    assert v3["portal"] == "CLOUDINARY"
+    assert v3["player_type"] == "HTML5_VIDEO"
+
+    # 2.c GET ficha maestra debe traer video_links, video_links_count y has_video=True
+    res_pm = client.get(
+        f"/api/commerce/product-masters/{master.id}",
+        headers=superuser_token_headers,
+    )
+    assert res_pm.status_code == 200
+    pm_data = res_pm.json()
+    assert pm_data["has_video"] is True
+    assert pm_data["video_links_count"] == 3
+    assert len(pm_data["video_links"]) == 3
+
+    # 2.d Filtrar listado maestro por has_video=true
+    res_has_vid = client.get(
+        "/api/commerce/product-masters/",
+        params={"has_video": "true"},
+        headers=superuser_token_headers,
+    )
+    assert res_has_vid.status_code == 200
+    assert any(m["id"] == str(master.id) for m in res_has_vid.json())
+
+    # 2.e Filtrar /links por link_type=VIDEO y only_public=true
+    res_pub_vids = client.get(
+        f"/api/commerce/product-masters/{master.id}/links",
+        params={"link_type": "VIDEO", "only_public": "true"},
+        headers=superuser_token_headers,
+    )
+    assert res_pub_vids.status_code == 200
+    assert [lnk["id"] for lnk in res_pub_vids.json()] == [v1["id"], v2["id"]]
+
+    # 2.f Eliminar todos los videos -> has_video vuelve a False
+    for vid_id in (v1["id"], v2["id"], v3["id"]):
+        r_del = client.delete(
+            f"/api/commerce/product-masters/{master.id}/links/{vid_id}",
+            headers=superuser_token_headers,
+        )
+        assert r_del.status_code == 200
+
+    res_pm_after = client.get(
+        f"/api/commerce/product-masters/{master.id}",
+        headers=superuser_token_headers,
+    )
+    assert res_pm_after.status_code == 200
+    assert res_pm_after.json()["has_video"] is False
+    assert res_pm_after.json()["video_links_count"] == 0
 
 
 def test_investment_round_and_batch_costing_modalities(
@@ -3805,3 +4007,335 @@ def test_unified_filters_ranges_multiselect_booleans(
     assert res_cnt_ch_uuid.status_code == 200
     assert [s["customer_name"] for s in res_by_ch_uuid.json()] == ["Venta Canal UUID"]
     assert res_cnt_ch_uuid.json()["total"] == 1
+
+
+def test_storage_locations_crud_and_product_master_filtering(
+    client: TestClient, superuser_token_headers: dict
+):
+    # 1. Create storage locations (shelf + basket)
+    res_shelf = client.post(
+        "/api/commerce/storage-locations/",
+        headers=superuser_token_headers,
+        json={
+            "code": "EST-A",
+            "name": "Estante A",
+            "label": "Estante A - Herramientas",
+            "location_type": "SHELF",
+            "description": "Pasillo principal, nivel 1",
+            "is_active": True,
+        },
+    )
+    assert res_shelf.status_code == 200
+    shelf = res_shelf.json()
+    assert shelf["location_type"] == "SHELF"
+    assert shelf["is_active"] is True
+
+    res_basket = client.post(
+        "/api/commerce/storage-locations/",
+        headers=superuser_token_headers,
+        json={
+            "code": "C4",
+            "name": "Juguetes & Niños",
+            "label": "Canasta 4 - Juguetes & Niños",
+            "location_type": "BASKET",
+            "is_active": True,
+        },
+    )
+    assert res_basket.status_code == 200
+    basket = res_basket.json()
+
+    # 2. Filter and count storage locations
+    res_list = client.get(
+        "/api/commerce/storage-locations/",
+        params={"location_type": "SHELF", "is_active": "true"},
+        headers=superuser_token_headers,
+    )
+    assert res_list.status_code == 200
+    assert [loc["code"] for loc in res_list.json()] == ["EST-A"]
+
+    res_count = client.get(
+        "/api/commerce/storage-locations/count",
+        params={"location_types": "SHELF,BASKET"},
+        headers=superuser_token_headers,
+    )
+    assert res_count.status_code == 200
+    assert res_count.json()["total"] == 2
+
+    # 3. Link storage_location_id in ProductMaster and filter by it
+    res_pm = client.post(
+        "/api/commerce/product-masters/",
+        headers=superuser_token_headers,
+        json={
+            "name": "Lámpara Capibara Test",
+            "storage_location_id": basket["id"],
+            "official_price": 120.0,
+            "minimum_price": 90.0,
+            "published_price": 100.0,
+        },
+    )
+    assert res_pm.status_code == 200
+    pm_data = res_pm.json()
+    assert pm_data["storage_location_id"] == basket["id"]
+
+    res_pm_filter = client.get(
+        "/api/commerce/product-masters/",
+        params={"storage_location_id": basket["id"]},
+        headers=superuser_token_headers,
+    )
+    assert res_pm_filter.status_code == 200
+    assert [m["id"] for m in res_pm_filter.json()] == [pm_data["id"]]
+
+    # 4. Update storage location
+    res_upd = client.put(
+        f"/api/commerce/storage-locations/{shelf['id']}",
+        headers=superuser_token_headers,
+        json={"is_active": False, "location_type": "SHOWCASE"},
+    )
+    assert res_upd.status_code == 200
+    assert res_upd.json()["is_active"] is False
+    assert res_upd.json()["location_type"] == "SHOWCASE"
+
+    # 5. Catalog bulk endpoint reflects only active storage locations
+    res_bulk = client.post(
+        "/api/catalogs/bulk",
+        headers=superuser_token_headers,
+        json={
+            "commerce_storage_locations": {},
+            "commerce_storage_location_types": {},
+        },
+    )
+    assert res_bulk.status_code == 200
+    bulk_locs = res_bulk.json()["commerce_storage_locations"]
+    assert any(it["value"] == basket["id"] for it in bulk_locs)
+    assert not any(it["value"] == shelf["id"] for it in bulk_locs)
+
+    # 6. Delete storage location
+    res_del = client.delete(
+        f"/api/commerce/storage-locations/{shelf['id']}",
+        headers=superuser_token_headers,
+    )
+    assert res_del.status_code == 200
+    res_get_deleted = client.get(
+        f"/api/commerce/storage-locations/{shelf['id']}",
+        headers=superuser_token_headers,
+    )
+    assert res_get_deleted.status_code == 404
+
+
+def test_products_and_available_search_match_master_description_and_features(
+    client: TestClient, session: Session, superuser_token_headers: dict[str, str]
+) -> None:
+    """/products y /sales/available-products buscan en description y features."""
+    master_service = ProductMasterService(session)
+    product_service = ProductService(session)
+
+    m_desc = master_service.create(
+        ProductMaster(
+            item_number=4201,
+            name="TP360 Smart Projector",
+            brand="Genérico",
+            model="Android 14.0",
+            description="Mini proyector portátil Full HD con Android 14",
+            official_price=1200.0,
+            minimum_price=800.0,
+            published_price=800.0,
+        )
+    )
+    p_sold = product_service.create(
+        Product(
+            master_product_id=m_desc.id,
+            initial_quantity=1,
+            sold_quantity=1,
+        )
+    )
+
+    m_feat = master_service.create(
+        ProductMaster(
+            item_number=4202,
+            name="Reflector LED Solar Portátil",
+            brand="Private Street Lamp",
+            features="Función proyector de largo alcance IP66",
+            official_price=220.0,
+            minimum_price=130.0,
+            published_price=220.0,
+        )
+    )
+    p_avail = product_service.create(
+        Product(
+            master_product_id=m_feat.id,
+            variant_name="Edición Aluminio",
+            defect_detail="Caja ligeramente abollada",
+            initial_quantity=2,
+        )
+    )
+
+    res_masters = client.get(
+        "/api/commerce/product-masters/",
+        params={"search": "proyector"},
+        headers=superuser_token_headers,
+    )
+    assert res_masters.status_code == 200
+    master_ids = {m["id"] for m in res_masters.json()}
+    assert str(m_desc.id) in master_ids
+    assert str(m_feat.id) in master_ids
+
+    res_products = client.get(
+        "/api/commerce/products/",
+        params={"search": "proyector"},
+        headers=superuser_token_headers,
+    )
+    assert res_products.status_code == 200
+    product_ids = {p["id"] for p in res_products.json()}
+    assert str(p_sold.id) in product_ids
+    assert str(p_avail.id) in product_ids
+
+    res_count = client.get(
+        "/api/commerce/products/count",
+        params={"search": "proyector"},
+        headers=superuser_token_headers,
+    )
+    assert res_count.status_code == 200
+    assert res_count.json()["total"] == len(product_ids)
+
+    res_variant = client.get(
+        "/api/commerce/products/",
+        params={"search": "Aluminio"},
+        headers=superuser_token_headers,
+    )
+    assert res_variant.status_code == 200
+    assert any(p["id"] == str(p_avail.id) for p in res_variant.json())
+
+    res_defect = client.get(
+        "/api/commerce/products/",
+        params={"search": "abollada"},
+        headers=superuser_token_headers,
+    )
+    assert res_defect.status_code == 200
+    assert any(p["id"] == str(p_avail.id) for p in res_defect.json())
+
+    res_blank = client.get(
+        "/api/commerce/products/",
+        params={"search": "   "},
+        headers=superuser_token_headers,
+    )
+    assert res_blank.status_code == 200
+    blank_ids = {p["id"] for p in res_blank.json()}
+    assert str(p_sold.id) in blank_ids
+    assert str(p_avail.id) in blank_ids
+
+    res_avail = client.get(
+        "/api/commerce/sales/available-products",
+        params={"search": "proyector"},
+        headers=superuser_token_headers,
+    )
+    assert res_avail.status_code == 200
+    avail_ids = {p["id"] for p in res_avail.json()}
+    assert str(p_avail.id) in avail_ids
+    assert str(p_sold.id) not in avail_ids
+
+
+def test_accent_insensitive_search_preserves_stored_accents(
+    client: TestClient, session: Session, superuser_token_headers: dict[str, str]
+) -> None:
+    """Buscar sin/con tildes coincide en maestro, productos, ventas y preserva datos."""
+    master_service = ProductMasterService(session)
+    product_service = ProductService(session)
+
+    m_accent = master_service.create(
+        ProductMaster(
+            item_number=4301,
+            name="Lámpara LED Escritorio",
+            brand="Iluminación Pro",
+            description="Luz cálida recargable",
+            official_price=150.0,
+            minimum_price=100.0,
+            published_price=120.0,
+        )
+    )
+    assert m_accent.name == "Lámpara LED Escritorio"
+
+    m_plain = master_service.create(
+        ProductMaster(
+            item_number=4302,
+            name="LAMPARA SOLAR JARDIN",
+            brand="Genérico",
+            official_price=90.0,
+            minimum_price=60.0,
+            published_price=80.0,
+        )
+    )
+
+    p_accent = product_service.create(
+        Product(
+            master_product_id=m_accent.id,
+            variant_name="Cúpula Ámbar",
+            initial_quantity=3,
+        )
+    )
+    p_plain = product_service.create(
+        Product(
+            master_product_id=m_plain.id,
+            initial_quantity=2,
+        )
+    )
+
+    for q in ("lampara", "lámpara", "LÁMPARA"):
+        res_m = client.get(
+            "/api/commerce/product-masters/",
+            params={"search": q},
+            headers=superuser_token_headers,
+        )
+        assert res_m.status_code == 200
+        m_ids = {m["id"] for m in res_m.json()}
+        assert str(m_accent.id) in m_ids
+        assert str(m_plain.id) in m_ids
+
+        res_p = client.get(
+            "/api/commerce/products/",
+            params={"search": q},
+            headers=superuser_token_headers,
+        )
+        assert res_p.status_code == 200
+        p_ids = {p["id"] for p in res_p.json()}
+        assert str(p_accent.id) in p_ids
+        assert str(p_plain.id) in p_ids
+
+        res_avail = client.get(
+            "/api/commerce/sales/available-products",
+            params={"search": q},
+            headers=superuser_token_headers,
+        )
+        assert res_avail.status_code == 200
+        avail_ids = {p["id"] for p in res_avail.json()}
+        assert str(p_accent.id) in avail_ids
+        assert str(p_plain.id) in avail_ids
+
+    res_variant = client.get(
+        "/api/commerce/products/",
+        params={"search": "cupula ambar"},
+        headers=superuser_token_headers,
+    )
+    assert res_variant.status_code == 200
+    assert any(p["id"] == str(p_accent.id) for p in res_variant.json())
+
+    res_sale = client.post(
+        "/api/commerce/sales/",
+        headers=superuser_token_headers,
+        json={
+            "customer_name": "José Ángel Pérez",
+            "payment_method": "QR",
+            "items": [
+                {"product_id": str(p_accent.id), "quantity": 1, "unit_price": 120.0}
+            ],
+        },
+    )
+    assert res_sale.status_code == 200
+    sale_id = res_sale.json()["id"]
+
+    res_sale_search = client.get(
+        "/api/commerce/sales/",
+        params={"search": "Jose Angel Perez"},
+        headers=superuser_token_headers,
+    )
+    assert res_sale_search.status_code == 200
+    assert any(s["id"] == sale_id for s in res_sale_search.json())

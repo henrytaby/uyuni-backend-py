@@ -2,7 +2,7 @@ from typing import Any
 
 from sqlmodel import Session, col, or_
 
-from app.core.filters import FilterOp, FilterSpec
+from app.core.filters import FilterOp, FilterSpec, accent_insensitive_ilike
 from app.core.repository import BaseRepository
 from app.modules.commerce.constants import parse_search_int
 from app.modules.commerce.sales.models import Sale, SaleItem
@@ -45,20 +45,21 @@ class SaleRepository(BaseRepository[Sale]):
         if not search:
             return statement
 
-        search_term = f"%{search}%"
-        search_filters: list[Any] = [
-            col(Sale.customer_name).ilike(search_term),
-            col(Sale.channel).ilike(search_term),
-            col(Sale.payment_method).ilike(search_term),
-            col(Sale.payment_status).ilike(search_term),
-            col(Sale.delivery_status).ilike(search_term),
-        ]
-        if Sale.delivery_address is not None:
-            search_filters.append(col(Sale.delivery_address).ilike(search_term))
-        if Sale.observations is not None:
-            search_filters.append(col(Sale.observations).ilike(search_term))
+        cleaned = search.strip()
+        if not cleaned:
+            return statement
 
-        num = parse_search_int(search, prefixes=("#", "VTA-"))
+        search_filters: list[Any] = [
+            accent_insensitive_ilike(col(Sale.customer_name), cleaned),
+            accent_insensitive_ilike(col(Sale.channel), cleaned),
+            accent_insensitive_ilike(col(Sale.payment_method), cleaned),
+            accent_insensitive_ilike(col(Sale.payment_status), cleaned),
+            accent_insensitive_ilike(col(Sale.delivery_status), cleaned),
+            accent_insensitive_ilike(col(Sale.delivery_address), cleaned),
+            accent_insensitive_ilike(col(Sale.observations), cleaned),
+        ]
+
+        num = parse_search_int(cleaned, prefixes=("#", "VTA-"))
         if num is not None:
             search_filters.append(col(Sale.sale_number) == num)
             search_filters.append(col(Sale.sheet_sale_id) == num)

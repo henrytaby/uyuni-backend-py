@@ -5,6 +5,7 @@ Combina Query Parameter Models nativos de FastAPI con especificaciones declarati
 en BaseRepository para garantizar DRY, validación tipada y whitelist de columnas.
 """
 
+import unicodedata
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from enum import Enum
@@ -12,8 +13,35 @@ from typing import Annotated, Any, Mapping
 from uuid import UUID
 
 from pydantic import BaseModel, BeforeValidator, Field
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, event, func
+from sqlalchemy.engine import Engine
 from sqlmodel import col
+
+
+def strip_accents(text: str) -> str:
+    """Elimina diacríticos Unicode preservando caracteres base."""
+    decomposed = unicodedata.normalize("NFKD", text)
+    return "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
+
+
+def accent_insensitive_ilike(column: Any, term: str) -> Any:
+    """Construye un ILIKE insensible a tildes compatible con GIN/unaccent."""
+    normalized = strip_accents(term.strip())
+    return func.immutable_unaccent(column).ilike(f"%{normalized}%")
+
+
+def register_sqlite_unaccent(engine: Engine) -> None:
+    """Registra immutable_unaccent en SQLite con paridad frente a PostgreSQL."""
+    if engine.dialect.name != "sqlite":
+        return
+
+    @event.listens_for(engine, "connect")
+    def _on_connect(dbapi_connection: Any, _connection_record: Any) -> None:
+        dbapi_connection.create_function(
+            "immutable_unaccent",
+            1,
+            lambda value: strip_accents(str(value)) if value is not None else None,
+        )
 
 
 def _empty_str_to_none(value: Any) -> Any:

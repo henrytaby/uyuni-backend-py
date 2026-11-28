@@ -142,8 +142,11 @@ app = FastAPI(
             "description": "Canales comerciales de venta (Tienda, WhatsApp, etc.).",
         },
         {
-            "name": "Commerce - Live Baskets",
-            "description": "Canastas estratégicas para transmisiones en vivo.",
+            "name": "Commerce - Storage Locations",
+            "description": (
+                "Ubicaciones físicas de almacenamiento y exhibición "
+                "(canastas, estantes, vitrinas, depósitos)."
+            ),
         },
         {
             "name": "Commerce - Investment Rounds",

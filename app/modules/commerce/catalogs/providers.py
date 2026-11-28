@@ -11,10 +11,11 @@ from app.modules.commerce.constants import (
     SaleDeliveryStatus,
     SalePaymentMethod,
     SalePaymentStatus,
+    StorageLocationType,
 )
-from app.modules.commerce.live_baskets.models import LiveBasket
 from app.modules.commerce.product_masters.models import ProductMaster
 from app.modules.commerce.rounds.models import InvestmentRound
+from app.modules.commerce.storage_locations.models import StorageLocation
 
 
 class CommerceCategoriesProvider(CatalogProvider):
@@ -32,11 +33,35 @@ class CommerceCategoriesProvider(CatalogProvider):
         ]
 
 
-class CommerceLiveBasketsProvider(CatalogProvider):
+class CommerceStorageLocationsProvider(CatalogProvider):
     def get_items(self, session: Session, **kwargs) -> list[CatalogItemSchema]:
-        query = select(LiveBasket.id, LiveBasket.label).order_by(LiveBasket.code)
+        query = (
+            select(StorageLocation.id, StorageLocation.label)
+            .where(StorageLocation.is_active == True)  # noqa: E712
+            .order_by(StorageLocation.code)
+        )
         results = session.exec(query).all()
         return [CatalogItemSchema(value=r[0], label=r[1]) for r in results]
+
+
+class CommerceStorageLocationTypesProvider(CatalogProvider):
+    def get_items(self, session: Session, **kwargs) -> list[CatalogItemSchema]:
+        return [
+            CatalogItemSchema(
+                value=StorageLocationType.BASKET.value, label="Canasta / Caja"
+            ),
+            CatalogItemSchema(value=StorageLocationType.SHELF.value, label="Estante"),
+            CatalogItemSchema(
+                value=StorageLocationType.SHOWCASE.value, label="Vitrina / Escaparate"
+            ),
+            CatalogItemSchema(
+                value=StorageLocationType.RACK.value, label="Rack / Anaquel"
+            ),
+            CatalogItemSchema(
+                value=StorageLocationType.WAREHOUSE.value, label="Depósito / Bodega"
+            ),
+            CatalogItemSchema(value=StorageLocationType.OTHER.value, label="Otro"),
+        ]
 
 
 class CommerceBatchesProvider(CatalogProvider):
@@ -45,17 +70,6 @@ class CommerceBatchesProvider(CatalogProvider):
         results = session.exec(query).all()
         return [
             CatalogItemSchema(value=r[0], label=f"{r[1]} ({r[2]})") for r in results
-        ]
-
-
-class CommercePhysicalConditionsProvider(CatalogProvider):
-    def get_items(self, session: Session, **kwargs) -> list[CatalogItemSchema]:
-        return [
-            CatalogItemSchema(value="OPERATIONAL", label="Operativo"),
-            CatalogItemSchema(value="DAMAGED_SCRAP", label="Dañado / Merma"),
-            CatalogItemSchema(value="FOR_PARTS", label="Para Repuestos"),
-            CatalogItemSchema(value="INCOMPLETE", label="Incompleto / Sin Caja"),
-            CatalogItemSchema(value="REPAIRED", label="Reparado"),
         ]
 
 
@@ -94,12 +108,8 @@ class CommerceSalesChannelsProvider(CatalogProvider):
 class CommercePaymentStatusesProvider(CatalogProvider):
     def get_items(self, session: Session, **kwargs) -> list[CatalogItemSchema]:
         return [
-            CatalogItemSchema(
-                value=SalePaymentStatus.COLLECTED.value, label="Cobrado"
-            ),
-            CatalogItemSchema(
-                value=SalePaymentStatus.PENDING.value, label="Pendiente"
-            ),
+            CatalogItemSchema(value=SalePaymentStatus.COLLECTED.value, label="Cobrado"),
+            CatalogItemSchema(value=SalePaymentStatus.PENDING.value, label="Pendiente"),
             CatalogItemSchema(
                 value=SalePaymentStatus.COURTESY.value, label="Cortesía / 0 Bs"
             ),
@@ -143,9 +153,7 @@ class CommerceDeliveryPaidByProvider(CatalogProvider):
     def get_items(self, session: Session, **kwargs) -> list[CatalogItemSchema]:
         return [
             CatalogItemSchema(value=SaleDeliveryPaidBy.FREE.value, label="Sin Costo"),
-            CatalogItemSchema(
-                value=SaleDeliveryPaidBy.CUSTOMER.value, label="Cliente"
-            ),
+            CatalogItemSchema(value=SaleDeliveryPaidBy.CUSTOMER.value, label="Cliente"),
             CatalogItemSchema(
                 value=SaleDeliveryPaidBy.STORE.value, label="Tienda / Empresa"
             ),

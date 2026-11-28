@@ -7,6 +7,7 @@ from sqlalchemy.engine import Engine
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.config import settings
+from app.core.filters import register_sqlite_unaccent
 
 # from ..models.module import Module, ModuleGroup
 # from ..models.role import Role, RoleModule
@@ -47,6 +48,7 @@ engine: Engine = create_engine(
     settings.DATABASE_URL,
     **engine_kwargs,
 )
+register_sqlite_unaccent(engine)
 
 
 def create_db_and_tables():

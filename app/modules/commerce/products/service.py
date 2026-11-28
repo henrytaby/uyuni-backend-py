@@ -29,18 +29,8 @@ class ProductService:
                 if data.minimum_price is None or data.minimum_price <= 0:
                     data.minimum_price = master.minimum_price
 
-        # Calculate available quantity automatically
-        data.available_quantity = max(
-            0, data.initial_quantity - data.sold_quantity - data.merma_quantity
-        )
-        if data.merma_quantity >= data.initial_quantity and data.initial_quantity > 0:
-            data.status = "SCRAPPED"
-            if not data.physical_condition or data.physical_condition == "OPERATIONAL":
-                data.physical_condition = "DAMAGED_SCRAP"
-        elif data.available_quantity <= 0 and data.sold_quantity > 0:
-            data.status = "SOLD_OUT"
-        else:
-            data.status = "AVAILABLE"
+        # Calculate available quantity and commercial status automatically
+        data.recompute_stock_and_status()
 
         created = self.repository.create(data)
         if created.batch_id:
@@ -167,24 +157,7 @@ class ProductService:
             setattr(product, key, value)
 
         # Recalculate available stock and status
-        product.available_quantity = max(
-            0,
-            product.initial_quantity - product.sold_quantity - product.merma_quantity,
-        )
-        if (
-            product.merma_quantity >= product.initial_quantity
-            and product.initial_quantity > 0
-        ):
-            product.status = "SCRAPPED"
-            if (
-                not product.physical_condition
-                or product.physical_condition == "OPERATIONAL"
-            ):
-                product.physical_condition = "DAMAGED_SCRAP"
-        elif product.available_quantity <= 0 and product.sold_quantity > 0:
-            product.status = "SOLD_OUT"
-        else:
-            product.status = "AVAILABLE"
+        product.recompute_stock_and_status()
 
         self.session.add(product)
         self.session.commit()

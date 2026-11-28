@@ -36,7 +36,6 @@ from app.core.config import settings
 from app.modules.commerce.batches.models import Batch
 from app.modules.commerce.categories.models import Category
 from app.modules.commerce.channels.models import SalesChannel
-from app.modules.commerce.live_baskets.models import LiveBasket
 from app.modules.commerce.product_masters.models import (
     ProductMaster,
     ProductMasterExternalLink,
@@ -45,6 +44,7 @@ from app.modules.commerce.product_masters.service import detect_portal
 from app.modules.commerce.products.models import Product
 from app.modules.commerce.rounds.models import InvestmentRound
 from app.modules.commerce.sales.models import Sale, SaleItem
+from app.modules.commerce.storage_locations.models import StorageLocation
 
 SPREADSHEET_ID = "1FKrYWIZfjAk_uXwyJ8Wi1-2OQlfzzEEkWP8OZHp03sQ"
 
@@ -302,7 +302,7 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
     stats = {
         "categories": 0,
         "channels": 0,
-        "live_baskets": 0,
+        "storage_locations": 0,
         "rounds": 0,
         "batches": 0,
         "products": 0,
@@ -312,7 +312,7 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
 
     category_map: dict[str, uuid.UUID] = {}
     channel_map: dict[str, dict[str, Any]] = {}
-    live_basket_map: dict[str, uuid.UUID] = {}
+    storage_location_map: dict[str, uuid.UUID] = {}
     round_map: dict[str, uuid.UUID] = {}
     batch_map: dict[str, uuid.UUID] = {}
     product_sku_map: dict[str, uuid.UUID] = {}
@@ -408,9 +408,9 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
         print(f"  ✓ {stats['channels']} canales de venta sincronizados.")
 
         # ----------------------------------------------------
-        # 2. CANASTAS LIVE (Canastas_Live)
+        # 2. UBICACIONES FÍSICAS / CANASTAS (Canastas_Live)
         # ----------------------------------------------------
-        print("\n[2/6] Migrando Canastas para Live...")
+        print("\n[2/6] Migrando Ubicaciones de Almacenamiento...")
         basket_data = load_cached_sheet(cache_dir, "canastas_live")
         for row in basket_data[1:]:
             if not row or len(row) < 3 or not clean_str(row[0]):
@@ -419,42 +419,44 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
             name = clean_str(row[1])  # Taller & Auto
             label = clean_str(row[2])  # Canasta 1 - Taller & Auto
             desc = clean_str(row[3]) if len(row) > 3 else None
-            p_range = clean_str(row[4]) if len(row) > 4 else None
-            target = clean_str(row[5]) if len(row) > 5 else None
+            loc_type = (
+                "WAREHOUSE"
+                if code.upper() == "FONDO"
+                else ("BASKET" if code.upper().startswith("C") else "OTHER")
+            )
 
             existing = session.exec(
-                select(LiveBasket).where(LiveBasket.code == code)
+                select(StorageLocation).where(StorageLocation.code == code)
             ).first()
             if not existing:
-                basket = LiveBasket(
+                location = StorageLocation(
                     code=code,
                     name=name,
                     label=label,
+                    location_type=loc_type,
                     description=desc,
-                    price_range=p_range,
-                    target_audience=target,
+                    is_active=True,
                 )
                 if not dry_run:
-                    session.add(basket)
+                    session.add(location)
                     session.flush()
-                b_id = basket.id
+                b_id = location.id
             else:
                 existing.name = name
                 existing.label = label
+                existing.location_type = loc_type
                 existing.description = desc
-                existing.price_range = p_range
-                existing.target_audience = target
                 if not dry_run:
                     session.add(existing)
                     session.flush()
                 b_id = existing.id
 
-            live_basket_map[code.upper()] = b_id
-            live_basket_map[name.strip().lower()] = b_id
-            live_basket_map[label.strip().lower()] = b_id
-            stats["live_baskets"] += 1
+            storage_location_map[code.upper()] = b_id
+            storage_location_map[name.strip().lower()] = b_id
+            storage_location_map[label.strip().lower()] = b_id
+            stats["storage_locations"] += 1
 
-        print(f"  ✓ {stats['live_baskets']} canastas live procesadas.")
+        print(f"  ✓ {stats['storage_locations']} ubicaciones procesadas.")
 
         # ----------------------------------------------------
         # 3. RONDAS DE INVERSIÓN (Rondas_Inversion)
@@ -694,12 +696,12 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
                     category_id = c_uuid
                     break
 
-            # Resolver live_basket_id
-            basket_id = None
+            # Resolver storage_location_id
+            location_id = None
             if canasta_str:
-                for bsk_name, bsk_uuid in live_basket_map.items():
-                    if bsk_name in canasta_str or canasta_str in bsk_name:
-                        basket_id = bsk_uuid
+                for loc_name, loc_uuid in storage_location_map.items():
+                    if loc_name in canasta_str or canasta_str in loc_name:
+                        location_id = loc_uuid
                         break
 
             # Resolver o crear ProductMaster
@@ -721,7 +723,7 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
                     name=name,
                     description=caracteristicas,
                     category_id=category_id,
-                    live_basket_id=basket_id,
+                    storage_location_id=location_id,
                     brand=marca,
                     model=modelo,
                     official_price=p_oficial,
@@ -740,8 +742,8 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
                 session.add(master)
                 session.flush()
             elif master and not dry_run:
-                if basket_id:
-                    master.live_basket_id = basket_id
+                if location_id:
+                    master.storage_location_id = location_id
                 master.code = None
                 master.description = caracteristicas
                 master.features = detalle_extendido
@@ -1043,7 +1045,7 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
     print("=" * 55)
     print(f"  • Categorías oficializadas:      {stats['categories']}")
     print(f"  • Canales de venta activos:      {stats['channels']}")
-    print(f"  • Canastas de TikTok Live:       {stats['live_baskets']}")
+    print(f"  • Ubicaciones físicas:          {stats['storage_locations']}")
     print(f"  • Rondas de inversión:           {stats['rounds']}")
     print(f"  • Cajas y lotes importados:      {stats['batches']}")
     print(f"  • Productos/SKUs catalogados:    {stats['products']}")

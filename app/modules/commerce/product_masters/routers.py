@@ -91,6 +91,9 @@ def _enrich_master_read(
         for lnk in links_list
         if getattr(lnk, "link_type", "REFERENCE") == "MARKETPLACE"
     ]
+    video_links = [
+        lnk for lnk in links_list if getattr(lnk, "link_type", "REFERENCE") == "VIDEO"
+    ]
 
     # Calcular URLs primarias al vuelo
     primary_ref = next((lnk for lnk in ref_links if lnk.is_primary), None)
@@ -117,6 +120,7 @@ def _enrich_master_read(
     if include_links:
         ref_count = len(ref_links)
         mkt_count = len(mkt_links)
+        video_count = len(video_links)
     else:
         ref_count = (
             service.session.exec(
@@ -136,6 +140,15 @@ def _enrich_master_read(
             ).one()
             or 0
         )
+        video_count = (
+            service.session.exec(
+                select(func.count(col(ProductMasterExternalLink.id))).where(
+                    ProductMasterExternalLink.product_master_id == master.id,
+                    ProductMasterExternalLink.link_type == "VIDEO",
+                )
+            ).one()
+            or 0
+        )
 
     return ProductMasterRead(
         id=master.id,
@@ -144,7 +157,7 @@ def _enrich_master_read(
         name=master.name,
         description=master.description,
         category_id=master.category_id,
-        live_basket_id=master.live_basket_id,
+        storage_location_id=master.storage_location_id,
         brand=master.brand,
         model=master.model,
         official_price=master.official_price,
@@ -173,6 +186,8 @@ def _enrich_master_read(
         reference_links_count=ref_count,
         marketplace_links=mkt_links,
         marketplace_links_count=mkt_count,
+        video_links=video_links,
+        video_links_count=video_count,
     )
 
 
@@ -652,7 +667,7 @@ def add_product_external_link(
     summary="Listar enlaces externos de una ficha maestra",
     description=(
         "Retorna los enlaces externos ordenados por sort_order. "
-        "Soporta filtro only_public y link_type ('REFERENCE' o 'MARKETPLACE')."
+        "Soporta filtro only_public y link_type ('REFERENCE', 'MARKETPLACE' o 'VIDEO')."
     ),
 )
 def get_product_external_links(
@@ -662,7 +677,8 @@ def get_product_external_links(
         False, description="Filtrar solo enlaces visibles para catálogo público"
     ),
     link_type: str | None = Query(
-        None, description="Filtrar por tipo de enlace ('REFERENCE' o 'MARKETPLACE')"
+        None,
+        description="Filtrar por tipo de enlace ('REFERENCE', 'MARKETPLACE' o 'VIDEO')",
     ),
     _: UserModulePermission = Depends(
         PermissionChecker(

@@ -1,7 +1,7 @@
 """
 Manifiesto de dominio para el módulo Commerce.
 Declara los grupos y submódulos de productos, lotes, ventas,
-canastas live y catálogo maestro.
+ubicaciones físicas y catálogo maestro.
 """
 
 from app.core.manifests.models import (
@@ -79,7 +79,7 @@ commerce_manifest = DomainManifest(
                     slug="commerce-catalogs",
                     description=(
                         "Catálogos de soporte: categorías, canales de venta y "
-                        "canastas live"
+                        "ubicaciones físicas"
                     ),
                     group_slug="commerce",
                     sort_order=6,

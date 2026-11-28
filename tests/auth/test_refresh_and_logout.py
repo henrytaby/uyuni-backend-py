@@ -66,6 +66,7 @@ def test_refresh_token_via_json_body(
     refresh_token = tokens["refresh_token"]
 
     import time
+
     time.sleep(1.05)
 
     res = client.post("/api/auth/refresh", json={"refresh_token": refresh_token})

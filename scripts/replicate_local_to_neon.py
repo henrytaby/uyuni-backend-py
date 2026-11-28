@@ -29,7 +29,7 @@ TABLES_IN_ORDER = [
     "role_module",
     "commerce_category",
     "commerce_channel",
-    "commerce_live_basket",
+    "commerce_storage_location",
     "commerce_investment_round",
     "commerce_batch",
     "commerce_product_master",

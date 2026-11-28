@@ -8,6 +8,7 @@ from app.core.filters import (
     BaseFilterParams,
     FilterOp,
     FilterSpec,
+    accent_insensitive_ilike,
     build_sqlalchemy_filters,
 )
 
@@ -34,7 +35,8 @@ class BaseRepository[ModelType: SQLModel]:
         return statement
 
     def _apply_search(self, statement, search: Optional[str]):
-        if search and self.searchable_fields:
+        cleaned = search.strip() if search else ""
+        if cleaned and self.searchable_fields:
             search_filters = []
             for field in self.searchable_fields:
                 if not hasattr(self.model, field):
@@ -45,9 +47,13 @@ class BaseRepository[ModelType: SQLModel]:
                 # This handles mixed types (int, float) in PostgreSQL
                 try:
                     target = col(column)
-                    search_filters.append(cast(target, String).ilike(f"%{search}%"))
+                    search_filters.append(
+                        accent_insensitive_ilike(cast(target, String), cleaned)
+                    )
                 except Exception:
-                    search_filters.append(cast(column, String).ilike(f"%{search}%"))
+                    search_filters.append(
+                        accent_insensitive_ilike(cast(column, String), cleaned)
+                    )
 
             if search_filters:
                 statement = statement.where(or_(*search_filters))

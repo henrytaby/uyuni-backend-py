@@ -1,7 +1,6 @@
 import urllib.parse
 import urllib.request
 from typing import Any, Mapping, Sequence
-from urllib.parse import urlparse
 from uuid import UUID
 
 import structlog
@@ -12,6 +11,10 @@ from sqlmodel import Session, col, func, or_, select
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.core.filters import BaseFilterParams
 from app.core.storage.cloudinary_service import cloudinary_service
+from app.modules.commerce.product_masters.link_utils import (
+    detect_portal,
+    resolve_video_embed,
+)
 from app.modules.commerce.product_masters.models import (
     ProductImage,
     ProductMaster,
@@ -41,69 +44,9 @@ ALLOWED_IMAGE_MIME_TYPES = {
 ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif", "avif"}
 MAX_IMAGE_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 VALID_IMAGE_TYPES = {"CATALOG", "REAL", "MARKETING", "BANNER"}
+VALID_LINK_TYPES = ("REFERENCE", "MARKETPLACE", "VIDEO")
 
-
-def detect_portal(url: str) -> tuple[str, str]:
-    """Clasifica automáticamente el portal y genera una etiqueta amigable."""
-    cleaned = (url or "").strip().lower()
-    if not cleaned:
-        return "OTHER", "Enlace Externo"
-
-    if "amazon.co.uk" in cleaned:
-        return "AMAZON", "Amazon UK"
-    if "amazon.es" in cleaned:
-        return "AMAZON", "Amazon España"
-    if "amazon.com.mx" in cleaned:
-        return "AMAZON", "Amazon México"
-    if "amazon.de" in cleaned:
-        return "AMAZON", "Amazon Alemania"
-    if "amazon.fr" in cleaned:
-        return "AMAZON", "Amazon Francia"
-    if "amazon.it" in cleaned:
-        return "AMAZON", "Amazon Italia"
-    if "amazon.com.au" in cleaned:
-        return "AMAZON", "Amazon Australia"
-    if "amazon.nl" in cleaned:
-        return "AMAZON", "Amazon Países Bajos"
-    if "amazon.ca" in cleaned:
-        return "AMAZON", "Amazon Canadá"
-    if "amazon.co.jp" in cleaned:
-        return "AMAZON", "Amazon Japón"
-    if "amazon." in cleaned:
-        return "AMAZON", "Amazon"
-    if "ebay." in cleaned:
-        return "EBAY", "eBay"
-    if "aliexpress." in cleaned:
-        return "ALIEXPRESS", "AliExpress"
-    if "alibaba." in cleaned:
-        return "ALIBABA", "Alibaba"
-    if "walmart." in cleaned:
-        return "WALMART", "Walmart"
-    if "mercadolibre." in cleaned or "articulo.mercadolibre" in cleaned:
-        return "MERCADOLIBRE", "MercadoLibre"
-    if "youtube.com" in cleaned or "youtu.be" in cleaned:
-        return "YOUTUBE", "YouTube"
-    if "tiktok.com" in cleaned:
-        return "TIKTOK", "TikTok"
-    if any(k in cleaned for k in ("facebook.com", "fb.com", "fb.me", "fb.watch")):
-        if "marketplace" in cleaned:
-            return "FACEBOOK", "Facebook Marketplace"
-        return "FACEBOOK", "Facebook"
-    if "instagram.com" in cleaned:
-        return "INSTAGRAM", "Instagram"
-    if "wa.me" in cleaned or "whatsapp.com" in cleaned:
-        return "WHATSAPP", "WhatsApp"
-    if "shein." in cleaned:
-        return "SHEIN", "SHEIN"
-    if "temu." in cleaned:
-        return "TEMU", "Temu"
-
-    try:
-        domain = urlparse(url).netloc.replace("www.", "")
-        label = domain.split(".")[0].capitalize() if domain else "Sitio Oficial"
-        return "OTHER", label
-    except Exception:
-        return "OTHER", "Sitio Oficial"
+__all__ = ["ProductMasterService", "detect_portal", "resolve_video_embed"]
 
 
 class ProductMasterService:
@@ -137,6 +80,10 @@ class ProductMasterService:
         initial_external_url: str | None = None,
         initial_marketplace_url: str | None = None,
     ) -> ProductMaster:
+        # Banderas de evidencia multimedia/marketplace derivadas únicamente de links
+        data.has_video = False
+        data.is_published_marketplace = False
+
         # 1. Asignación atómica de item_number por el backend si no viene especificado
         if data.item_number is None or data.item_number <= 0:
             data.item_number = self.get_next_item_number()
@@ -242,7 +189,7 @@ class ProductMasterService:
     def _merge_legacy_filters(
         filters: BaseFilterParams | Mapping[str, Any] | None,
         category_id: UUID | None,
-        live_basket_id: UUID | None,
+        storage_location_id: UUID | None,
         is_active: bool | None,
     ) -> dict[str, Any]:
         merged: dict[str, Any] = (
@@ -252,8 +199,8 @@ class ProductMasterService:
         )
         if category_id is not None:
             merged.setdefault("category_id", category_id)
-        if live_basket_id is not None:
-            merged.setdefault("live_basket_id", live_basket_id)
+        if storage_location_id is not None:
+            merged.setdefault("storage_location_id", storage_location_id)
         if is_active is not None:
             merged.setdefault("is_active", is_active)
         return merged
@@ -266,12 +213,12 @@ class ProductMasterService:
         sort_order: str = "asc",
         search: str | None = None,
         category_id: UUID | None = None,
-        live_basket_id: UUID | None = None,
+        storage_location_id: UUID | None = None,
         is_active: bool | None = None,
         filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> Sequence[ProductMaster]:
         resolved_filters = self._merge_legacy_filters(
-            filters, category_id, live_basket_id, is_active
+            filters, category_id, storage_location_id, is_active
         )
 
         return self.repository.get_all(
@@ -287,24 +234,28 @@ class ProductMasterService:
         self,
         search: str | None = None,
         category_id: UUID | None = None,
-        live_basket_id: UUID | None = None,
+        storage_location_id: UUID | None = None,
         is_active: bool | None = None,
         filters: BaseFilterParams | Mapping[str, Any] | None = None,
     ) -> int:
         resolved_filters = self._merge_legacy_filters(
-            filters, category_id, live_basket_id, is_active
+            filters, category_id, storage_location_id, is_active
         )
 
         return self.repository.count(search=search, filters=resolved_filters)
 
     def update(self, id: UUID, data: dict) -> ProductMaster | None:
-        # item_number y cover_image_url son de solo lectura en este endpoint:
+        # item_number, cover_image_url, has_video e is_published_marketplace
+        # son derivados/solo lectura en este endpoint:
         # - item_number es inmutable y autogenerado por secuencia
-        # - cover_image_url se sincroniza automáticamente desde la galería (/images)
+        # - cover_image_url se sincroniza automáticamente desde /images
+        # - has_video e is_published_marketplace se sincronizan desde /links
         initial_url = data.pop("external_info_url", None)
         initial_mkt_url = data.pop("marketplace_url", None)
         data.pop("item_number", None)
         data.pop("cover_image_url", None)
+        data.pop("has_video", None)
+        data.pop("is_published_marketplace", None)
 
         if "code" in data:
             raw_code = data["code"]
@@ -920,7 +871,7 @@ class ProductMasterService:
             )
 
         norm_type = (link_type or "REFERENCE").strip().upper()
-        if norm_type not in ("REFERENCE", "MARKETPLACE"):
+        if norm_type not in VALID_LINK_TYPES:
             norm_type = "REFERENCE"
 
         auto_portal, auto_label = detect_portal(cleaned_url)
@@ -950,14 +901,39 @@ class ProductMasterService:
         )
         self.session.add(new_link)
 
-        # Sincronizar flag is_published_marketplace al añadir publicación
+        # Sincronizar flags booleanos en la ficha maestra
         if norm_type == "MARKETPLACE" and not master.is_published_marketplace:
             master.is_published_marketplace = True
+            self.session.add(master)
+        elif norm_type == "VIDEO" and not master.has_video:
+            master.has_video = True
             self.session.add(master)
 
         self.session.commit()
         self.session.refresh(new_link)
         return new_link
+
+    def _sync_link_flags(self, master: ProductMaster) -> None:
+        """Sincroniza has_video e is_published_marketplace según enlaces reales."""
+        link_types = set(
+            self.session.exec(
+                select(ProductMasterExternalLink.link_type).where(
+                    ProductMasterExternalLink.product_master_id == master.id
+                )
+            ).all()
+        )
+        has_any_video = "VIDEO" in link_types
+        has_any_marketplace = "MARKETPLACE" in link_types
+
+        changed = False
+        if master.has_video != has_any_video:
+            master.has_video = has_any_video
+            changed = True
+        if master.is_published_marketplace != has_any_marketplace:
+            master.is_published_marketplace = has_any_marketplace
+            changed = True
+        if changed:
+            self.session.add(master)
 
     def update_external_link(
         self,
@@ -975,9 +951,10 @@ class ProductMasterService:
                 "Enlace externo no encontrado para esta ficha maestra"
             )
 
+        prev_type = link.link_type
         if data.link_type is not None:
             norm_type = data.link_type.strip().upper()
-            if norm_type in ("REFERENCE", "MARKETPLACE"):
+            if norm_type in VALID_LINK_TYPES:
                 link.link_type = norm_type
 
         if data.url is not None:
@@ -1004,9 +981,17 @@ class ProductMasterService:
             link.sort_order = data.sort_order
 
         if data.is_primary is True:
-            return self.set_primary_external_link(master_id, link_id)
+            updated = self.set_primary_external_link(master_id, link_id)
+            if prev_type != updated.link_type:
+                self._sync_link_flags(master)
+                self.session.commit()
+                self.session.refresh(updated)
+            return updated
 
         self.session.add(link)
+        self.session.flush()
+        if prev_type != link.link_type:
+            self._sync_link_flags(master)
         self.session.commit()
         self.session.refresh(link)
         return link
@@ -1072,6 +1057,9 @@ class ProductMasterService:
             if next_link:
                 next_link.is_primary = True
                 self.session.add(next_link)
+
+        if link_type in ("VIDEO", "MARKETPLACE"):
+            self._sync_link_flags(master)
 
         self.session.commit()
         return True

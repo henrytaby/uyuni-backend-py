@@ -4,17 +4,20 @@ from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
 from app.core.db import get_session
+from app.core.filters import register_sqlite_unaccent
 from app.main import app
 from app.modules.commerce.batches.models import Batch  # noqa: F401
 from app.modules.commerce.categories.models import Category  # noqa: F401
 from app.modules.commerce.channels.models import SalesChannel  # noqa: F401
-from app.modules.commerce.live_baskets.models import LiveBasket  # noqa: F401
 from app.modules.commerce.product_masters.models import ProductMaster  # noqa: F401
 from app.modules.commerce.products.models import Product  # noqa: F401
 
 # Import all models to ensure metadata is populated for creation
 from app.modules.commerce.rounds.models import InvestmentRound  # noqa: F401
 from app.modules.commerce.sales.models import Sale, SaleItem  # noqa: F401
+from app.modules.commerce.storage_locations.models import (  # noqa: F401
+    StorageLocation,
+)
 
 
 @pytest.fixture(name="session")
@@ -34,6 +37,7 @@ def session_fixture():
         poolclass=StaticPool,
         json_serializer=json_serializer,
     )
+    register_sqlite_unaccent(test_engine)
     SQLModel.metadata.create_all(test_engine)
 
     # Patch global engine for get_session() and other direct references

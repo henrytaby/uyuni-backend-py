@@ -19,9 +19,10 @@ class ProductMasterFilterParams(BaseFilterParams):
 
     category_id: OptUUID = None
     category_ids: MultiUUID = None
-    live_basket_id: OptUUID = None
-    live_basket_ids: MultiUUID = None
+    storage_location_id: OptUUID = None
+    storage_location_ids: MultiUUID = None
     is_active: OptBool = None
+    has_video: OptBool = None
     is_published_marketplace: OptBool = None
     is_whatsapp_published: OptBool = None
     min_price: OptFloat = None
@@ -107,6 +108,8 @@ class ProductMasterExternalLinkRead(ProductMasterExternalLinkBase):
 
     id: UUID
     product_master_id: UUID
+    embed_url: str | None = None
+    player_type: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -138,7 +141,7 @@ class ProductMasterBase(BaseModel):
     code: str | None = None
     description: str | None = None
     category_id: UUID | None = None
-    live_basket_id: UUID | None = None
+    storage_location_id: UUID | None = None
     brand: str | None = None
     model: str | None = None
 
@@ -168,14 +171,16 @@ class ProductMasterCreate(ProductMasterBase):
 
 
 class ProductMasterUpdate(BaseModel):
-    # item_number y cover_image_url son de solo lectura y se descartan si se envían:
+    # item_number, cover_image_url, has_video e is_published_marketplace
+    # son de solo lectura y se descartan si se envían:
     # - item_number es inmutable y autogenerado por secuencia
     # - cover_image_url se sincroniza automáticamente desde la galería (/images)
+    # - has_video e is_published_marketplace se sincronizan desde /links
     code: str | None = None
     name: str | None = None
     description: str | None = None
     category_id: UUID | None = None
-    live_basket_id: UUID | None = None
+    storage_location_id: UUID | None = None
     brand: str | None = None
     model: str | None = None
     official_price: float | None = None
@@ -209,6 +214,8 @@ class ProductMasterRead(ProductMasterBase):
     reference_links_count: int = 0
     marketplace_links: list[ProductMasterExternalLinkRead] = []
     marketplace_links_count: int = 0
+    video_links: list[ProductMasterExternalLinkRead] = []
+    video_links_count: int = 0
 
 
 # =========================================================================

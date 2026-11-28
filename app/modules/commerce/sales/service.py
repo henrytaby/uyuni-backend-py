@@ -5,10 +5,13 @@ from uuid import UUID
 from sqlmodel import Session, col, or_, select
 
 from app.core.exceptions import BadRequestException, NotFoundException
-from app.core.filters import BaseFilterParams
+from app.core.filters import BaseFilterParams, accent_insensitive_ilike
 from app.modules.commerce.batches.models import Batch
 from app.modules.commerce.constants import parse_search_int
 from app.modules.commerce.product_masters.models import ProductMaster
+from app.modules.commerce.product_masters.repository import (
+    build_product_master_id_subquery,
+)
 from app.modules.commerce.products.models import Product
 from app.modules.commerce.sales.models import Sale, SaleItem
 from app.modules.commerce.sales.repository import SaleItemRepository, SaleRepository
@@ -142,19 +145,7 @@ class SaleService:
     @staticmethod
     def _recompute_product_stock(product: Product) -> None:
         """Recalcula available_quantity y status físico tras modificar sold_quantity."""
-        product.available_quantity = max(
-            0,
-            product.initial_quantity - product.sold_quantity - product.merma_quantity,
-        )
-        if (
-            product.merma_quantity >= product.initial_quantity
-            and product.initial_quantity > 0
-        ):
-            product.status = "SCRAPPED"
-        elif product.available_quantity <= 0 and product.sold_quantity > 0:
-            product.status = "SOLD_OUT"
-        else:
-            product.status = "AVAILABLE"
+        product.recompute_stock_and_status()
 
     def _collect_batch_round_ids(
         self, product: Product, batch_ids: set[UUID], round_ids: set[UUID]
@@ -570,19 +561,18 @@ class SaleService:
             )
         )
         if search:
-            search_term = f"%{search.strip()}%"
-            search_filters: list[Any] = [
-                col(ProductMaster.name).ilike(search_term),
-                col(ProductMaster.code).ilike(search_term),
-                col(ProductMaster.brand).ilike(search_term),
-                col(ProductMaster.model).ilike(search_term),
-                col(Product.variant_name).ilike(search_term),
-            ]
-            num = parse_search_int(search, prefixes=("#", "NOV-"))
-            if num is not None:
-                search_filters.append(col(ProductMaster.item_number) == num)
-                search_filters.append(col(Product.sheet_row_id) == num)
-            stmt = stmt.where(or_(*search_filters))
+            cleaned = search.strip()
+            if cleaned:
+                search_filters: list[Any] = [
+                    col(Product.master_product_id).in_(
+                        build_product_master_id_subquery(cleaned)
+                    ),
+                    accent_insensitive_ilike(col(Product.variant_name), cleaned),
+                ]
+                num = parse_search_int(cleaned, prefixes=("#", "NOV-"))
+                if num is not None:
+                    search_filters.append(col(Product.sheet_row_id) == num)
+                stmt = stmt.where(or_(*search_filters))
 
         stmt = (
             stmt.order_by(

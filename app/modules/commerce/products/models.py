@@ -71,17 +71,12 @@ class Product(BaseModel, AuditMixin, table=True):
         default=1, description="Stock disponible actualmente"
     )
 
-    # 7. Estado del producto e inspección física de la unidad
+    # 7. Estado del producto e inspección técnica de la unidad
     status: str = Field(
         default="AVAILABLE",
         index=True,
         max_length=50,
         description="AVAILABLE, SOLD_OUT, SCRAPPED (gestionado automáticamente)",
-    )
-    physical_condition: str = Field(
-        default="OPERATIONAL",
-        max_length=50,
-        description="OPERATIONAL, DAMAGED_SCRAP, FOR_PARTS, INCOMPLETE",
     )
     defect_detail: str | None = Field(
         default=None,
@@ -92,6 +87,19 @@ class Product(BaseModel, AuditMixin, table=True):
         default=False,
         description="¿Fue probado físicamente que enciende y funciona?",
     )
+
+    def recompute_stock_and_status(self) -> None:
+        """Recalcula available_quantity y status según inicial, vendido y merma."""
+        self.available_quantity = max(
+            0,
+            self.initial_quantity - self.sold_quantity - self.merma_quantity,
+        )
+        if self.merma_quantity >= self.initial_quantity and self.initial_quantity > 0:
+            self.status = "SCRAPPED"
+        elif self.available_quantity <= 0 and self.sold_quantity > 0:
+            self.status = "SOLD_OUT"
+        else:
+            self.status = "AVAILABLE"
 
     # Relationships
     master_product: "ProductMaster" = Relationship(back_populates="inventory_items")
@@ -186,5 +194,5 @@ class Product(BaseModel, AuditMixin, table=True):
         return self.master_product.category_id if self.master_product else None
 
     @property
-    def live_basket_id(self) -> UUID | None:
-        return self.master_product.live_basket_id if self.master_product else None
+    def storage_location_id(self) -> UUID | None:
+        return self.master_product.storage_location_id if self.master_product else None

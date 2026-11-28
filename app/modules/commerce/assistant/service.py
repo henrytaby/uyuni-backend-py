@@ -4,6 +4,7 @@ from typing import Any
 import structlog
 from sqlmodel import Session, and_, col, func, or_, select
 
+from app.core.filters import accent_insensitive_ilike, strip_accents
 from app.modules.commerce.assistant.provider import call_llm
 from app.modules.commerce.assistant.schemas import (
     ChatAssistantRequest,
@@ -468,29 +469,32 @@ class CommerceAssistantService:
         stem = cls.to_stem(kw_clean)
         synonyms = cls.get_synonyms(kw_clean)
 
-        fields = " ".join(
-            filter(
-                None,
-                [
-                    m.name,
-                    m.brand,
-                    m.model,
-                    m.features,
-                    m.description,
-                ],
+        fields = strip_accents(
+            " ".join(
+                filter(
+                    None,
+                    [
+                        m.name,
+                        m.brand,
+                        m.model,
+                        m.features,
+                        m.description,
+                    ],
+                )
             )
         )
 
         if stem in ("auto", "autos") or "auto" in synonyms:
             # Término automotriz independiente (auto, coche, vehículo), no 'automático'
-            syn_patterns = [rf"\b{re.escape(s)}\b" for s in synonyms]
+            syn_patterns = [rf"\b{re.escape(strip_accents(s))}\b" for s in synonyms]
             pattern = "|".join(syn_patterns)
             return bool(re.search(pattern, fields, re.IGNORECASE))
 
         # Para términos con sinónimos (ej. celular/teléfono), verificar coincidencia
         if len(synonyms) > 1:
             return any(
-                re.search(rf"\b{re.escape(s)}", fields, re.IGNORECASE) for s in synonyms
+                re.search(rf"\b{re.escape(strip_accents(s))}", fields, re.IGNORECASE)
+                for s in synonyms
             )
 
         return True
@@ -517,6 +521,26 @@ class CommerceAssistantService:
 
         return cited
 
+    @staticmethod
+    def _build_master_keyword_clauses(terms: list[str]) -> list[Any]:
+        seen: set[str] = set()
+        clauses: list[Any] = []
+        for term in terms:
+            norm = strip_accents(term.lower().strip())
+            if not norm or norm in seen:
+                continue
+            seen.add(norm)
+            clauses.extend(
+                [
+                    accent_insensitive_ilike(col(ProductMaster.name), norm),
+                    accent_insensitive_ilike(col(ProductMaster.brand), norm),
+                    accent_insensitive_ilike(col(ProductMaster.model), norm),
+                    accent_insensitive_ilike(col(ProductMaster.features), norm),
+                    accent_insensitive_ilike(col(ProductMaster.description), norm),
+                ]
+            )
+        return clauses
+
     def _execute_keyword_search(
         self,
         base_stmt: Any,
@@ -529,19 +553,9 @@ class CommerceAssistantService:
             stem = self.to_stem(kw)
             synonyms = self.get_synonyms(kw)
             search_terms = list(dict.fromkeys([kw, stem] + synonyms))
-
-            kw_clauses = []
-            for term in search_terms:
-                kw_clauses.extend(
-                    [
-                        col(ProductMaster.name).ilike(f"%{term}%"),
-                        col(ProductMaster.brand).ilike(f"%{term}%"),
-                        col(ProductMaster.model).ilike(f"%{term}%"),
-                        col(ProductMaster.features).ilike(f"%{term}%"),
-                        col(ProductMaster.description).ilike(f"%{term}%"),
-                    ]
-                )
-            and_filters.append(or_(*kw_clauses))
+            kw_clauses = self._build_master_keyword_clauses(search_terms)
+            if kw_clauses:
+                and_filters.append(or_(*kw_clauses))
 
         strict_stmt = base_stmt.where(and_(*and_filters)).limit(limit * 2)
         strict_matches = list(self.session.exec(strict_stmt).all())
@@ -553,21 +567,12 @@ class CommerceAssistantService:
         if valid_strict:
             return valid_strict[:limit]
 
-        or_filters = []
+        all_terms: list[str] = []
         for kw in keywords[:5]:
             stem = self.to_stem(kw)
             synonyms = self.get_synonyms(kw)
-            search_terms = list(dict.fromkeys([kw, stem] + synonyms))
-            for term in search_terms:
-                or_filters.extend(
-                    [
-                        col(ProductMaster.name).ilike(f"%{term}%"),
-                        col(ProductMaster.brand).ilike(f"%{term}%"),
-                        col(ProductMaster.model).ilike(f"%{term}%"),
-                        col(ProductMaster.features).ilike(f"%{term}%"),
-                        col(ProductMaster.description).ilike(f"%{term}%"),
-                    ]
-                )
+            all_terms.extend([kw, stem] + synonyms)
+        or_filters = self._build_master_keyword_clauses(all_terms)
 
         relaxed_stmt = base_stmt.where(or_(*or_filters)).limit(limit * 2)
         relaxed_matches = list(self.session.exec(relaxed_stmt).all())

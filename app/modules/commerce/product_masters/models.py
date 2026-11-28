@@ -5,11 +5,12 @@ from sqlmodel import Field, Relationship
 
 from app.models.base_model import BaseModel
 from app.models.mixins import AuditMixin
+from app.modules.commerce.product_masters.link_utils import resolve_video_embed
 
 if TYPE_CHECKING:
     from app.modules.commerce.categories.models import Category
-    from app.modules.commerce.live_baskets.models import LiveBasket
     from app.modules.commerce.products.models import Product
+    from app.modules.commerce.storage_locations.models import StorageLocation
 
 
 class ProductMaster(BaseModel, AuditMixin, table=True):
@@ -36,8 +37,8 @@ class ProductMaster(BaseModel, AuditMixin, table=True):
     category_id: UUID | None = Field(
         default=None, foreign_key="commerce_category.id", index=True
     )
-    live_basket_id: UUID | None = Field(
-        default=None, foreign_key="commerce_live_basket.id", index=True
+    storage_location_id: UUID | None = Field(
+        default=None, foreign_key="commerce_storage_location.id", index=True
     )
     brand: str | None = Field(default=None, max_length=150)
     model: str | None = Field(default=None, max_length=150)
@@ -75,7 +76,9 @@ class ProductMaster(BaseModel, AuditMixin, table=True):
 
     # Relationships
     category: Optional["Category"] = Relationship(back_populates="product_masters")
-    live_basket: Optional["LiveBasket"] = Relationship(back_populates="product_masters")
+    storage_location: Optional["StorageLocation"] = Relationship(
+        back_populates="product_masters"
+    )
     inventory_items: List["Product"] = Relationship(back_populates="master_product")
     images: List["ProductMasterImage"] = Relationship(
         back_populates="product_master",
@@ -116,6 +119,19 @@ class ProductMaster(BaseModel, AuditMixin, table=True):
                 return lnk.url
         for lnk in self.external_links:
             if getattr(lnk, "link_type", "REFERENCE") == "REFERENCE":
+                return lnk.url
+        return None
+
+    @property
+    def video_url(self) -> str | None:
+        """URL principal de video comercial del producto."""
+        if not self.external_links:
+            return None
+        for lnk in self.external_links:
+            if getattr(lnk, "link_type", "REFERENCE") == "VIDEO" and lnk.is_primary:
+                return lnk.url
+        for lnk in self.external_links:
+            if getattr(lnk, "link_type", "REFERENCE") == "VIDEO":
                 return lnk.url
         return None
 
@@ -214,7 +230,8 @@ class ProductMasterExternalLink(BaseModel, AuditMixin, table=True):
         index=True,
         description=(
             "Identificador del portal: AMAZON, EBAY, ALIBABA, ALIEXPRESS, "
-            "WALMART, MERCADOLIBRE, FACEBOOK, INSTAGRAM, TIKTOK, YOUTUBE, OTHER"
+            "WALMART, MERCADOLIBRE, FACEBOOK, INSTAGRAM, TIKTOK, YOUTUBE, "
+            "VIMEO, CLOUDINARY, DIRECT_VIDEO, OTHER"
         ),
     )
     link_type: str = Field(
@@ -222,8 +239,9 @@ class ProductMasterExternalLink(BaseModel, AuditMixin, table=True):
         max_length=20,
         index=True,
         description=(
-            "Tipo de enlace: 'REFERENCE' (info técnica/proveedor) o "
-            "'MARKETPLACE' (publicación propia en tiendas/redes)"
+            "Tipo de enlace: 'REFERENCE' (info técnica/proveedor), "
+            "'MARKETPLACE' (publicación propia en tiendas/redes) o "
+            "'VIDEO' (videos promocionales/demos embebibles)"
         ),
     )
     label: str | None = Field(
@@ -251,6 +269,22 @@ class ProductMasterExternalLink(BaseModel, AuditMixin, table=True):
     product_master: Optional["ProductMaster"] = Relationship(
         back_populates="external_links"
     )
+
+    @property
+    def embed_url(self) -> str | None:
+        """URL segura lista para iframe/reproductor cuando link_type es VIDEO."""
+        if getattr(self, "link_type", "REFERENCE") != "VIDEO":
+            return None
+        embed, _ = resolve_video_embed(self.url)
+        return embed
+
+    @property
+    def player_type(self) -> str | None:
+        """Modo de reproducción ('EMBED_IFRAME', 'HTML5_VIDEO', 'EXTERNAL_ONLY')."""
+        if getattr(self, "link_type", "REFERENCE") != "VIDEO":
+            return None
+        _, mode = resolve_video_embed(self.url)
+        return mode
 
 
 # Alias de retrocompatibilidad

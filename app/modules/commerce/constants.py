@@ -10,7 +10,7 @@ class CommerceModuleSlug:
     ROUNDS = "commerce_rounds"
     BATCHES = "commerce_batches"
     CATEGORIES = "commerce_categories"
-    LIVE_BASKETS = "commerce_live_baskets"
+    STORAGE_LOCATIONS = "commerce_storage_locations"
     CHANNELS = "commerce_channels"
     PRODUCT_MASTERS = "commerce_product_masters"
     PRODUCTS = "commerce_products"
@@ -49,6 +49,27 @@ class SaleDeliveryPaidBy(str, Enum):
 class SaleDeliveryStatus(str, Enum):
     DELIVERED = "DELIVERED"
     PENDING = "PENDING"
+
+
+class StorageLocationType(str, Enum):
+    BASKET = "BASKET"
+    SHELF = "SHELF"
+    SHOWCASE = "SHOWCASE"
+    RACK = "RACK"
+    WAREHOUSE = "WAREHOUSE"
+    OTHER = "OTHER"
+
+
+class ExternalLinkType(str, Enum):
+    REFERENCE = "REFERENCE"
+    MARKETPLACE = "MARKETPLACE"
+    VIDEO = "VIDEO"
+
+
+class VideoPlayerType(str, Enum):
+    EMBED_IFRAME = "EMBED_IFRAME"
+    HTML5_VIDEO = "HTML5_VIDEO"
+    EXTERNAL_ONLY = "EXTERNAL_ONLY"
 
 
 _PG_INT32_MAX = 2_147_483_647

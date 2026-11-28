@@ -417,9 +417,7 @@ class BatchService:
             for prod in batch_products:
                 sold_items += prod.sold_quantity
                 is_sellable_stock = (
-                    prod.available_quantity > 0
-                    and prod.status != "SCRAPPED"
-                    and prod.physical_condition != "DAMAGED_SCRAP"
+                    prod.available_quantity > 0 and prod.status != "SCRAPPED"
                 )
                 if is_sellable_stock:
                     available_items += prod.available_quantity
@@ -673,10 +671,11 @@ class BatchService:
 
         from app.modules.commerce.products.models import Product
 
-        # Seleccionar productos vendibles de esta caja (excluyendo mermas)
+        # Seleccionar productos vendibles/vendidos de esta caja (excluyendo mermas totales)
         stmt = select(Product).where(
             Product.batch_id == batch_id,
-            Product.physical_condition != "DAMAGED_SCRAP",
+            Product.status != "SCRAPPED",
+            (col(Product.available_quantity) + col(Product.sold_quantity)) > 0,
         )
         products = list(self.session.exec(stmt).all())
         if not products:
