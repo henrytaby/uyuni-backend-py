@@ -96,11 +96,14 @@ async def lifespan(app: FastAPI):
     yield
 
 
+IS_PRODUCTION = settings.ENVIRONMENT.strip().lower() in {"production", "prod"}
+
 app = FastAPI(
     lifespan=lifespan,
     title=settings.PROJECT_NAME,
     description=description,
     version=settings.VERSION,
+    docs_url=None if IS_PRODUCTION else "/docs",
     redoc_url=None,  # Disabled default due to jsdelivr.net being blocked
     license_info={"name": "MIT License", "url": "https://opensource.org/license/mit"},
     contact={
@@ -165,7 +168,7 @@ app = FastAPI(
             "description": "Monitoreo y verificación del estado del servidor.",
         },
     ],
-    openapi_url="/openapi.json",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json",
 )
 
 # Habilitar CORS
@@ -240,17 +243,19 @@ async def health_check() -> dict[str, str]:
     }
 
 
-@app.get("/redoc", include_in_schema=False)
-async def redoc_html() -> HTMLResponse:
-    """
-    Custom Redoc setup pinning the stable UMD bundle (v2.1.5) on unpkg CDN,
-    avoiding the 'import.meta' ESM syntax error introduced in unpkg @latest (v3+).
-    """
-    return get_redoc_html(
-        openapi_url=cast(str, app.openapi_url),
-        title=f"{app.title} - ReDoc",
-        redoc_js_url="https://unpkg.com/redoc@2.1.5/bundles/redoc.standalone.js",
-    )
+if not IS_PRODUCTION:
+
+    @app.get("/redoc", include_in_schema=False)
+    async def redoc_html() -> HTMLResponse:
+        """
+        Custom Redoc setup pinning the stable UMD bundle (v2.1.5) on unpkg CDN,
+        avoiding the 'import.meta' ESM syntax error introduced in unpkg @latest (v3+).
+        """
+        return get_redoc_html(
+            openapi_url=cast(str, app.openapi_url),
+            title=f"{app.title} - ReDoc",
+            redoc_js_url="https://unpkg.com/redoc@2.1.5/bundles/redoc.standalone.js",
+        )
 
 
 if __name__ == "__main__":
