@@ -1812,7 +1812,6 @@ def test_investment_round_and_batch_costing_modalities(
             batch_id=batch_liq.id,
             initial_quantity=1,
             merma_quantity=1,
-            physical_condition="DAMAGED_SCRAP",
         )
     )
 
@@ -2321,7 +2320,7 @@ def test_product_custom_prices_and_automated_status(
        min 120 Bs en vez de 550 Bs).
     3. Automatización estricta de status y available_quantity:
        - initial=5, merma=2 -> available=3, status=AVAILABLE
-       - merma=initial -> SCRAPPED, condition=DAMAGED_SCRAP
+       - merma=initial -> SCRAPPED
     4. Uso del precio custom en allocate_relative_costs.
     5. Venta exitosa a 140 Bs validada contra el mínimo del lote (120 Bs).
     """
@@ -2375,7 +2374,6 @@ def test_product_custom_prices_and_automated_status(
             initial_quantity=2,
             published_price=150.0,
             minimum_price=120.0,
-            physical_condition="INCOMPLETE",
             defect_detail="Sin panel solar",
             variant_name="Sin Panel Solar",
         )
@@ -2444,7 +2442,7 @@ def test_product_custom_prices_and_automated_status(
     # Queda en SOLD_OUT porque ya tuvo 1 venta
     assert p_inc_scrapped.status == "SOLD_OUT"
 
-    # 9. Producto 3: Todo merma desde inicio -> SCRAPPED y DAMAGED_SCRAP
+    # 9. Producto 3: Todo merma desde inicio -> SCRAPPED
     p_all_merma = product_service.create(
         Product(
             master_product_id=master.id,
@@ -2456,7 +2454,6 @@ def test_product_custom_prices_and_automated_status(
     )
     assert p_all_merma.available_quantity == 0
     assert p_all_merma.status == "SCRAPPED"
-    assert p_all_merma.physical_condition == "DAMAGED_SCRAP"
 
 
 def test_product_real_images_service_and_api(
@@ -4339,3 +4336,127 @@ def test_accent_insensitive_search_preserves_stored_accents(
     )
     assert res_sale_search.status_code == 200
     assert any(s["id"] == sale_id for s in res_sale_search.json())
+
+
+def test_partial_merma_calculations_across_product_batch_sale_and_round(
+    client: TestClient, session: Session, superuser_token_headers: dict[str, str]
+) -> None:
+    """Merma parcial (4 iniciales, 1 merma -> 3 vendibles) cuadra métricas y costos."""
+    from app.modules.commerce.rounds.models import InvestmentRound
+    from app.modules.commerce.rounds.service import InvestmentRoundService
+
+    round_svc = InvestmentRoundService(session)
+    batch_svc = BatchService(session)
+    master_svc = ProductMasterService(session)
+    product_svc = ProductService(session)
+    sale_svc = SaleService(session)
+
+    rnd = round_svc.create(
+        InvestmentRound(
+            code="RND-MERMA-01",
+            name="Ronda Prueba Merma",
+        )
+    )
+    batch = batch_svc.create(
+        Batch(
+            code="BOX-MERMA-01",
+            name="Caja 4 Proyectores",
+            investment_round_id=rnd.id,
+            costing_method="WEIGHTED_RETAIL",
+            purchase_price=900.0,
+            freight_cost=0.0,
+        )
+    )
+    m_proj = master_svc.create(
+        ProductMaster(
+            item_number=4401,
+            name="Proyector Mixto",
+            official_price=500.0,
+            minimum_price=350.0,
+            published_price=400.0,
+        )
+    )
+    m_scrap = master_svc.create(
+        ProductMaster(
+            item_number=4402,
+            name="Accesorio Roto",
+            official_price=100.0,
+            minimum_price=50.0,
+            published_price=80.0,
+        )
+    )
+
+    # 4 recibidos, 1 merma -> 3 vendibles, status=AVAILABLE
+    p_mix = product_svc.create(
+        Product(
+            master_product_id=m_proj.id,
+            batch_id=batch.id,
+            initial_quantity=4,
+            merma_quantity=1,
+            defect_detail="1 unidad con placa dañada, 3 operativas",
+        )
+    )
+    assert p_mix.available_quantity == 3
+    assert p_mix.status == "AVAILABLE"
+
+    # Fila 100% merma -> SCRAPPED, excluida del costeo y stock vendible
+    p_scrap = product_svc.create(
+        Product(
+            master_product_id=m_scrap.id,
+            batch_id=batch.id,
+            initial_quantity=2,
+            merma_quantity=2,
+        )
+    )
+    assert p_scrap.available_quantity == 0
+    assert p_scrap.status == "SCRAPPED"
+
+    # Prorrateo: solo las 3 unidades vendibles reciben los 900 Bs -> 300.0 c/u
+    batch_svc.allocate_relative_costs(batch.id, basis="published_price")
+    p_mix_costed = product_svc.get_by_id(p_mix.id)
+    p_scrap_costed = product_svc.get_by_id(p_scrap.id)
+    assert p_mix_costed is not None and p_scrap_costed is not None
+    assert p_mix_costed.cost_price == 300.0
+    assert p_scrap_costed.cost_price is None
+
+    # Métricas de lote: 3 disponibles, valor publicado 1200, piso 1050
+    res_metrics = client.get(
+        f"/api/commerce/batches/{batch.id}/metrics",
+        headers=superuser_token_headers,
+    )
+    assert res_metrics.status_code == 200
+    metrics = res_metrics.json()
+    assert metrics["initial_items_count"] == 6
+    assert metrics["merma_items_count"] == 3
+    assert metrics["sellable_items_count"] == 3
+    assert metrics["available_items"] == 3
+    assert metrics["remaining_stock_published_value"] == 1200.0
+    assert metrics["remaining_stock_min_value"] == 1050.0
+
+    # Vender 2 de las 3 unidades vendibles a 400 Bs c/u -> queda 1 disponible
+    sale = sale_svc.create(
+        SaleCreate(
+            customer_name="Cliente Merma Test",
+            payment_method="QR",
+            items=[SaleItemCreate(product_id=p_mix.id, quantity=2, unit_price=400.0)],
+        )
+    )
+    assert sale.total_collected == 800.0
+    assert sale.total_cost == 600.0
+    assert sale.net_profit == 200.0
+
+    p_after = product_svc.get_by_id(p_mix.id)
+    assert p_after is not None
+    assert p_after.available_quantity == 1
+    assert p_after.sold_quantity == 2
+    assert p_after.status == "AVAILABLE"
+
+    # Métricas de ronda cuadran totales exactos
+    rnd_metrics = round_svc.get_round_metrics(rnd.id)
+    assert rnd_metrics is not None
+    assert rnd_metrics["total_items"] == 6
+    assert rnd_metrics["available_items"] == 1
+    assert rnd_metrics["sold_items"] == 2
+    assert rnd_metrics["merma_items"] == 3
+    assert rnd_metrics["capital_invested"] == 900.0
+    assert rnd_metrics["capital_recovered"] == 800.0

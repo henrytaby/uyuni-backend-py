@@ -671,7 +671,7 @@ class BatchService:
 
         from app.modules.commerce.products.models import Product
 
-        # Seleccionar productos vendibles/vendidos de esta caja (excluyendo mermas totales)
+        # Seleccionar productos vendibles o vendidos (excluyendo mermas totales)
         stmt = select(Product).where(
             Product.batch_id == batch_id,
             Product.status != "SCRAPPED",

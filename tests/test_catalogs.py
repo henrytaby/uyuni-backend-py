@@ -38,14 +38,14 @@ def catalog_data_fixture(session: Session):
 
 def test_get_static_catalog_success(client: TestClient, superuser_token_headers: dict):
     response = client.get(
-        "/api/catalogs/commerce_physical_conditions", headers=superuser_token_headers
+        "/api/catalogs/commerce_product_statuses", headers=superuser_token_headers
     )
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 5
+    assert len(data) == 4
     values = [item["value"] for item in data]
-    assert "OPERATIONAL" in values
-    assert "DAMAGED_SCRAP" in values
+    assert "AVAILABLE" in values
+    assert "SCRAPPED" in values
 
 
 def test_get_dynamic_categories_catalog_success(
@@ -69,7 +69,7 @@ def test_get_catalog_not_found(client: TestClient, superuser_token_headers: dict
 
 
 def test_get_catalog_unauthorized(client: TestClient):
-    response = client.get("/api/catalogs/commerce_physical_conditions")
+    response = client.get("/api/catalogs/commerce_product_statuses")
     assert response.status_code == 401
 
 
@@ -80,7 +80,7 @@ def test_post_bulk_catalogs_success(
     client: TestClient, superuser_token_headers: dict, catalog_data: dict
 ):
     payload = {
-        "commerce_physical_conditions": {},
+        "commerce_product_statuses": {},
         "commerce_payment_methods": {},
         "commerce_categories": {},
     }
@@ -90,8 +90,8 @@ def test_post_bulk_catalogs_success(
     assert response.status_code == 200
     data = response.json()
 
-    assert "commerce_physical_conditions" in data
-    assert len(data["commerce_physical_conditions"]) == 5
+    assert "commerce_product_statuses" in data
+    assert len(data["commerce_product_statuses"]) == 4
 
     assert "commerce_payment_methods" in data
     assert len(data["commerce_payment_methods"]) == 4
@@ -103,7 +103,7 @@ def test_post_bulk_catalogs_success(
 def test_post_bulk_catalogs_not_found(
     client: TestClient, superuser_token_headers: dict
 ):
-    payload = {"commerce_physical_conditions": {}, "no_existe": {}}
+    payload = {"commerce_product_statuses": {}, "no_existe": {}}
     response = client.post(
         "/api/catalogs/bulk", json=payload, headers=superuser_token_headers
     )
@@ -112,6 +112,6 @@ def test_post_bulk_catalogs_not_found(
 
 
 def test_post_bulk_catalogs_unauthorized(client: TestClient):
-    payload = {"commerce_physical_conditions": {}}
+    payload = {"commerce_product_statuses": {}}
     response = client.post("/api/catalogs/bulk", json=payload)
     assert response.status_code == 401

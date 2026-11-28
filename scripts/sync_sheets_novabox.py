@@ -117,19 +117,6 @@ def clean_datetime(val: Any) -> datetime:
     return datetime.now()
 
 
-def normalize_condition(val: Any) -> str:
-    s = clean_str(val).upper()
-    if "DAÑ" in s or "MERMA" in s or "DAMAGED" in s:
-        return "DAMAGED_SCRAP"
-    if "REPUESTO" in s or "PARTS" in s:
-        return "FOR_PARTS"
-    if "INCOMPLETO" in s or "SIN CAJA" in s:
-        return "INCOMPLETE"
-    if "REPARADO" in s or "REPAIRED" in s:
-        return "REPAIRED"
-    return "OPERATIONAL"
-
-
 def normalize_status(
     raw_val: Any, sold_qty: int, merma_qty: int, avail_qty: int
 ) -> str:
@@ -667,7 +654,6 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
             p_oficial = clean_float(row[11]) if len(row) > 11 else 0.0
             p_minimo = clean_float(row[12]) if len(row) > 12 else p_oficial
             p_pub = clean_float(row[13]) if len(row) > 13 else p_oficial
-            condicion = normalize_condition(row[14] if len(row) > 14 else None)
             detalle_falla = clean_str(row[15]) if len(row) > 15 else None
             revisado = clean_bool(row[16]) if len(row) > 16 else False
             fb_verif = clean_bool(row[17]) if len(row) > 17 else False
@@ -813,7 +799,6 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
                     merma_quantity=merma_qty,
                     available_quantity=avail_qty,
                     status=status,
-                    physical_condition=condicion,
                     defect_detail=detalle_falla,
                     is_reviewed=revisado,
                 )
@@ -830,7 +815,6 @@ def run_migration(cache_dir: str, db_url: str, dry_run: bool = False) -> None:
                 existing.merma_quantity = merma_qty
                 existing.available_quantity = avail_qty
                 existing.status = status
-                existing.physical_condition = condicion
                 existing.defect_detail = detalle_falla
                 existing.is_reviewed = revisado
                 if not dry_run:
